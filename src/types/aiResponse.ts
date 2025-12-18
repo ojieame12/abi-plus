@@ -1,0 +1,249 @@
+// Structured AI Response Types
+// Defines the exact format we expect from AI responses
+
+import type { WidgetType, WidgetData } from './widgets';
+import type { DetectedIntent } from './intents';
+
+// ============================================
+// INSIGHT STRUCTURE
+// ============================================
+
+export interface ResponseInsight {
+  headline: string;        // Short, impactful statement: "Prices down 2.3%"
+  explanation: string;     // Context: "Month-over-month due to increased Chinese production"
+  sentiment: 'positive' | 'negative' | 'neutral';
+  icon?: 'trending_up' | 'trending_down' | 'alert' | 'info' | 'check';
+}
+
+// ============================================
+// SOURCE STRUCTURE (Separated by type)
+// ============================================
+
+export interface WebSource {
+  name: string;
+  url: string;
+  domain: string;
+  snippet?: string;
+  date?: string;
+}
+
+export interface InternalSource {
+  name: string;
+  type: 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' | 'supplier_data';
+  dataPoints?: number;
+  lastUpdated?: string;
+}
+
+export interface ResponseSources {
+  web: WebSource[];
+  internal: InternalSource[];
+  totalWebCount: number;
+  totalInternalCount: number;
+}
+
+// ============================================
+// FOLLOW-UP STRUCTURE
+// ============================================
+
+export interface FollowUpSuggestion {
+  id: string;
+  text: string;
+  icon: 'search' | 'chart' | 'lightbulb' | 'document' | 'alert' | 'compare' | 'message';
+  intent: string;          // What intent this would trigger
+  priority: number;        // 1 = highest
+}
+
+// ============================================
+// THOUGHT PROCESS STRUCTURE
+// ============================================
+
+export interface ThoughtStep {
+  title: string;
+  content: string;
+  status: 'pending' | 'in_progress' | 'complete';
+  duration?: string;
+}
+
+export interface ThoughtProcess {
+  duration: string;        // "2m 15s"
+  steps: ThoughtStep[];
+  queryAnalysis?: {
+    detectedIntent: string;
+    keyEntities: string[];
+    dataNeeded: string[];
+  };
+  searchStrategy?: {
+    sources: string[];
+    priority: string;
+  };
+}
+
+// ============================================
+// RESPONSE ESCALATION
+// ============================================
+
+export interface ResponseEscalation {
+  showInline: boolean;        // Show widget in chat
+  expandToArtifact: boolean;  // Also open artifact panel
+  resultCount: number;        // How many items in result
+  threshold: number;          // What triggered this level
+}
+
+// ============================================
+// HANDOFF STRUCTURE
+// ============================================
+
+export interface DashboardHandoff {
+  required: boolean;
+  reason: string;
+  linkText: string;
+  url: string;
+  module: 'risk_profile' | 'supplier_detail' | 'analytics' | 'settings';
+}
+
+// ============================================
+// MAIN STRUCTURED RESPONSE
+// ============================================
+
+export interface StructuredAIResponse {
+  // Identification
+  id: string;
+  timestamp: string;
+
+  // Thought process (collapsible in UI)
+  thought: ThoughtProcess;
+
+  // Main response content
+  response: {
+    text: string;              // Main conversational text (markdown supported)
+    tone: 'informative' | 'advisory' | 'cautionary' | 'neutral';
+  };
+
+  // Widget (optional)
+  widget?: WidgetData;
+
+  // Insight highlight (optional)
+  insight?: ResponseInsight;
+
+  // Sources (separated by type)
+  sources: ResponseSources;
+
+  // Follow-up suggestions
+  followUps: FollowUpSuggestion[];
+
+  // Metadata
+  metadata: {
+    intent: DetectedIntent;
+    provider: 'gemini' | 'perplexity' | 'local';
+    escalation: ResponseEscalation;
+    processingTime: number;    // ms
+  };
+
+  // Dashboard handoff (if needed)
+  handoff?: DashboardHandoff;
+}
+
+// ============================================
+// AI OUTPUT FORMAT (What we tell AI to return)
+// ============================================
+
+// This is the JSON schema we instruct the AI to follow
+export interface AIOutputFormat {
+  thought: string;             // Brief reasoning about how to respond
+  response: string;            // Main text response (markdown)
+  widget?: {
+    type: WidgetType;
+    title: string;
+    data: Record<string, unknown>;
+  };
+  insight?: {
+    headline: string;
+    explanation: string;
+    sentiment: 'positive' | 'negative' | 'neutral';
+  };
+  followUps: string[];         // 2-4 suggested follow-up questions
+  dataSources: string[];       // What data was used
+}
+
+// ============================================
+// RESPONSE BUILDER HELPERS
+// ============================================
+
+export const createEmptyResponse = (): StructuredAIResponse => ({
+  id: '',
+  timestamp: new Date().toISOString(),
+  thought: {
+    duration: '0s',
+    steps: [],
+  },
+  response: {
+    text: '',
+    tone: 'neutral',
+  },
+  sources: {
+    web: [],
+    internal: [],
+    totalWebCount: 0,
+    totalInternalCount: 0,
+  },
+  followUps: [],
+  metadata: {
+    intent: {
+      category: 'general',
+      subIntent: 'none',
+      confidence: 0,
+      responseType: 'summary',
+      artifactType: 'none',
+      extractedEntities: {},
+      requiresHandoff: false,
+      requiresResearch: false,
+      requiresDiscovery: false,
+    },
+    provider: 'local',
+    escalation: {
+      showInline: true,
+      expandToArtifact: false,
+      resultCount: 0,
+      threshold: 0,
+    },
+    processingTime: 0,
+  },
+});
+
+export const mapIconToFollowUp = (
+  icon: string
+): FollowUpSuggestion['icon'] => {
+  const iconMap: Record<string, FollowUpSuggestion['icon']> = {
+    chart: 'chart',
+    search: 'search',
+    lightbulb: 'lightbulb',
+    document: 'document',
+    alert: 'alert',
+    compare: 'compare',
+    message: 'message',
+  };
+  return iconMap[icon] || 'message';
+};
+
+// ============================================
+// VALIDATION
+// ============================================
+
+export const validateAIOutput = (output: unknown): output is AIOutputFormat => {
+  if (typeof output !== 'object' || output === null) return false;
+
+  const obj = output as Record<string, unknown>;
+
+  // Required fields
+  if (typeof obj.response !== 'string') return false;
+  if (!Array.isArray(obj.followUps)) return false;
+
+  // Optional widget validation
+  if (obj.widget !== undefined) {
+    if (typeof obj.widget !== 'object' || obj.widget === null) return false;
+    const widget = obj.widget as Record<string, unknown>;
+    if (typeof widget.type !== 'string') return false;
+  }
+
+  return true;
+};
