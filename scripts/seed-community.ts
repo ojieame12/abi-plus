@@ -11,8 +11,8 @@ import {
   questions,
   questionTags,
   answers,
-} from '../src/db/schema';
-import { seedBadges, checkAndAwardBadges } from '../src/services/badgeService';
+} from '../src/db/schema.js';
+import { seedBadges, checkAndAwardBadges } from '../src/services/badgeService.js';
 
 // ══════════════════════════════════════════════════════════════════
 // SAMPLE DATA
@@ -27,7 +27,7 @@ const SAMPLE_USERS = [
     jobTitle: 'VP of Procurement',
     bio: '20+ years in strategic sourcing. Passionate about sustainable supply chains.',
     reputation: 2450,
-    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
+    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face',
   },
   {
     email: 'marcus.rodriguez@example.com',
@@ -37,7 +37,7 @@ const SAMPLE_USERS = [
     jobTitle: 'Supply Chain Director',
     bio: 'Automotive supply chain specialist. Former Toyota, now leading transformation at AutoDrive.',
     reputation: 1820,
-    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=marcus',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
   },
   {
     email: 'emily.watson@example.com',
@@ -47,7 +47,7 @@ const SAMPLE_USERS = [
     jobTitle: 'Strategic Sourcing Lead',
     bio: 'Pharma procurement with focus on API sourcing and regulatory compliance.',
     reputation: 950,
-    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emily',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
   },
   {
     email: 'david.kim@example.com',
@@ -57,7 +57,7 @@ const SAMPLE_USERS = [
     jobTitle: 'Vendor Relations Manager',
     bio: 'Building better vendor relationships through data-driven insights.',
     reputation: 680,
-    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=david',
+    avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face',
   },
   {
     email: 'jessica.thompson@example.com',
@@ -67,7 +67,7 @@ const SAMPLE_USERS = [
     jobTitle: 'Procurement Analyst',
     bio: 'Data analyst turned procurement specialist. Love finding patterns in spend data.',
     reputation: 320,
-    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jessica',
+    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
   },
   {
     email: 'alex.okonkwo@example.com',
@@ -77,7 +77,7 @@ const SAMPLE_USERS = [
     jobTitle: 'Category Manager',
     bio: 'CPG category management. Specializing in indirect spend optimization.',
     reputation: 540,
-    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
   },
 ];
 

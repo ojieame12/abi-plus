@@ -36,15 +36,9 @@ interface Message {
 }
 
 // Get visitor ID for persistence
+// DEMO MODE: Using shared visitor ID
 function getVisitorId(): string {
-  if (typeof window === 'undefined') return 'ssr-placeholder';
-  const key = 'abi_visitor_id';
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-  return id;
+  return 'demo-user-001';
 }
 
 // API helpers for chat persistence

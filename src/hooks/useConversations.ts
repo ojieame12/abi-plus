@@ -26,20 +26,10 @@ export interface ConversationWithMessages extends Conversation {
 }
 
 // Get or create visitor ID (SSR-safe)
+// DEMO MODE: Using shared visitor ID to show seeded conversations
 function getVisitorId(): string {
-  if (typeof window === 'undefined') {
-    return 'ssr-placeholder';
-  }
-
-  const key = 'abi_visitor_id';
-  let visitorId = localStorage.getItem(key);
-
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-
-  return visitorId;
+  // Demo mode - everyone sees the same seeded conversations
+  return 'demo-user-001';
 }
 
 // API base URL - empty for same-origin

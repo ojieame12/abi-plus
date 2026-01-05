@@ -4,12 +4,13 @@ import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, P
 interface SidebarProps {
     isExpanded: boolean;
     onToggle: () => void;
+    onExpand?: () => void;
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
 }
 
-export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory, onNavigateToCommunity }: SidebarProps) => {
+export const Sidebar = ({ isExpanded, onToggle, onExpand, onNewChat, onNavigateToHistory, onNavigateToCommunity }: SidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         'Today': true,
         'Yesterday': false,
@@ -23,10 +24,19 @@ export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory, 
         }));
     };
 
+    // Expand sidebar on hover or click when collapsed
+    const handleExpand = () => {
+        if (!isExpanded && onExpand) {
+            onExpand();
+        }
+    };
+
     return (
         <aside
-            className={`relative h-full shrink-0 flex transition-all duration-300 ease-out z-30 ${isExpanded ? 'w-60' : 'w-14'
+            className={`relative h-full shrink-0 flex transition-all duration-300 ease-out z-30 ${isExpanded ? 'w-60' : 'w-14 cursor-pointer'
                 }`}
+            onMouseEnter={handleExpand}
+            onClick={!isExpanded ? handleExpand : undefined}
         >
             {/* Main Sidebar Content - No rounded edges, blends with bg */}
             <div className="relative w-full h-full bg-transparent flex flex-col overflow-hidden">

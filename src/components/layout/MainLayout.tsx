@@ -45,6 +45,7 @@ export const MainLayout = ({
             <Sidebar
                 isExpanded={isSidebarExpanded}
                 onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                onExpand={() => setIsSidebarExpanded(true)}
                 onNewChat={onNewChat}
                 onNavigateToHistory={onNavigateToHistory}
                 onNavigateToCommunity={onNavigateToCommunity}
