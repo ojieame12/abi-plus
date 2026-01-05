@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { withAuthenticated, type AuthRequest } from '../../../_middleware/auth';
 import { castVote, removeVote } from '../../../../src/services/communityService';
 import { checkAndAwardBadges } from '../../../../src/services/badgeService';
+import { updateStreak } from '../../../../src/services/streakService';
 import type { VoteValue } from '../../../../src/types/community';
 
 function getDb() {
@@ -60,6 +61,10 @@ async function handler(req: AuthRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Cannot vote on this answer' });
       }
 
+      // Update voter's streak and check badges
+      await updateStreak(db, userId);
+      await checkAndAwardBadges(db, userId);
+
       // Check for badges for the answer author (who received reputation change)
       if (result.targetOwnerId) {
         await checkAndAwardBadges(db, result.targetOwnerId);
@@ -75,6 +80,9 @@ async function handler(req: AuthRequest, res: VercelResponse) {
     // DELETE - Remove vote
     if (req.method === 'DELETE') {
       const result = await removeVote(db, userId, 'answer', id);
+
+      // Still counts as activity for streak
+      await updateStreak(db, userId);
 
       return res.status(200).json({
         success: true,

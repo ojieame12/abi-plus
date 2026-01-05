@@ -41,6 +41,10 @@ export const profiles = pgTable('profiles', {
   isPublic: boolean('is_public').default(true).notNull(),
   anonymousDefault: boolean('anonymous_default').default(false).notNull(),
   onboardingStep: text('onboarding_step').default('profile'), // profile, interests, complete
+  // Streak tracking
+  currentStreak: integer('current_streak').default(0).notNull(),
+  longestStreak: integer('longest_streak').default(0).notNull(),
+  lastActiveAt: timestamp('last_active_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -295,3 +299,98 @@ export type UserBadge = typeof userBadges.$inferSelect;
 export type NewUserBadge = typeof userBadges.$inferInsert;
 export type ReputationLogEntry = typeof reputationLog.$inferSelect;
 export type NewReputationLogEntry = typeof reputationLog.$inferInsert;
+
+// ══════════════════════════════════════════════════════════════════
+// SUPPLIER & PORTFOLIO TABLES
+// ══════════════════════════════════════════════════════════════════
+
+// Risk factor scores stored as JSON
+export interface RiskFactorScore {
+  id: string;
+  name: string;
+  tier: 'freely-displayable' | 'conditionally-displayable' | 'restricted';
+  weight: number;
+  score?: number;
+  rating?: string;
+}
+
+// Suppliers table - core supplier data
+export const suppliers = pgTable('suppliers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  duns: text('duns').unique(),
+  category: text('category').notNull(),
+  industry: text('industry'),
+  city: text('city'),
+  country: text('country').notNull(),
+  region: text('region').notNull(), // 'North America', 'Europe', 'Asia Pacific', 'Latin America'
+  spend: integer('spend').default(0).notNull(), // in cents/minor units
+  spendFormatted: text('spend_formatted'),
+  criticality: text('criticality').default('medium').notNull(), // 'low', 'medium', 'high'
+  revenue: text('revenue'), // e.g., "$394B Revenue"
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('suppliers_category_idx').on(table.category),
+  index('suppliers_region_idx').on(table.region),
+  index('suppliers_country_idx').on(table.country),
+]);
+
+// Supplier Risk Scores - current and historical
+export const supplierRiskScores = pgTable('supplier_risk_scores', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  supplierId: uuid('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  score: integer('score').default(0).notNull(), // 0-100
+  level: text('level').notNull(), // 'low', 'medium', 'medium-high', 'high', 'unrated'
+  trend: text('trend').default('stable').notNull(), // 'improving', 'stable', 'worsening'
+  previousScore: integer('previous_score'),
+  factors: jsonb('factors').$type<RiskFactorScore[]>().default([]),
+  scoreHistory: jsonb('score_history').$type<number[]>().default([]), // Last 9 data points
+  lastUpdated: timestamp('last_updated').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('supplier_risk_scores_supplier_id_idx').on(table.supplierId),
+  index('supplier_risk_scores_level_idx').on(table.level),
+  unique('supplier_risk_scores_supplier_unique').on(table.supplierId),
+]);
+
+// User Portfolios - which suppliers a user follows
+export const userPortfolios = pgTable('user_portfolios', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  supplierId: uuid('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  addedAt: timestamp('added_at').defaultNow().notNull(),
+  notes: text('notes'),
+  alertsEnabled: boolean('alerts_enabled').default(true).notNull(),
+}, (table) => [
+  unique('user_portfolio_unique').on(table.userId, table.supplierId),
+  index('user_portfolios_user_id_idx').on(table.userId),
+]);
+
+// Risk Changes - track significant risk score changes
+export const riskChanges = pgTable('risk_changes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  supplierId: uuid('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  previousScore: integer('previous_score').notNull(),
+  previousLevel: text('previous_level').notNull(),
+  currentScore: integer('current_score').notNull(),
+  currentLevel: text('current_level').notNull(),
+  direction: text('direction').notNull(), // 'improved', 'worsened', 'stable'
+  changeReason: text('change_reason'), // Optional explanation
+  changeDate: timestamp('change_date').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('risk_changes_supplier_id_idx').on(table.supplierId),
+  index('risk_changes_date_idx').on(table.changeDate),
+  index('risk_changes_direction_idx').on(table.direction),
+]);
+
+// Supplier types
+export type DbSupplier = typeof suppliers.$inferSelect;
+export type NewDbSupplier = typeof suppliers.$inferInsert;
+export type DbSupplierRiskScore = typeof supplierRiskScores.$inferSelect;
+export type NewDbSupplierRiskScore = typeof supplierRiskScores.$inferInsert;
+export type DbUserPortfolio = typeof userPortfolios.$inferSelect;
+export type NewDbUserPortfolio = typeof userPortfolios.$inferInsert;
+export type DbRiskChange = typeof riskChanges.$inferSelect;
+export type NewDbRiskChange = typeof riskChanges.$inferInsert;

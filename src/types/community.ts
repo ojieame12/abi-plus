@@ -6,7 +6,13 @@
 
 export interface BadgeCriteria {
   type: 'question_count' | 'answer_count' | 'accepted_count' |
-        'upvotes_received' | 'reputation' | 'first_question' | 'first_answer';
+        'upvotes_received' | 'reputation' | 'first_question' | 'first_answer' |
+        // Streak-based
+        'streak_days' | 'longest_streak' |
+        // Quality-based
+        'answer_score' | 'question_score' |
+        // Voting activity
+        'votes_cast' | 'helpful_votes';
   threshold?: number;
 }
 

@@ -8,6 +8,7 @@ import {
   createQuestion,
 } from '../../../src/services/communityService';
 import { checkAndAwardBadges } from '../../../src/services/badgeService';
+import { updateStreak } from '../../../src/services/streakService';
 import type { QuestionSortBy, QuestionFilter } from '../../../src/types/community';
 
 function getDb() {
@@ -90,7 +91,8 @@ async function handler(req: AuthRequest, res: VercelResponse) {
         aiContextSummary: aiContextSummary || undefined,
       });
 
-      // Check for new badges
+      // Update streak and check for badges
+      await updateStreak(db, req.auth.user!.id);
       await checkAndAwardBadges(db, req.auth.user!.id);
 
       return res.status(201).json(question);

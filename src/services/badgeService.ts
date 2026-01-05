@@ -7,6 +7,7 @@ import {
   questions,
   answers,
   profiles,
+  votes,
 } from '../db/schema';
 import type { Badge as DbBadge } from '../db/schema';
 import type {
@@ -30,7 +31,9 @@ export interface BadgeDefinition {
 }
 
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
-  // Bronze - Getting started
+  // ══════════════════════════════════════════════════════════════════
+  // BRONZE - Getting started
+  // ══════════════════════════════════════════════════════════════════
   {
     name: 'First Question',
     slug: 'first-question',
@@ -63,8 +66,26 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     icon: 'PenLine',
     criteria: { type: 'answer_count', threshold: 5 },
   },
+  {
+    name: 'Supporter',
+    slug: 'supporter',
+    description: 'Cast 10 votes',
+    tier: 'bronze',
+    icon: 'ThumbsUp',
+    criteria: { type: 'votes_cast', threshold: 10 },
+  },
+  {
+    name: 'Consistent',
+    slug: 'consistent',
+    description: 'Maintained a 7-day activity streak',
+    tier: 'bronze',
+    icon: 'Flame',
+    criteria: { type: 'streak_days', threshold: 7 },
+  },
 
-  // Silver - Growing engagement
+  // ══════════════════════════════════════════════════════════════════
+  // SILVER - Growing engagement
+  // ══════════════════════════════════════════════════════════════════
   {
     name: 'Good Question',
     slug: 'good-question',
@@ -97,8 +118,42 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     icon: 'TrendingUp',
     criteria: { type: 'reputation', threshold: 500 },
   },
+  {
+    name: 'Civic Duty',
+    slug: 'civic-duty',
+    description: 'Cast 100 votes',
+    tier: 'silver',
+    icon: 'Vote',
+    criteria: { type: 'votes_cast', threshold: 100 },
+  },
+  {
+    name: 'Dedicated',
+    slug: 'dedicated',
+    description: 'Maintained a 14-day activity streak',
+    tier: 'silver',
+    icon: 'Flame',
+    criteria: { type: 'streak_days', threshold: 14 },
+  },
+  {
+    name: 'Nice Answer',
+    slug: 'nice-answer',
+    description: 'Posted an answer with 10+ score',
+    tier: 'silver',
+    icon: 'Star',
+    criteria: { type: 'answer_score', threshold: 10 },
+  },
+  {
+    name: 'Nice Question',
+    slug: 'nice-question',
+    description: 'Asked a question with 10+ score',
+    tier: 'silver',
+    icon: 'Sparkles',
+    criteria: { type: 'question_score', threshold: 10 },
+  },
 
-  // Gold - Expert level
+  // ══════════════════════════════════════════════════════════════════
+  // GOLD - Expert level
+  // ══════════════════════════════════════════════════════════════════
   {
     name: 'Great Answer',
     slug: 'great-answer',
@@ -130,6 +185,46 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     tier: 'gold',
     icon: 'HelpCircle',
     criteria: { type: 'question_count', threshold: 50 },
+  },
+  {
+    name: 'Electorate',
+    slug: 'electorate',
+    description: 'Cast 500 votes',
+    tier: 'gold',
+    icon: 'CheckCircle',
+    criteria: { type: 'votes_cast', threshold: 500 },
+  },
+  {
+    name: 'Fanatic',
+    slug: 'fanatic',
+    description: 'Maintained a 30-day activity streak',
+    tier: 'gold',
+    icon: 'Flame',
+    criteria: { type: 'streak_days', threshold: 30 },
+  },
+  {
+    name: 'Yearling',
+    slug: 'yearling',
+    description: 'Achieved a 100-day longest streak',
+    tier: 'gold',
+    icon: 'Calendar',
+    criteria: { type: 'longest_streak', threshold: 100 },
+  },
+  {
+    name: 'Stellar Question',
+    slug: 'stellar-question',
+    description: 'Asked a question with 25+ score',
+    tier: 'gold',
+    icon: 'Sparkles',
+    criteria: { type: 'question_score', threshold: 25 },
+  },
+  {
+    name: 'Stellar Answer',
+    slug: 'stellar-answer',
+    description: 'Posted an answer with 25+ score',
+    tier: 'gold',
+    icon: 'Zap',
+    criteria: { type: 'answer_score', threshold: 25 },
   },
 ];
 
@@ -282,6 +377,12 @@ interface UserStats {
   acceptedAnswerCount: number;
   totalUpvotes: number;
   reputation: number;
+  // New stats for additional badges
+  currentStreak: number;
+  longestStreak: number;
+  votesCast: number;
+  maxAnswerScore: number;
+  maxQuestionScore: number;
 }
 
 /**
@@ -320,12 +421,34 @@ async function getUserStats(
     .from(answers)
     .where(eq(answers.userId, userId));
 
-  // Reputation
+  // Profile stats (reputation, streaks)
   const profileResult = await db
-    .select({ reputation: profiles.reputation })
+    .select({
+      reputation: profiles.reputation,
+      currentStreak: profiles.currentStreak,
+      longestStreak: profiles.longestStreak,
+    })
     .from(profiles)
     .where(eq(profiles.userId, userId))
     .limit(1);
+
+  // Votes cast count
+  const votesCastResult = await db
+    .select({ count: count() })
+    .from(votes)
+    .where(eq(votes.userId, userId));
+
+  // Max answer score (for individual answer quality badges)
+  const maxAnswerScoreResult = await db
+    .select({ max: sql<number>`COALESCE(MAX(score), 0)::int` })
+    .from(answers)
+    .where(eq(answers.userId, userId));
+
+  // Max question score (for individual question quality badges)
+  const maxQuestionScoreResult = await db
+    .select({ max: sql<number>`COALESCE(MAX(score), 0)::int` })
+    .from(questions)
+    .where(eq(questions.userId, userId));
 
   return {
     questionCount: questionCountResult[0]?.count || 0,
@@ -334,6 +457,11 @@ async function getUserStats(
     totalUpvotes:
       (questionScoreResult[0]?.total || 0) + (answerScoreResult[0]?.total || 0),
     reputation: profileResult[0]?.reputation || 0,
+    currentStreak: profileResult[0]?.currentStreak || 0,
+    longestStreak: profileResult[0]?.longestStreak || 0,
+    votesCast: votesCastResult[0]?.count || 0,
+    maxAnswerScore: maxAnswerScoreResult[0]?.max || 0,
+    maxQuestionScore: maxQuestionScoreResult[0]?.max || 0,
   };
 }
 
@@ -341,6 +469,8 @@ async function getUserStats(
  * Evaluate if a user meets badge criteria
  */
 function evaluateCriteria(criteria: BadgeCriteria, stats: UserStats): boolean {
+  const threshold = criteria.threshold || 0;
+
   switch (criteria.type) {
     case 'first_question':
       return stats.questionCount >= 1;
@@ -349,19 +479,41 @@ function evaluateCriteria(criteria: BadgeCriteria, stats: UserStats): boolean {
       return stats.answerCount >= 1;
 
     case 'question_count':
-      return stats.questionCount >= (criteria.threshold || 0);
+      return stats.questionCount >= threshold;
 
     case 'answer_count':
-      return stats.answerCount >= (criteria.threshold || 0);
+      return stats.answerCount >= threshold;
 
     case 'accepted_count':
-      return stats.acceptedAnswerCount >= (criteria.threshold || 0);
+      return stats.acceptedAnswerCount >= threshold;
 
     case 'upvotes_received':
-      return stats.totalUpvotes >= (criteria.threshold || 0);
+      return stats.totalUpvotes >= threshold;
 
     case 'reputation':
-      return stats.reputation >= (criteria.threshold || 0);
+      return stats.reputation >= threshold;
+
+    // Streak-based badges
+    case 'streak_days':
+      return stats.currentStreak >= threshold;
+
+    case 'longest_streak':
+      return stats.longestStreak >= threshold;
+
+    // Voting activity badges
+    case 'votes_cast':
+      return stats.votesCast >= threshold;
+
+    case 'helpful_votes':
+      // Could track this separately, for now same as votes_cast
+      return stats.votesCast >= threshold;
+
+    // Quality badges (individual post scores)
+    case 'answer_score':
+      return stats.maxAnswerScore >= threshold;
+
+    case 'question_score':
+      return stats.maxQuestionScore >= threshold;
 
     default:
       return false;

@@ -10,8 +10,34 @@ interface HomeViewProps {
     selectedQuestion?: string;
 }
 
+type TabType = 'recommended' | 'portfolio' | 'alerts' | 'actions';
+
+const TAB_SUGGESTIONS: Record<TabType, string[]> = {
+    recommended: [
+        "Give me a summary of my supplier risk portfolio",
+        "Which of my suppliers need immediate attention?",
+        "Are there any new risk alerts I should know about?",
+    ],
+    portfolio: [
+        "Show me my portfolio risk distribution",
+        "What's my total spend at risk?",
+        "Which categories have the highest risk exposure?",
+    ],
+    alerts: [
+        "Show me suppliers with recent risk changes",
+        "Are there any critical alerts today?",
+        "Which suppliers moved to high risk this week?",
+    ],
+    actions: [
+        "What actions should I take on high-risk suppliers?",
+        "Help me create a risk mitigation plan",
+        "Find alternatives for my riskiest suppliers",
+    ],
+};
+
 export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false, selectedQuestion = '' }: HomeViewProps) => {
     const [inputMessage, setInputMessage] = useState('');
+    const [activeTab, setActiveTab] = useState<TabType>('recommended');
 
     const isTyping = inputMessage.length > 0;
 
@@ -122,30 +148,31 @@ export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false,
                         >
                             {/* Quick Actions */}
                             <div className="flex items-center justify-center gap-4 mb-5 w-full">
-                                <FilterTab label="Recommended" active />
+                                <FilterTab label="Recommended" active={activeTab === 'recommended'} onClick={() => setActiveTab('recommended')} />
                                 <span className="text-slate-300">·</span>
-                                <FilterTab label="Portfolio" />
+                                <FilterTab label="Portfolio" active={activeTab === 'portfolio'} onClick={() => setActiveTab('portfolio')} />
                                 <span className="text-slate-300">·</span>
-                                <FilterTab label="Alerts" />
+                                <FilterTab label="Alerts" active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')} />
                                 <span className="text-slate-300">·</span>
-                                <FilterTab label="Actions" />
+                                <FilterTab label="Actions" active={activeTab === 'actions'} onClick={() => setActiveTab('actions')} />
                             </div>
 
                             {/* Cards Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                                <SuggestionCard
-                                    text="Give me a summary of my supplier risk portfolio"
-                                    onClick={() => handleQuestionClick("Give me a summary of my supplier risk portfolio")}
-                                />
-                                <SuggestionCard
-                                    text="Which of my suppliers need immediate attention?"
-                                    onClick={() => handleQuestionClick("Which of my suppliers need immediate attention?")}
-                                />
-                                <SuggestionCard
-                                    text="Are there any new risk alerts I should know about?"
-                                    onClick={() => handleQuestionClick("Are there any new risk alerts I should know about?")}
-                                />
-                            </div>
+                            <motion.div
+                                key={activeTab}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full"
+                            >
+                                {TAB_SUGGESTIONS[activeTab].map((text, i) => (
+                                    <SuggestionCard
+                                        key={i}
+                                        text={text}
+                                        onClick={() => handleQuestionClick(text)}
+                                    />
+                                ))}
+                            </motion.div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -154,8 +181,11 @@ export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false,
     );
 };
 
-const FilterTab = ({ label, active }: { label: string, active?: boolean }) => (
-    <button className={`text-sm transition-all whitespace-nowrap ${active ? 'text-primary font-medium' : 'text-muted hover:text-secondary'}`}>
+const FilterTab = ({ label, active, onClick }: { label: string, active?: boolean, onClick?: () => void }) => (
+    <button
+        onClick={onClick}
+        className={`text-sm transition-all whitespace-nowrap ${active ? 'text-primary font-medium' : 'text-muted hover:text-secondary'}`}
+    >
         {label}
     </button>
 );

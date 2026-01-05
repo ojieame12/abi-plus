@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { withAuthenticated, type AuthRequest } from '../../_middleware/auth';
 import { createAnswer } from '../../../src/services/communityService';
 import { checkAndAwardBadges } from '../../../src/services/badgeService';
+import { updateStreak } from '../../../src/services/streakService';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);
@@ -50,7 +51,8 @@ async function handler(req: AuthRequest, res: VercelResponse) {
       body: body.trim(),
     });
 
-    // Check for new badges
+    // Update streak and check for badges
+    await updateStreak(db, userId);
     await checkAndAwardBadges(db, userId);
 
     return res.status(201).json(answer);

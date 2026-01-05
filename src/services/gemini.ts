@@ -2,10 +2,20 @@
 import { composeSystemPrompt, parseAIResponse } from './prompts';
 import type { ChatMessage, Suggestion } from '../types/chat';
 import { generateId } from '../types/chat';
-import { getPortfolioSummary, filterSuppliers, getSupplierByName, MOCK_SUPPLIERS, MOCK_RISK_CHANGES } from './mockData';
+import {
+  fetchPortfolioData,
+  getPortfolioSummary,
+  filterSuppliers,
+  getSupplierByName,
+  getHighRiskSuppliers,
+  getRecentRiskChanges,
+  getAllSuppliers,
+  type Supplier,
+  type RiskChange,
+  type RiskPortfolio,
+} from './supplierDataClient';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
-import type { Supplier } from '../types/supplier';
 import type { WidgetData } from '../types/widgets';
 import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from './widgetTransformers';
 
@@ -78,9 +88,9 @@ export interface GeminiResponse {
     linkText: string;
   };
   suppliers?: Supplier[]; // Matched suppliers for display
-  portfolio?: ReturnType<typeof getPortfolioSummary>;
+  portfolio?: RiskPortfolio;
   intent?: DetectedIntent;
-  riskChanges?: typeof MOCK_RISK_CHANGES; // Risk changes for trend detection
+  riskChanges?: RiskChange[]; // Risk changes for trend detection
 }
 
 // Generate contextual acknowledgement based on intent
@@ -131,11 +141,12 @@ const generateAcknowledgement = (intent: DetectedIntent, query: string): string 
 };
 
 // Build context about user's portfolio to inject into prompts
-const buildPortfolioContext = (): string => {
-  const portfolio = getPortfolioSummary();
-  const highRiskSuppliers = filterSuppliers(MOCK_SUPPLIERS, { riskLevel: ['high', 'medium-high'] });
+const buildPortfolioContext = async (): Promise<string> => {
+  try {
+    const data = await fetchPortfolioData();
+    const { portfolio, suppliers, highRiskSuppliers, riskChanges } = data;
 
-  return `
+    return `
 CURRENT USER PORTFOLIO DATA:
 - Total suppliers monitored: ${portfolio.totalSuppliers}
 - Total spend: ${portfolio.totalSpendFormatted}
@@ -150,11 +161,15 @@ HIGH RISK SUPPLIERS:
 ${highRiskSuppliers.map(s => `- ${s.name}: SRS ${s.srs.score} (${s.srs.level}), Spend: ${s.spendFormatted}, Category: ${s.category}`).join('\n')}
 
 RECENT RISK CHANGES:
-${MOCK_RISK_CHANGES.map(c => `- ${c.supplierName}: ${c.previousScore} → ${c.currentScore} (${c.direction})`).join('\n')}
+${riskChanges.map(c => `- ${c.supplierName}: ${c.previousScore} → ${c.currentScore} (${c.direction})`).join('\n')}
 
 ALL SUPPLIERS:
-${MOCK_SUPPLIERS.map(s => `- ${s.name} (${s.id}): SRS ${s.srs.score || 'Unrated'}, ${s.srs.level}, ${s.location.region}, ${s.category}, ${s.spendFormatted}`).join('\n')}
+${suppliers.map(s => `- ${s.name} (${s.id}): SRS ${s.srs.score || 'Unrated'}, ${s.srs.level}, ${s.location.region}, ${s.category}, ${s.spendFormatted}`).join('\n')}
 `;
+  } catch (error) {
+    console.error('[Gemini] Failed to build portfolio context:', error);
+    return 'Portfolio data temporarily unavailable.';
+  }
 };
 
 // Parse the LLM response (expects structured JSON)
@@ -255,7 +270,7 @@ export const callGemini = async (
   }));
 
   // Build the full prompt with portfolio context and structured output instructions
-  const portfolioContext = buildPortfolioContext();
+  const portfolioContext = await buildPortfolioContext();
   const systemPrompt = composeSystemPrompt(intent.category, {
     includeThinking: false,
     includeExamples: true,
@@ -312,7 +327,7 @@ export const callGemini = async (
     const parsed = parseGeminiResponse(textContent);
 
     // Enhance response with actual data based on intent
-    const enhancedResponse = enhanceResponseWithData(parsed, intent, userMessage);
+    const enhancedResponse = await enhanceResponseWithData(parsed, intent, userMessage);
 
     return {
       ...enhancedResponse,
@@ -322,7 +337,7 @@ export const callGemini = async (
     console.error('[Gemini] API call failed:', error);
     // Return fallback response using local data
     console.log('[Gemini] Using fallback response');
-    return generateFallbackResponse(intent, userMessage);
+    return await generateFallbackResponse(intent, userMessage);
   }
 };
 
@@ -394,11 +409,11 @@ const generateTrendData = (currentScore: number, trend: string): number[] => {
 };
 
 // Enhance the LLM response with actual supplier data
-const enhanceResponseWithData = (
+const enhanceResponseWithData = async (
   parsed: Partial<GeminiResponse>,
   intent: DetectedIntent,
   query: string
-): GeminiResponse => {
+): Promise<GeminiResponse> => {
   const baseResponse: GeminiResponse = {
     content: parsed.content || '',
     responseType: parsed.responseType || intent.responseType,
@@ -412,7 +427,7 @@ const enhanceResponseWithData = (
 
   // Add portfolio data for overview queries
   if (intent.category === 'portfolio_overview') {
-    const portfolio = getPortfolioSummary();
+    const portfolio = await getPortfolioSummary();
     baseResponse.portfolio = portfolio;
     if (!baseResponse.artifact) {
       baseResponse.artifact = { type: 'portfolio_dashboard', title: 'Risk Portfolio Overview' };
@@ -462,14 +477,14 @@ const enhanceResponseWithData = (
 
   // Add filtered suppliers for discovery queries
   if (intent.category === 'filtered_discovery') {
-    const filters: Record<string, unknown> = {};
+    const filters: Record<string, string | string[]> = {};
     if (intent.extractedEntities.riskLevel) {
       filters.riskLevel = intent.extractedEntities.riskLevel;
     }
     if (intent.extractedEntities.region) {
       filters.region = intent.extractedEntities.region;
     }
-    const suppliers = filterSuppliers(MOCK_SUPPLIERS, filters);
+    const suppliers = await filterSuppliers(filters);
     baseResponse.suppliers = suppliers;
     baseResponse.artifact = { type: 'supplier_table', title: 'Filtered Suppliers', filters };
     // Build widget with transformed data for SupplierTableWidget
@@ -518,13 +533,14 @@ const enhanceResponseWithData = (
   // Add specific supplier for deep-dive
   if (intent.category === 'supplier_deep_dive') {
     // Try to extract supplier name from query
-    const supplierNames = MOCK_SUPPLIERS.map(s => s.name.toLowerCase());
+    const allSuppliers = await getAllSuppliers();
+    const supplierNames = allSuppliers.map(s => s.name.toLowerCase());
     const matchedSupplier = supplierNames.find(name =>
       query.toLowerCase().includes(name) || name.includes(query.toLowerCase())
     );
 
     if (matchedSupplier) {
-      const supplier = getSupplierByName(matchedSupplier);
+      const supplier = await getSupplierByName(matchedSupplier);
       if (supplier) {
         baseResponse.suppliers = [supplier];
         baseResponse.artifact = {
@@ -571,8 +587,10 @@ const enhanceResponseWithData = (
 
   // Handle trend detection
   if (intent.category === 'trend_detection') {
-    const suppliersWithChanges = MOCK_RISK_CHANGES.map(change => {
-      const supplier = MOCK_SUPPLIERS.find(s => s.id === change.supplierId);
+    const allSuppliers = await getAllSuppliers();
+    const riskChangesData = await getRecentRiskChanges();
+    const suppliersWithChanges = riskChangesData.map(change => {
+      const supplier = allSuppliers.find(s => s.id === change.supplierId);
       return supplier;
     }).filter(Boolean) as Supplier[];
 
@@ -583,17 +601,17 @@ const enhanceResponseWithData = (
       baseResponse.widget = {
         type: 'alert_card',
         title: 'Risk Changes Detected',
-        data: transformRiskChangesToAlertData(MOCK_RISK_CHANGES),
+        data: transformRiskChangesToAlertData(riskChangesData),
       };
     }
     // Include riskChanges for componentSelector
-    baseResponse.riskChanges = MOCK_RISK_CHANGES;
+    baseResponse.riskChanges = riskChangesData;
 
     // Enrich insight with change data
-    if (baseResponse.insight && MOCK_RISK_CHANGES.length > 0) {
-      const criticalChange = MOCK_RISK_CHANGES.find(c => c.direction === 'worsened');
+    if (baseResponse.insight && riskChangesData.length > 0) {
+      const criticalChange = riskChangesData.find(c => c.direction === 'worsened');
       const changeSupplier = criticalChange
-        ? MOCK_SUPPLIERS.find(s => s.id === criticalChange.supplierId)
+        ? allSuppliers.find(s => s.id === criticalChange.supplierId)
         : suppliersWithChanges[0];
 
       if (changeSupplier) {
@@ -630,9 +648,7 @@ const enhanceResponseWithData = (
   // Handle action_trigger (find alternatives, etc.)
   if (intent.category === 'action_trigger' && !baseResponse.widget) {
     const category = intent.extractedEntities.category;
-    let suppliers = MOCK_SUPPLIERS.filter(s =>
-      s.srs?.level === 'high' || s.srs?.level === 'medium-high'
-    );
+    let suppliers = await getHighRiskSuppliers();
 
     // Filter by category if specified
     if (category) {
@@ -675,8 +691,8 @@ const enhanceResponseWithData = (
 };
 
 // Generate fallback response when API fails
-const generateFallbackResponse = (intent: DetectedIntent, query: string): GeminiResponse => {
-  const portfolio = getPortfolioSummary();
+const generateFallbackResponse = async (intent: DetectedIntent, query: string): Promise<GeminiResponse> => {
+  const portfolio = await getPortfolioSummary();
 
   switch (intent.category) {
     case 'portfolio_overview':
@@ -704,11 +720,11 @@ const generateFallbackResponse = (intent: DetectedIntent, query: string): Gemini
       };
 
     case 'filtered_discovery': {
-      const filters: Record<string, unknown> = {};
+      const filters: Record<string, string | string[]> = {};
       if (intent.extractedEntities.riskLevel) {
         filters.riskLevel = intent.extractedEntities.riskLevel;
       }
-      const suppliers = filterSuppliers(MOCK_SUPPLIERS, filters);
+      const suppliers = await filterSuppliers(filters);
       return {
         content: `Found **${suppliers.length} supplier(s)** matching your criteria.`,
         responseType: 'table',
@@ -734,16 +750,18 @@ const generateFallbackResponse = (intent: DetectedIntent, query: string): Gemini
     }
 
     case 'trend_detection': {
-      const suppliersWithChanges = MOCK_RISK_CHANGES.map(change => {
-        const supplier = MOCK_SUPPLIERS.find(s => s.id === change.supplierId);
+      const allSuppliers = await getAllSuppliers();
+      const riskChangesData = await getRecentRiskChanges();
+      const suppliersWithChanges = riskChangesData.map(change => {
+        const supplier = allSuppliers.find(s => s.id === change.supplierId);
         return supplier;
       }).filter(Boolean) as Supplier[];
 
-      const worsened = MOCK_RISK_CHANGES.filter(c => c.direction === 'worsened');
+      const worsened = riskChangesData.filter(c => c.direction === 'worsened');
       const critical = worsened.length > 0 ? worsened[0] : null;
 
       return {
-        content: `**${MOCK_RISK_CHANGES.length} suppliers** had risk score changes recently.${critical ? ` ${critical.supplierName}'s increase to ${critical.currentScore} (${critical.currentLevel}) requires attention.` : ''}`,
+        content: `**${riskChangesData.length} suppliers** had risk score changes recently.${critical ? ` ${critical.supplierName}'s increase to ${critical.currentScore} (${critical.currentLevel}) requires attention.` : ''}`,
         responseType: 'alert',
         acknowledgement: generateAcknowledgement(intent, query),
         suggestions: [
@@ -756,7 +774,7 @@ const generateFallbackResponse = (intent: DetectedIntent, query: string): Gemini
           type: 'alert_card',
           title: 'Risk Changes Detected',
           data: {
-            changes: MOCK_RISK_CHANGES,
+            changes: riskChangesData,
             suppliers: suppliersWithChanges,
           },
         },
@@ -767,13 +785,14 @@ const generateFallbackResponse = (intent: DetectedIntent, query: string): Gemini
 
     case 'supplier_deep_dive': {
       // Try to extract supplier name from query
-      const supplierNames = MOCK_SUPPLIERS.map(s => s.name.toLowerCase());
+      const allSuppliers = await getAllSuppliers();
+      const supplierNames = allSuppliers.map(s => s.name.toLowerCase());
       const matchedSupplier = supplierNames.find(name =>
         query.toLowerCase().includes(name) || name.includes(query.toLowerCase())
       );
 
       if (matchedSupplier) {
-        const supplier = getSupplierByName(matchedSupplier);
+        const supplier = await getSupplierByName(matchedSupplier);
         if (supplier) {
           const trendText = supplier.srs.trend === 'worsening' ? 'trending upward (worsening)' :
                            supplier.srs.trend === 'improving' ? 'trending downward (improving)' : 'stable';
@@ -813,9 +832,7 @@ const generateFallbackResponse = (intent: DetectedIntent, query: string): Gemini
     case 'action_trigger': {
       // Find high-risk suppliers, optionally filtered by category
       const category = intent.extractedEntities.category;
-      let suppliers = MOCK_SUPPLIERS.filter(s =>
-        s.srs?.level === 'high' || s.srs?.level === 'medium-high'
-      );
+      let suppliers = await getHighRiskSuppliers();
 
       // Filter by category if specified
       if (category) {
@@ -828,16 +845,15 @@ const generateFallbackResponse = (intent: DetectedIntent, query: string): Gemini
 
       // If no high-risk in category, show all in category
       if (suppliers.length === 0 && category) {
-        suppliers = MOCK_SUPPLIERS.filter(s =>
+        const allSuppliers = await getAllSuppliers();
+        suppliers = allSuppliers.filter(s =>
           s.category?.toLowerCase().includes(category.toLowerCase())
         );
       }
 
       // Fallback to all high-risk
       if (suppliers.length === 0) {
-        suppliers = MOCK_SUPPLIERS.filter(s =>
-          s.srs?.level === 'high' || s.srs?.level === 'medium-high'
-        );
+        suppliers = await getHighRiskSuppliers();
       }
 
       const subIntent = intent.subIntent;

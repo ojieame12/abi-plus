@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, Users } from 'lucide-react';
+import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, MessagesSquare } from 'lucide-react';
 
 interface SidebarProps {
     isExpanded: boolean;
@@ -60,7 +60,7 @@ export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory, 
                     <NewChatButton isExpanded={isExpanded} onClick={onNewChat} />
                     <NavItem icon={MessageSquare} label="Conversations" isExpanded={isExpanded} onClick={onNavigateToHistory} />
                     <NavItem icon={Compass} label="Discovery" isExpanded={isExpanded} />
-                    <NavItem icon={Users} label="Community" isExpanded={isExpanded} onClick={onNavigateToCommunity} />
+                    <NavItem icon={MessagesSquare} label="Community" isExpanded={isExpanded} onClick={onNavigateToCommunity} />
                     <NavItem icon={Bot} label="Agents" isExpanded={isExpanded} />
                 </nav>
 

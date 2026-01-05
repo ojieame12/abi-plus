@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { withAuthenticated, type AuthRequest } from '../../../_middleware/auth';
 import { acceptAnswer } from '../../../../src/services/communityService';
 import { checkAndAwardBadges } from '../../../../src/services/badgeService';
+import { updateStreak } from '../../../../src/services/streakService';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);
@@ -45,8 +46,11 @@ async function handler(req: AuthRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Not authorized to accept this answer' });
     }
 
-    // Check for badges for both users (question owner and answer author)
+    // Update streak for question owner and check badges
+    await updateStreak(db, userId);
     await checkAndAwardBadges(db, userId);
+
+    // Check badges for answer author
     if (result.answerAuthorId) {
       await checkAndAwardBadges(db, result.answerAuthorId);
     }
