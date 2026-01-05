@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
+    "@vercel/node": "^5.5.16",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "cookie": "^1.1.1",

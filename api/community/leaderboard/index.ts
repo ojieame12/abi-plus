@@ -3,7 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { getReputationLeaderboard, getTopContributors, type LeaderboardPeriod } from '../../../src/services/leaderboardService';
-import { getSession } from '../../../src/services/authService';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);
