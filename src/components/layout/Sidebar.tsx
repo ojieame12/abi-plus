@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, MessagesSquare } from 'lucide-react';
 
 interface SidebarProps {
     isExpanded: boolean;
     onToggle: () => void;
     onExpand?: () => void;
+    onCollapse?: () => void;
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
 }
 
-export const Sidebar = ({ isExpanded, onToggle, onExpand, onNewChat, onNavigateToHistory, onNavigateToCommunity }: SidebarProps) => {
+export const Sidebar = ({ isExpanded, onToggle, onExpand, onCollapse, onNewChat, onNavigateToHistory, onNavigateToCommunity }: SidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         'Today': true,
         'Yesterday': false,
@@ -24,10 +25,32 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onNewChat, onNavigateT
         }));
     };
 
-    // Expand sidebar on hover or click when collapsed
-    const handleExpand = () => {
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Expand sidebar on hover with delay
+    const handleMouseEnter = () => {
         if (!isExpanded && onExpand) {
-            onExpand();
+            // Clear any existing timeout
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+            }
+            // Set delay before expanding (500ms linger time)
+            hoverTimeoutRef.current = setTimeout(() => {
+                onExpand();
+            }, 500);
+        }
+    };
+
+    // Cancel expand and collapse on mouse leave
+    const handleMouseLeave = () => {
+        // Clear pending expand timeout
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+        }
+        // Collapse if expanded
+        if (isExpanded && onCollapse) {
+            onCollapse();
         }
     };
 
@@ -35,8 +58,8 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onNewChat, onNavigateT
         <aside
             className={`relative h-full shrink-0 flex transition-all duration-300 ease-out z-30 ${isExpanded ? 'w-60' : 'w-14 cursor-pointer'
                 }`}
-            onMouseEnter={handleExpand}
-            onClick={!isExpanded ? handleExpand : undefined}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             {/* Main Sidebar Content - No rounded edges, blends with bg */}
             <div className="relative w-full h-full bg-transparent flex flex-col overflow-hidden">
@@ -47,7 +70,15 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onNewChat, onNavigateT
                         <>
                             <img src="/logo expanded.svg" alt="Abi" className="h-6" />
                             <button
-                                onClick={onToggle}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Clear any pending hover timeout
+                                    if (hoverTimeoutRef.current) {
+                                        clearTimeout(hoverTimeoutRef.current);
+                                        hoverTimeoutRef.current = null;
+                                    }
+                                    onToggle();
+                                }}
                                 className="w-8 h-8 rounded-lg text-muted hover:text-primary hover:bg-slate-200/50 flex items-center justify-center transition-colors shrink-0"
                             >
                                 <PanelLeft size={18} strokeWidth={1.5} />
@@ -56,7 +87,15 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onNewChat, onNavigateT
                     ) : (
                         /* Collapsed: Just drawer toggle */
                         <button
-                            onClick={onToggle}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Clear any pending hover timeout
+                                if (hoverTimeoutRef.current) {
+                                    clearTimeout(hoverTimeoutRef.current);
+                                    hoverTimeoutRef.current = null;
+                                }
+                                onToggle();
+                            }}
                             className="w-10 h-10 rounded-xl text-secondary hover:text-primary hover:bg-slate-200/50 flex items-center justify-center transition-colors"
                         >
                             <PanelLeft size={20} strokeWidth={1.5} />
