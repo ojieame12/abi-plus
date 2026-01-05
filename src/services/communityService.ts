@@ -87,6 +87,9 @@ export async function listQuestions(
     conditions.push(eq(questions.status, 'open'));
   } else if (filter === 'answered') {
     conditions.push(eq(questions.status, 'answered'));
+  } else if (filter === 'unanswered') {
+    // Strictly filter to questions with zero answers
+    conditions.push(eq(questions.answerCount, 0));
   }
 
   // Build ORDER BY
@@ -96,6 +99,7 @@ export async function listQuestions(
       orderBy = desc(questions.score);
       break;
     case 'unanswered':
+      // Sort by answer count ascending (fewest answers first)
       orderBy = asc(questions.answerCount);
       break;
     case 'active':
@@ -123,24 +127,27 @@ export async function listQuestions(
       .where(eq(tags.slug, tagSlug))
       .limit(1);
 
-    if (tagResult.length > 0) {
-      const tagId = tagResult[0].id;
-      const questionIdsWithTag = await db
-        .select({ questionId: questionTags.questionId })
-        .from(questionTags)
-        .where(eq(questionTags.tagId, tagId));
+    if (tagResult.length === 0) {
+      // Tag not found - return empty results
+      return { questions: [], totalCount: 0, hasMore: false };
+    }
 
-      if (questionIdsWithTag.length > 0) {
-        conditions.push(
-          inArray(
-            questions.id,
-            questionIdsWithTag.map(r => r.questionId)
-          )
-        );
-      } else {
-        // No questions with this tag
-        return { questions: [], totalCount: 0, hasMore: false };
-      }
+    const tagId = tagResult[0].id;
+    const questionIdsWithTag = await db
+      .select({ questionId: questionTags.questionId })
+      .from(questionTags)
+      .where(eq(questionTags.tagId, tagId));
+
+    if (questionIdsWithTag.length > 0) {
+      conditions.push(
+        inArray(
+          questions.id,
+          questionIdsWithTag.map(r => r.questionId)
+        )
+      );
+    } else {
+      // No questions with this tag
+      return { questions: [], totalCount: 0, hasMore: false };
     }
   }
 
@@ -687,12 +694,17 @@ export async function deleteAnswer(
   return true;
 }
 
+interface AcceptAnswerResult {
+  success: boolean;
+  answerAuthorId?: string;
+}
+
 export async function acceptAnswer(
   db: NeonHttpDatabase<Record<string, never>>,
   questionId: string,
   answerId: string,
   userId: string
-): Promise<boolean> {
+): Promise<AcceptAnswerResult> {
   // Verify question ownership
   const question = await db
     .select({ userId: questions.userId, acceptedAnswerId: questions.acceptedAnswerId })
@@ -701,7 +713,7 @@ export async function acceptAnswer(
     .limit(1);
 
   if (question.length === 0 || question[0].userId !== userId) {
-    return false;
+    return { success: false };
   }
 
   // Verify answer belongs to question
@@ -712,7 +724,7 @@ export async function acceptAnswer(
     .limit(1);
 
   if (answer.length === 0) {
-    return false;
+    return { success: false };
   }
 
   // Unaccept previous answer if any
@@ -745,7 +757,7 @@ export async function acceptAnswer(
   await updateReputation(db, answer[0].userId, 'answer_accepted', 'answer', answerId);
   await updateReputation(db, userId, 'accepted_answer', 'question', questionId);
 
-  return true;
+  return { success: true, answerAuthorId: answer[0].userId };
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -756,6 +768,7 @@ interface CastVoteResult {
   success: boolean;
   newScore: number;
   userVote: VoteValue | null;
+  targetOwnerId?: string; // For badge evaluation
 }
 
 export async function castVote(
@@ -811,35 +824,37 @@ export async function castVote(
     const oldValue = existingVote[0].value as VoteValue;
 
     if (oldValue === value) {
-      // Same vote - remove it
+      // Same vote - toggle it off (remove)
       await db
         .delete(votes)
         .where(eq(votes.id, existingVote[0].id));
 
       scoreDelta = -value;
 
-      // Reverse reputation
+      // Reverse the original reputation award
       if (value === 1) {
-        await updateReputation(
+        // Removing an upvote: reverse the +5/+10 that was given
+        await reverseReputation(
           db,
           targetOwnerId,
-          targetType === 'question' ? 'question_downvoted' : 'answer_downvoted', // Reverse of upvote
+          targetType === 'question' ? 'question_upvoted' : 'answer_upvoted',
           targetType,
           targetId
         );
       } else {
-        await updateReputation(
+        // Removing a downvote: reverse the -2 that was applied
+        await reverseReputation(
           db,
           targetOwnerId,
-          targetType === 'question' ? 'question_upvoted' : 'answer_upvoted', // Reverse of downvote
+          targetType === 'question' ? 'question_downvoted' : 'answer_downvoted',
           targetType,
           targetId
         );
-        // Refund downvote cost
-        await updateReputation(db, userId, 'question_upvoted', 'vote', existingVote[0].id); // +5 to offset -1
+        // Refund the -1 downvote cost to the voter
+        await reverseReputation(db, userId, 'downvote_cast', 'vote', existingVote[0].id);
       }
     } else {
-      // Different vote - update it
+      // Different vote - switch direction
       await db
         .update(votes)
         .set({ value })
@@ -847,9 +862,17 @@ export async function castVote(
 
       scoreDelta = value - oldValue; // e.g., going from -1 to +1 = +2
 
-      // Update reputation for swing
       if (value === 1) {
-        // Changed from downvote to upvote
+        // Switching from downvote to upvote
+        // 1. Reverse the old downvote effect (+2 to owner)
+        await reverseReputation(
+          db,
+          targetOwnerId,
+          targetType === 'question' ? 'question_downvoted' : 'answer_downvoted',
+          targetType,
+          targetId
+        );
+        // 2. Apply the new upvote effect (+5/+10 to owner)
         await updateReputation(
           db,
           targetOwnerId,
@@ -857,17 +880,19 @@ export async function castVote(
           targetType,
           targetId
         );
-        await updateReputation(
-          db,
-          targetOwnerId,
-          targetType === 'question' ? 'question_upvoted' : 'answer_upvoted',
-          targetType,
-          targetId
-        );
-        // Refund downvote cost
-        await updateReputation(db, userId, 'question_upvoted', 'vote', existingVote[0].id);
+        // 3. Refund the downvote cost to voter (+1)
+        await reverseReputation(db, userId, 'downvote_cast', 'vote', existingVote[0].id);
       } else {
-        // Changed from upvote to downvote
+        // Switching from upvote to downvote
+        // 1. Reverse the old upvote effect (-5/-10 to owner)
+        await reverseReputation(
+          db,
+          targetOwnerId,
+          targetType === 'question' ? 'question_upvoted' : 'answer_upvoted',
+          targetType,
+          targetId
+        );
+        // 2. Apply the new downvote effect (-2 to owner)
         await updateReputation(
           db,
           targetOwnerId,
@@ -875,14 +900,7 @@ export async function castVote(
           targetType,
           targetId
         );
-        await updateReputation(
-          db,
-          targetOwnerId,
-          targetType === 'question' ? 'question_downvoted' : 'answer_downvoted',
-          targetType,
-          targetId
-        );
-        // Charge downvote cost
+        // 3. Charge downvote cost to voter (-1)
         await updateReputation(db, userId, 'downvote_cast', 'vote', targetId);
       }
     }
@@ -953,6 +971,7 @@ export async function castVote(
     success: true,
     newScore: newScoreResult[0]?.score || 0,
     userVote: currentVote.length > 0 ? (currentVote[0].value as VoteValue) : null,
+    targetOwnerId,
   };
 }
 
@@ -995,16 +1014,51 @@ export async function removeVote(
 
   const oldValue = existingVote[0].value as VoteValue;
 
+  // Get the target owner for reputation reversal
+  const table = targetType === 'question' ? questions : answers;
+  const idColumn = targetType === 'question' ? questions.id : answers.id;
+  const scoreColumn = targetType === 'question' ? questions.score : answers.score;
+  const userIdColumn = targetType === 'question' ? questions.userId : answers.userId;
+
+  const targetResult = await db
+    .select({ userId: userIdColumn })
+    .from(table)
+    .where(eq(idColumn, targetId))
+    .limit(1);
+
+  const targetOwnerId = targetResult[0]?.userId;
+
   // Delete vote
   await db
     .delete(votes)
     .where(eq(votes.id, existingVote[0].id));
 
-  // Update score
-  const table = targetType === 'question' ? questions : answers;
-  const idColumn = targetType === 'question' ? questions.id : answers.id;
-  const scoreColumn = targetType === 'question' ? questions.score : answers.score;
+  // Reverse reputation effects
+  if (targetOwnerId) {
+    if (oldValue === 1) {
+      // Was an upvote - reverse the +5/+10
+      await reverseReputation(
+        db,
+        targetOwnerId,
+        targetType === 'question' ? 'question_upvoted' : 'answer_upvoted',
+        targetType,
+        targetId
+      );
+    } else {
+      // Was a downvote - reverse the -2
+      await reverseReputation(
+        db,
+        targetOwnerId,
+        targetType === 'question' ? 'question_downvoted' : 'answer_downvoted',
+        targetType,
+        targetId
+      );
+      // Refund the downvote cost to the voter
+      await reverseReputation(db, userId, 'downvote_cast', 'vote', existingVote[0].id);
+    }
+  }
 
+  // Update score
   await db
     .update(table)
     .set({ score: sql`${scoreColumn} - ${oldValue}` })
@@ -1020,6 +1074,7 @@ export async function removeVote(
     success: true,
     newScore: newScoreResult[0]?.score || 0,
     userVote: null,
+    targetOwnerId: targetOwnerId || undefined,
   };
 }
 
@@ -1037,6 +1092,17 @@ const REPUTATION_POINTS: Record<ReputationReason, number> = {
   downvote_cast: -1,
 };
 
+// Reverse reputation changes (for undoing votes)
+const REPUTATION_REVERSE: Record<ReputationReason, number> = {
+  question_upvoted: -5,
+  question_downvoted: 2,
+  answer_upvoted: -10,
+  answer_downvoted: 2,
+  answer_accepted: -15,
+  accepted_answer: -2,
+  downvote_cast: 1,
+};
+
 export async function updateReputation(
   db: NeonHttpDatabase<Record<string, never>>,
   userId: string,
@@ -1051,6 +1117,32 @@ export async function updateReputation(
     userId,
     change,
     reason,
+    sourceType: sourceType || null,
+    sourceId: sourceId || null,
+  });
+
+  // Update profile reputation
+  await db
+    .update(profiles)
+    .set({ reputation: sql`GREATEST(0, ${profiles.reputation} + ${change})` })
+    .where(eq(profiles.userId, userId));
+}
+
+// Reverse a previous reputation change (for undoing votes)
+export async function reverseReputation(
+  db: NeonHttpDatabase<Record<string, never>>,
+  userId: string,
+  originalReason: ReputationReason,
+  sourceType?: string,
+  sourceId?: string
+): Promise<void> {
+  const change = REPUTATION_REVERSE[originalReason];
+
+  // Log the reversal
+  await db.insert(reputationLog).values({
+    userId,
+    change,
+    reason: `${originalReason}_reversed` as ReputationReason,
     sourceType: sourceType || null,
     sourceId: sourceId || null,
   });

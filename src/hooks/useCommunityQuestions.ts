@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Question, Tag, QuestionSortBy, QuestionFilter } from '../types/community';
-import { filterQuestions, getPopularTags, MOCK_QUESTIONS } from '../services/communityMockData';
+import { apiFetch } from '../services/api';
+// Fallback to mock data if API not available
+import { filterQuestions, getPopularTags } from '../services/communityMockData';
 
 interface UseCommunityQuestionsOptions {
   sortBy?: QuestionSortBy;
@@ -8,6 +10,7 @@ interface UseCommunityQuestionsOptions {
   tag?: string | null;
   search?: string;
   pageSize?: number;
+  useMockData?: boolean;
 }
 
 interface UseCommunityQuestionsReturn {
@@ -31,6 +34,7 @@ export function useCommunityQuestions(
     tag = null,
     search = '',
     pageSize = 10,
+    useMockData = false, // Use API by default
   } = options;
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -38,30 +42,56 @@ export function useCommunityQuestions(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Memoize filtered results
+  // Memoize filtered results for mock mode
   const allFilteredQuestions = useMemo(() => {
+    if (!useMockData) return [];
     return filterQuestions({ sortBy, filter, tag, search });
-  }, [sortBy, filter, tag, search]);
+  }, [sortBy, filter, tag, search, useMockData]);
 
-  const totalCount = allFilteredQuestions.length;
   const hasMore = questions.length < totalCount;
 
-  // Fetch questions (simulated with mock data)
+  // Fetch questions from API or mock
   const fetchQuestions = useCallback(async (reset = false) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      if (useMockData) {
+        // Use mock data
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const startPage = reset ? 1 : page;
+        const paginatedQuestions = allFilteredQuestions.slice(0, startPage * pageSize);
+        setQuestions(paginatedQuestions);
+        setTotalCount(allFilteredQuestions.length);
+        if (reset) setPage(1);
+      } else {
+        // Use API
+        const currentPage = reset ? 1 : page;
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: pageSize.toString(),
+          sortBy,
+          filter,
+        });
+        if (tag) params.set('tag', tag);
+        if (search) params.set('search', search);
 
-      const startPage = reset ? 1 : page;
-      const paginatedQuestions = allFilteredQuestions.slice(0, startPage * pageSize);
+        const data = await apiFetch<{
+          questions: Question[];
+          total: number;
+          page: number;
+          limit: number;
+        }>(`/api/community/questions?${params}`);
 
-      setQuestions(paginatedQuestions);
-      if (reset) {
-        setPage(1);
+        if (reset) {
+          setQuestions(data.questions);
+          setPage(1);
+        } else {
+          setQuestions(prev => [...prev, ...data.questions]);
+        }
+        setTotalCount(data.total);
       }
     } catch (err) {
       setError('Failed to load questions');
@@ -69,18 +99,22 @@ export function useCommunityQuestions(
     } finally {
       setIsLoading(false);
     }
-  }, [allFilteredQuestions, page, pageSize]);
+  }, [useMockData, allFilteredQuestions, page, pageSize, sortBy, filter, tag, search]);
 
-  // Fetch tags
+  // Fetch tags from API or mock
   const fetchTags = useCallback(async () => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setTags(getPopularTags(8));
+      if (useMockData) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setTags(getPopularTags(8));
+      } else {
+        const data = await apiFetch<Tag[]>('/api/community/tags');
+        setTags(data.slice(0, 8)); // Limit to 8 popular tags
+      }
     } catch (err) {
       console.error('Error fetching tags:', err);
     }
-  }, []);
+  }, [useMockData]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {

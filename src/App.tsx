@@ -7,6 +7,8 @@ import { HomeView } from './views/HomeView';
 import { ChatHistoryView } from './views/ChatHistoryView';
 import { CommunityView } from './views/CommunityView';
 import { QuestionDetailView } from './views/QuestionDetailView';
+import { AskQuestionView } from './views/AskQuestionView';
+import { useSession } from './hooks/useSession';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
 import { ChatInput } from './components/chat/ChatInput';
@@ -21,7 +23,7 @@ import type { ArtifactType, ArtifactPayload } from './components/artifacts/regis
 import { getArtifactTitle, getArtifactMeta } from './components/artifacts/registry';
 import './App.css';
 
-type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail';
+type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail' | 'ask-question';
 
 interface Message {
   id: string;
@@ -114,6 +116,9 @@ function App() {
   const [conversationTitle, setConversationTitle] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+
+  // Auth session
+  const { isAuthenticated, userId, permissions } = useSession();
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -389,6 +394,18 @@ function App() {
     setViewState('community');
   };
 
+  // Navigate to ask question view
+  const handleNavigateToAskQuestion = () => {
+    setViewState('ask-question');
+    setIsPanelOpen(false);
+  };
+
+  // Handle successful question creation
+  const handleQuestionCreated = (questionId: string) => {
+    setSelectedQuestionId(questionId);
+    setViewState('community-detail');
+  };
+
   // Load an existing conversation from history
   const handleLoadConversation = async (id: string) => {
     try {
@@ -548,7 +565,25 @@ function App() {
             transition={{ duration: 0.3 }}
             className="h-full"
           >
-            <CommunityView onSelectQuestion={handleSelectQuestion} />
+            <CommunityView
+              onSelectQuestion={handleSelectQuestion}
+              onAskQuestion={handleNavigateToAskQuestion}
+              canAsk={permissions.canAsk}
+            />
+          </motion.div>
+        ) : viewState === 'ask-question' ? (
+          <motion.div
+            key="ask-question"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <AskQuestionView
+              onBack={handleBackToCommunity}
+              onSuccess={handleQuestionCreated}
+            />
           </motion.div>
         ) : viewState === 'community-detail' && selectedQuestionId ? (
           <motion.div
@@ -562,6 +597,11 @@ function App() {
             <QuestionDetailView
               questionId={selectedQuestionId}
               onBack={handleBackToCommunity}
+              isAuthenticated={isAuthenticated}
+              userId={userId}
+              canUpvote={permissions.canUpvote}
+              canDownvote={permissions.canDownvote}
+              canAnswer={permissions.canAnswer}
             />
           </motion.div>
         ) : (

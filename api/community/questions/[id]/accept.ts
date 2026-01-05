@@ -39,14 +39,17 @@ async function handler(req: AuthRequest, res: VercelResponse) {
   const userId = req.auth.user!.id;
 
   try {
-    const success = await acceptAnswer(db, id, answerId, userId);
+    const result = await acceptAnswer(db, id, answerId, userId);
 
-    if (!success) {
+    if (!result.success) {
       return res.status(403).json({ error: 'Not authorized to accept this answer' });
     }
 
-    // Check for badges for both users
+    // Check for badges for both users (question owner and answer author)
     await checkAndAwardBadges(db, userId);
+    if (result.answerAuthorId) {
+      await checkAndAwardBadges(db, result.answerAuthorId);
+    }
 
     return res.status(200).json({
       success: true,

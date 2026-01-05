@@ -12,9 +12,11 @@ import type { QuestionSortBy, QuestionFilter } from '../types/community';
 
 interface CommunityViewProps {
   onSelectQuestion: (id: string) => void;
+  onAskQuestion?: () => void;
+  canAsk?: boolean;
 }
 
-export function CommunityView({ onSelectQuestion }: CommunityViewProps) {
+export function CommunityView({ onSelectQuestion, onAskQuestion, canAsk = false }: CommunityViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<QuestionSortBy>('newest');
   const [filter, setFilter] = useState<QuestionFilter>('all');
@@ -66,12 +68,17 @@ export function CommunityView({ onSelectQuestion }: CommunityViewProps) {
               </p>
             </div>
 
-            {/* Ask Question button - disabled for MVP */}
+            {/* Ask Question button */}
             <button
-              disabled
-              className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 text-slate-400
-                         rounded-lg text-xs font-medium cursor-not-allowed border border-slate-200/60"
-              title="Coming soon"
+              onClick={onAskQuestion}
+              disabled={!canAsk || !onAskQuestion}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium
+                         border transition-colors ${
+                           canAsk && onAskQuestion
+                             ? 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
+                             : 'bg-slate-100 text-slate-400 border-slate-200/60 cursor-not-allowed'
+                         }`}
+              title={canAsk ? 'Ask a question' : 'Sign in to ask questions'}
             >
               <MessageSquarePlus size={14} />
               Ask Question

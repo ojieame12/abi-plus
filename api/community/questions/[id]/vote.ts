@@ -60,8 +60,10 @@ async function handler(req: AuthRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Cannot vote on this question' });
       }
 
-      // Check for badges (for the question author, not the voter)
-      // This is handled in castVote via reputation updates
+      // Check for badges for the question author (who received reputation change)
+      if (result.targetOwnerId) {
+        await checkAndAwardBadges(db, result.targetOwnerId);
+      }
 
       return res.status(200).json({
         success: true,
