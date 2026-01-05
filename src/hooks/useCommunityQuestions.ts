@@ -71,7 +71,7 @@ export function useCommunityQuestions(
         const currentPage = reset ? 1 : page;
         const params = new URLSearchParams({
           page: currentPage.toString(),
-          limit: pageSize.toString(),
+          pageSize: pageSize.toString(),
           sortBy,
           filter,
         });
@@ -80,9 +80,10 @@ export function useCommunityQuestions(
 
         const data = await apiFetch<{
           questions: Question[];
-          total: number;
+          totalCount: number;
           page: number;
-          limit: number;
+          pageSize: number;
+          hasMore: boolean;
         }>(`/api/community/questions?${params}`);
 
         if (reset) {
@@ -91,7 +92,7 @@ export function useCommunityQuestions(
         } else {
           setQuestions(prev => [...prev, ...data.questions]);
         }
-        setTotalCount(data.total);
+        setTotalCount(data.totalCount);
       }
     } catch (err) {
       setError('Failed to load questions');

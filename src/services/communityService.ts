@@ -727,12 +727,34 @@ export async function acceptAnswer(
     return { success: false };
   }
 
-  // Unaccept previous answer if any
-  if (question[0].acceptedAnswerId) {
+  const previousAcceptedId = question[0].acceptedAnswerId;
+
+  // Idempotent: if same answer is already accepted, no-op
+  if (previousAcceptedId === answerId) {
+    return { success: true, answerAuthorId: answer[0].userId };
+  }
+
+  // If switching from a different accepted answer, reverse prior reputation
+  if (previousAcceptedId) {
+    // Get the previous answer author
+    const previousAnswer = await db
+      .select({ userId: answers.userId })
+      .from(answers)
+      .where(eq(answers.id, previousAcceptedId))
+      .limit(1);
+
+    if (previousAnswer.length > 0) {
+      // Reverse previous answer author's +15
+      await reverseReputation(db, previousAnswer[0].userId, 'answer_accepted', 'answer', previousAcceptedId);
+      // Reverse question owner's +2 for accepting
+      await reverseReputation(db, userId, 'accepted_answer', 'question', questionId);
+    }
+
+    // Unaccept previous answer
     await db
       .update(answers)
       .set({ isAccepted: false })
-      .where(eq(answers.id, question[0].acceptedAnswerId));
+      .where(eq(answers.id, previousAcceptedId));
   }
 
   // Accept new answer
@@ -751,7 +773,7 @@ export async function acceptAnswer(
     })
     .where(eq(questions.id, questionId));
 
-  // Award reputation (handled separately via updateReputation)
+  // Award reputation to new answer author and question owner
   // answer_accepted: +15 to answer author
   // accepted_answer: +2 to question author
   await updateReputation(db, answer[0].userId, 'answer_accepted', 'answer', answerId);
@@ -1092,8 +1114,15 @@ const REPUTATION_POINTS: Record<ReputationReason, number> = {
   downvote_cast: -1,
 };
 
-// Reverse reputation changes (for undoing votes)
-const REPUTATION_REVERSE: Record<ReputationReason, number> = {
+// Base reasons that can be reversed
+type BaseReputationReason =
+  | 'question_upvoted' | 'question_downvoted'
+  | 'answer_upvoted' | 'answer_downvoted'
+  | 'answer_accepted' | 'accepted_answer'
+  | 'downvote_cast';
+
+// Map base reason to its reversal change amount
+const REPUTATION_REVERSE: Record<BaseReputationReason, number> = {
   question_upvoted: -5,
   question_downvoted: 2,
   answer_upvoted: -10,
@@ -1101,6 +1130,17 @@ const REPUTATION_REVERSE: Record<ReputationReason, number> = {
   answer_accepted: -15,
   accepted_answer: -2,
   downvote_cast: 1,
+};
+
+// Map base reason to its reversed reason type
+const REVERSED_REASON_MAP: Record<BaseReputationReason, ReputationReason> = {
+  question_upvoted: 'question_upvoted_reversed',
+  question_downvoted: 'question_downvoted_reversed',
+  answer_upvoted: 'answer_upvoted_reversed',
+  answer_downvoted: 'answer_downvoted_reversed',
+  answer_accepted: 'answer_accepted_reversed',
+  accepted_answer: 'accepted_answer_reversed',
+  downvote_cast: 'downvote_cast_reversed',
 };
 
 export async function updateReputation(
@@ -1132,17 +1172,18 @@ export async function updateReputation(
 export async function reverseReputation(
   db: NeonHttpDatabase<Record<string, never>>,
   userId: string,
-  originalReason: ReputationReason,
+  originalReason: BaseReputationReason,
   sourceType?: string,
   sourceId?: string
 ): Promise<void> {
   const change = REPUTATION_REVERSE[originalReason];
+  const reversedReason = REVERSED_REASON_MAP[originalReason];
 
-  // Log the reversal
+  // Log the reversal with properly typed reason
   await db.insert(reputationLog).values({
     userId,
     change,
-    reason: `${originalReason}_reversed` as ReputationReason,
+    reason: reversedReason,
     sourceType: sourceType || null,
     sourceId: sourceId || null,
   });

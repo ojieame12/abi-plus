@@ -35,7 +35,12 @@ export type ReputationReason =
   | 'question_upvoted' | 'question_downvoted'
   | 'answer_upvoted' | 'answer_downvoted'
   | 'answer_accepted' | 'accepted_answer'
-  | 'downvote_cast';
+  | 'downvote_cast'
+  // Reversed reasons (for undoing votes/accepts)
+  | 'question_upvoted_reversed' | 'question_downvoted_reversed'
+  | 'answer_upvoted_reversed' | 'answer_downvoted_reversed'
+  | 'answer_accepted_reversed' | 'accepted_answer_reversed'
+  | 'downvote_cast_reversed';
 
 export const REPUTATION_CHANGES: Record<ReputationReason, number> = {
   question_upvoted: 5,
@@ -45,6 +50,14 @@ export const REPUTATION_CHANGES: Record<ReputationReason, number> = {
   answer_accepted: 15,
   accepted_answer: 2, // Bonus for accepting
   downvote_cast: -1,  // Cost to downvote
+  // Reversed values
+  question_upvoted_reversed: -5,
+  question_downvoted_reversed: 2,
+  answer_upvoted_reversed: -10,
+  answer_downvoted_reversed: 2,
+  answer_accepted_reversed: -15,
+  accepted_answer_reversed: -2,
+  downvote_cast_reversed: 1,
 };
 
 // Privilege thresholds (duplicated from auth.ts for client-side use)
@@ -200,4 +213,4 @@ export interface AcceptAnswerResponse {
 // ══════════════════════════════════════════════════════════════════
 
 export type QuestionSortBy = 'newest' | 'votes' | 'unanswered' | 'active';
-export type QuestionFilter = 'all' | 'open' | 'answered';
+export type QuestionFilter = 'all' | 'open' | 'answered' | 'unanswered';
