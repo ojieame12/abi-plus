@@ -5,6 +5,8 @@ import { ArtifactPanel } from './components/panel/ArtifactPanel';
 import { InsightDetailArtifact } from './components/panel/InsightDetailArtifact';
 import { HomeView } from './views/HomeView';
 import { ChatHistoryView } from './views/ChatHistoryView';
+import { CommunityView } from './views/CommunityView';
+import { QuestionDetailView } from './views/QuestionDetailView';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
 import { ChatInput } from './components/chat/ChatInput';
@@ -19,7 +21,7 @@ import type { ArtifactType, ArtifactPayload } from './components/artifacts/regis
 import { getArtifactTitle, getArtifactMeta } from './components/artifacts/registry';
 import './App.css';
 
-type ViewState = 'home' | 'chat' | 'history';
+type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail';
 
 interface Message {
   id: string;
@@ -111,6 +113,7 @@ function App() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [conversationTitle, setConversationTitle] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -367,6 +370,25 @@ function App() {
     setIsPanelOpen(false);
   };
 
+  // Navigate to community view
+  const handleNavigateToCommunity = () => {
+    setViewState('community');
+    setSelectedQuestionId(null);
+    setIsPanelOpen(false);
+  };
+
+  // Select a question to view details
+  const handleSelectQuestion = (id: string) => {
+    setSelectedQuestionId(id);
+    setViewState('community-detail');
+  };
+
+  // Go back to community list
+  const handleBackToCommunity = () => {
+    setSelectedQuestionId(null);
+    setViewState('community');
+  };
+
   // Load an existing conversation from history
   const handleLoadConversation = async (id: string) => {
     try {
@@ -417,15 +439,15 @@ function App() {
     }
   };
 
-  // Background opacity: 100 for home, 30 for history, 10 for chat/transitioning
+  // Background opacity: 100 for home, 30 for history/community, 10 for chat/transitioning
   const backgroundOpacity = viewState === 'home' && !isTransitioning
     ? 100
-    : viewState === 'history'
+    : (viewState === 'history' || viewState === 'community' || viewState === 'community-detail')
       ? 30
       : 10;
 
   // Header variant
-  const headerVariant = (viewState === 'home' || viewState === 'history') && !isTransitioning ? 'home' : 'conversation';
+  const headerVariant = (viewState === 'home' || viewState === 'history' || viewState === 'community' || viewState === 'community-detail') && !isTransitioning ? 'home' : 'conversation';
 
   // Close panel and reset expanded state
   const handleClosePanel = () => {
@@ -442,6 +464,7 @@ function App() {
       artifactCount={currentArtifact ? 1 : 0}
       onNewChat={handleNewChat}
       onNavigateToHistory={handleNavigateToHistory}
+      onNavigateToCommunity={handleNavigateToCommunity}
       isArtifactExpanded={isArtifactExpanded}
       panel={
         <ArtifactPanel
@@ -514,6 +537,31 @@ function App() {
             <ChatHistoryView
               onNewChat={handleNewChat}
               onSelectConversation={handleLoadConversation}
+            />
+          </motion.div>
+        ) : viewState === 'community' ? (
+          <motion.div
+            key="community"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <CommunityView onSelectQuestion={handleSelectQuestion} />
+          </motion.div>
+        ) : viewState === 'community-detail' && selectedQuestionId ? (
+          <motion.div
+            key="community-detail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <QuestionDetailView
+              questionId={selectedQuestionId}
+              onBack={handleBackToCommunity}
             />
           </motion.div>
         ) : (

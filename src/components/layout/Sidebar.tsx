@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, Users } from 'lucide-react';
 
 interface SidebarProps {
     isExpanded: boolean;
     onToggle: () => void;
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
+    onNavigateToCommunity?: () => void;
 }
 
-export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory }: SidebarProps) => {
+export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory, onNavigateToCommunity }: SidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         'Today': true,
         'Yesterday': false,
@@ -59,6 +60,7 @@ export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory }
                     <NewChatButton isExpanded={isExpanded} onClick={onNewChat} />
                     <NavItem icon={MessageSquare} label="Conversations" isExpanded={isExpanded} onClick={onNavigateToHistory} />
                     <NavItem icon={Compass} label="Discovery" isExpanded={isExpanded} />
+                    <NavItem icon={Users} label="Community" isExpanded={isExpanded} onClick={onNavigateToCommunity} />
                     <NavItem icon={Bot} label="Agents" isExpanded={isExpanded} />
                 </nav>
 

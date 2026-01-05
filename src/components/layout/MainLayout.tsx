@@ -16,6 +16,7 @@ interface MainLayoutProps {
     isHeaderLoading?: boolean;
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
+    onNavigateToCommunity?: () => void;
 }
 
 export const MainLayout = ({
@@ -31,6 +32,7 @@ export const MainLayout = ({
     isHeaderLoading = false,
     onNewChat,
     onNavigateToHistory,
+    onNavigateToCommunity,
 }: MainLayoutProps) => {
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
@@ -45,6 +47,7 @@ export const MainLayout = ({
                 onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
                 onNewChat={onNewChat}
                 onNavigateToHistory={onNavigateToHistory}
+                onNavigateToCommunity={onNavigateToCommunity}
             />
 
             {/* Column 2: Main Content - Animates out when artifact is expanded */}
