@@ -3,9 +3,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
-import { sessions } from '../../src/db/schema';
-import { serializeCookie, parseCookies } from '../../src/services/security';
-import { COOKIE_NAMES } from '../_middleware/auth';
+import { sessions } from '../../src/db/schema.js';
+import { serializeCookie, parseCookies } from '../../src/services/security.js';
+import { COOKIE_NAMES } from '../_middleware/auth.js';
 
 const getDb = () => {
   const sql = neon(process.env.DATABASE_URL!);

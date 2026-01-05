@@ -8,14 +8,14 @@ import {
   answers,
   profiles,
   votes,
-} from '../db/schema';
-import type { Badge as DbBadge } from '../db/schema';
+} from '../db/schema.js';
+import type { Badge as DbBadge } from '../db/schema.js';
 import type {
   Badge,
   BadgeCriteria,
   BadgeTier,
   UserBadgeWithDetails,
-} from '../types/community';
+} from '../types/community.js';
 
 // ══════════════════════════════════════════════════════════════════
 // BADGE DEFINITIONS

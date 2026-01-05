@@ -2,11 +2,11 @@
 import type { VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { withAuthenticated, type AuthRequest } from '../../../_middleware/auth';
-import { castVote, removeVote } from '../../../../src/services/communityService';
-import { checkAndAwardBadges } from '../../../../src/services/badgeService';
-import { updateStreak } from '../../../../src/services/streakService';
-import type { VoteValue } from '../../../../src/types/community';
+import { withAuthenticated, type AuthRequest } from '../../../_middleware/auth.js';
+import { castVote, removeVote } from '../../../../src/services/communityService.js';
+import { checkAndAwardBadges } from '../../../../src/services/badgeService.js';
+import { updateStreak } from '../../../../src/services/streakService.js';
+import type { VoteValue } from '../../../../src/types/community.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);

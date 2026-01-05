@@ -2,8 +2,8 @@
 import type { VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { withAuth, type AuthRequest } from '../../_middleware/auth';
-import { getReputationLeaderboard, getTopContributors, type LeaderboardPeriod } from '../../../src/services/leaderboardService';
+import { withAuth, type AuthRequest } from '../../_middleware/auth.js';
+import { getReputationLeaderboard, getTopContributors, type LeaderboardPeriod } from '../../../src/services/leaderboardService.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);

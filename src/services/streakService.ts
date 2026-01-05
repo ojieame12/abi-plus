@@ -1,7 +1,7 @@
 // Streak Service - Track user activity streaks
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { eq, sql } from 'drizzle-orm';
-import { profiles } from '../db/schema';
+import { profiles } from '../db/schema.js';
 
 interface StreakInfo {
   currentStreak: number;

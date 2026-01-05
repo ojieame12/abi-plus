@@ -2,14 +2,14 @@
 import type { VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { withAuth, withAuthenticated, type AuthRequest } from '../../_middleware/auth';
+import { withAuth, withAuthenticated, type AuthRequest } from '../../_middleware/auth.js';
 import {
   listQuestions,
   createQuestion,
-} from '../../../src/services/communityService';
-import { checkAndAwardBadges } from '../../../src/services/badgeService';
-import { updateStreak } from '../../../src/services/streakService';
-import type { QuestionSortBy, QuestionFilter } from '../../../src/types/community';
+} from '../../../src/services/communityService.js';
+import { checkAndAwardBadges } from '../../../src/services/badgeService.js';
+import { updateStreak } from '../../../src/services/streakService.js';
+import type { QuestionSortBy, QuestionFilter } from '../../../src/types/community.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);

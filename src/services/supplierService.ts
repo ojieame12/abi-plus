@@ -12,7 +12,7 @@ import {
   type DbSupplierRiskScore,
   type DbRiskChange,
   type RiskFactorScore,
-} from '../db/schema';
+} from '../db/schema.js';
 
 // ============================================
 // TYPES

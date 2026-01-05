@@ -3,16 +3,16 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq, and, gt } from 'drizzle-orm';
-import { sessions, users, profiles } from '../../src/db/schema';
-import type { User, Profile, Session } from '../../src/db/schema';
+import { sessions, users, profiles } from '../../src/db/schema.js';
+import type { User, Profile, Session } from '../../src/db/schema.js';
 import {
   parseCookies,
   validateCsrfToken,
   requiresCsrf,
   verifySignedVisitorId,
-} from '../../src/services/security';
-import { getPermissions } from '../../src/services/auth';
-import type { UserPermissions, AuthState } from '../../src/types/auth';
+} from '../../src/services/security.js';
+import { getPermissions } from '../../src/services/auth.js';
+import type { UserPermissions, AuthState } from '../../src/types/auth.js';
 
 // ══════════════════════════════════════════════════════════════════
 // Types

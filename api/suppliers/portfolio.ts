@@ -12,7 +12,7 @@ import {
   type Supplier,
   type RiskPortfolio,
   type RiskChange,
-} from '../../src/services/supplierService';
+} from '../../src/services/supplierService.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);

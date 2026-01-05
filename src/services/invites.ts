@@ -1,10 +1,10 @@
 // Invite Service - Invite code management logic
 import crypto from 'crypto';
 import { eq, and, lt, sql, or, isNull } from 'drizzle-orm';
-import type { Invite } from '../db/schema';
-import { invites, inviteUses } from '../db/schema';
-import type { InviteType } from '../types/auth';
-import { INVITE_LINK_EXPIRY_SECONDS } from '../types/auth';
+import type { Invite } from '../db/schema.js';
+import { invites, inviteUses } from '../db/schema.js';
+import type { InviteType } from '../types/auth.js';
+import { INVITE_LINK_EXPIRY_SECONDS } from '../types/auth.js';
 
 // ══════════════════════════════════════════════════════════════════
 // Invite Code Generation

@@ -2,7 +2,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { getUserCommunityStats } from '../../../../src/services/badgeService';
+import { getUserCommunityStats } from '../../../../src/services/badgeService.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);

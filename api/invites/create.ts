@@ -3,14 +3,14 @@ import type { VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq, sql } from 'drizzle-orm';
-import { invites, profiles } from '../../src/db/schema';
+import { invites, profiles } from '../../src/db/schema.js';
 import {
   withAuthenticated,
   type AuthRequest,
-} from '../_middleware/auth';
-import { createInviteData, getInviteLink } from '../../src/services/invites';
-import { validateEmail } from '../../src/services/auth';
-import type { InviteType } from '../../src/types/auth';
+} from '../_middleware/auth.js';
+import { createInviteData, getInviteLink } from '../../src/services/invites.js';
+import { validateEmail } from '../../src/services/auth.js';
+import type { InviteType } from '../../src/types/auth.js';
 
 const getDb = () => {
   const sqlClient = neon(process.env.DATABASE_URL!);

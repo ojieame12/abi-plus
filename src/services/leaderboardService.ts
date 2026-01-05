@@ -1,7 +1,7 @@
 // Leaderboard Service - Rankings and top contributors
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
-import { profiles, questions, answers, reputationLog } from '../db/schema';
+import { profiles, questions, answers, reputationLog } from '../db/schema.js';
 
 export interface LeaderboardEntry {
   rank: number;

@@ -3,13 +3,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
-import { waitlist, users } from '../../src/db/schema';
-import { validateEmail } from '../../src/services/auth';
+import { waitlist, users } from '../../src/db/schema.js';
+import { validateEmail } from '../../src/services/auth.js';
 import {
   checkRateLimit,
   getRateLimitKey,
   RATE_LIMITS,
-} from '../../src/services/security';
+} from '../../src/services/security.js';
 
 const getDb = () => {
   const sql = neon(process.env.DATABASE_URL!);

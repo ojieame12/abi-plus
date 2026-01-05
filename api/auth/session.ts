@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   withAuth,
   type AuthRequest,
-} from '../_middleware/auth';
+} from '../_middleware/auth.js';
 import {
   generateCsrfToken,
   serializeCookie,
@@ -11,9 +11,9 @@ import {
   generateVisitorId,
   parseCookies,
   verifySignedVisitorId,
-} from '../../src/services/security';
-import { COOKIE_NAMES } from '../_middleware/auth';
-import { SESSION_DURATION_SECONDS } from '../../src/types/auth';
+} from '../../src/services/security.js';
+import { COOKIE_NAMES } from '../_middleware/auth.js';
+import { SESSION_DURATION_SECONDS } from '../../src/types/auth.js';
 
 async function handler(req: AuthRequest, res: VercelResponse) {
   // CORS headers

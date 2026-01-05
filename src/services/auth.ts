@@ -1,18 +1,18 @@
 // Auth Service - Core authentication logic
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import type { User, Profile } from '../db/schema';
+import type { User, Profile } from '../db/schema.js';
 import type {
   UserPermissions,
   PasswordValidation,
   EmailValidation,
   UsernameValidation,
-} from '../types/auth';
+} from '../types/auth.js';
 import {
   RESERVED_USERNAMES,
   COMMON_PASSWORDS,
   REPUTATION_THRESHOLDS,
-} from '../types/auth';
+} from '../types/auth.js';
 
 // ══════════════════════════════════════════════════════════════════
 // Password Hashing

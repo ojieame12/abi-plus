@@ -3,18 +3,18 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
-import { invites, users, profiles } from '../../src/db/schema';
+import { invites, users, profiles } from '../../src/db/schema.js';
 import {
   normalizeInviteCode,
   isValidInviteCodeFormat,
   canUseInvite,
-} from '../../src/services/invites';
+} from '../../src/services/invites.js';
 import {
   checkRateLimit,
   getRateLimitKey,
   RATE_LIMITS,
   addTimingNoise,
-} from '../../src/services/security';
+} from '../../src/services/security.js';
 
 const getDb = () => {
   const sql = neon(process.env.DATABASE_URL!);

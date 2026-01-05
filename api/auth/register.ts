@@ -3,19 +3,19 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
-import { users, profiles, sessions, invites } from '../../src/db/schema';
+import { users, profiles, sessions, invites } from '../../src/db/schema.js';
 import {
   hashPassword,
   generateSessionToken,
   validateEmail,
   validatePassword,
-} from '../../src/services/auth';
+} from '../../src/services/auth.js';
 import {
   normalizeInviteCode,
   isValidInviteCodeFormat,
   atomicUseInvite,
   canUseInvite,
-} from '../../src/services/invites';
+} from '../../src/services/invites.js';
 import {
   serializeCookie,
   generateCsrfToken,
@@ -25,9 +25,9 @@ import {
   addTimingNoise,
   signVisitorId,
   generateVisitorId,
-} from '../../src/services/security';
-import { COOKIE_NAMES } from '../_middleware/auth';
-import { SESSION_DURATION_SECONDS } from '../../src/types/auth';
+} from '../../src/services/security.js';
+import { COOKIE_NAMES } from '../_middleware/auth.js';
+import { SESSION_DURATION_SECONDS } from '../../src/types/auth.js';
 
 const getDb = () => {
   const sql = neon(process.env.DATABASE_URL!);

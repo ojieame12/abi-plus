@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, boolean, jsonb, uuid, integer, unique, index, primaryKey } from 'drizzle-orm/pg-core';
-import type { BadgeCriteria } from '../types/community';
+import type { BadgeCriteria } from '../types/community.js';
 
 // ══════════════════════════════════════════════════════════════════
 // AUTH TABLES

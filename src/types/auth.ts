@@ -1,6 +1,6 @@
 // Auth-related TypeScript types
 
-import type { User, Profile, Session, Invite } from '../db/schema';
+import type { User, Profile, Session, Invite } from '../db/schema.js';
 
 // User permissions based on state
 export interface UserPermissions {

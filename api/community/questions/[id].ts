@@ -2,15 +2,15 @@
 import type { VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { withAuth, type AuthRequest } from '../../_middleware/auth';
+import { withAuth, type AuthRequest } from '../../_middleware/auth.js';
 import {
   getQuestionById,
   getAnswersForQuestion,
   updateQuestion,
   deleteQuestion,
   incrementViewCount,
-} from '../../../src/services/communityService';
-import type { QuestionWithAnswers } from '../../../src/types/community';
+} from '../../../src/services/communityService.js';
+import type { QuestionWithAnswers } from '../../../src/types/community.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);
