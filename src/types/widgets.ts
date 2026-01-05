@@ -48,6 +48,8 @@ export type WidgetType =
   | 'risk_distribution'     // Portfolio risk distribution (pie/donut)
   | 'portfolio_summary'     // Quick portfolio stats (suppliers, spend, avg risk)
   | 'metric_row'            // Simple metric display (3-4 KPIs)
+  | 'spend_exposure'        // Spend-at-risk breakdown by level
+  | 'health_scorecard'      // Portfolio health score with metrics
 
   // Supplier Focused
   | 'supplier_risk_card'    // Single supplier risk profile card
@@ -60,6 +62,7 @@ export type WidgetType =
   | 'trend_indicator'       // Simple up/down/stable indicator
   | 'alert_card'            // Risk change notification
   | 'event_timeline'        // Timeline of events/changes
+  | 'events_feed'           // News/events feed list
 
   // Market & Context
   | 'price_gauge'           // Commodity pricing with gauge visualization
@@ -78,6 +81,22 @@ export type WidgetType =
   | 'handoff_card'          // Dashboard redirect
   | 'status_badge'          // Simple status indicator
   | 'score_breakdown'       // Detailed score factors
+
+  // General Purpose
+  | 'stat_card'             // Single stat with trend
+  | 'info_card'             // General information display
+  | 'quote_card'            // Key insight highlight
+  | 'recommendation_card'   // AI recommendation with confidence
+  | 'checklist_card'        // Action items/todos
+  | 'progress_card'         // Setup/onboarding progress
+  | 'executive_summary'     // Shareable summary card
+  | 'data_list'             // Generic list display
+
+  // Risk Analysis
+  | 'factor_breakdown'      // Risk factor breakdown by tier
+  | 'news_events'           // News & events feed
+  | 'alternatives_preview'  // Alternative supplier preview
+  | 'concentration_warning' // Portfolio concentration warning
 
   // Text Only
   | 'none';                 // Text-only response
@@ -100,6 +119,8 @@ export const WIDGET_VARIANTS: WidgetVariant[] = [
   { type: 'risk_distribution', sizes: ['M', 'L'], defaultSize: 'M', component: 'RiskDistributionWidget', componentL: 'PortfolioDashboardArtifact' },
   { type: 'portfolio_summary', sizes: ['S', 'M'], defaultSize: 'M', component: 'PortfolioOverviewCard', componentS: 'MetricRowWidget' },
   { type: 'metric_row', sizes: ['S', 'M'], defaultSize: 'S', component: 'MetricRowWidget' },
+  { type: 'spend_exposure', sizes: ['M', 'L'], defaultSize: 'M', component: 'SpendExposureWidget' },
+  { type: 'health_scorecard', sizes: ['M', 'L'], defaultSize: 'M', component: 'HealthScorecardWidget' },
 
   // Supplier
   { type: 'supplier_risk_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'SupplierRiskCardWidget', componentL: 'SupplierDetailArtifact' },
@@ -112,6 +133,7 @@ export const WIDGET_VARIANTS: WidgetVariant[] = [
   { type: 'trend_indicator', sizes: ['S', 'M'], defaultSize: 'S', component: 'TrendChangeIndicator' },
   { type: 'alert_card', sizes: ['M'], defaultSize: 'M', component: 'AlertCardWidget' },
   { type: 'event_timeline', sizes: ['M', 'L'], defaultSize: 'M', component: 'EventTimelineWidget' },
+  { type: 'events_feed', sizes: ['M', 'L'], defaultSize: 'M', component: 'EventsFeedWidget' },
 
   // Market
   { type: 'price_gauge', sizes: ['M', 'L'], defaultSize: 'M', component: 'PriceGaugeWidget' },
@@ -130,6 +152,16 @@ export const WIDGET_VARIANTS: WidgetVariant[] = [
   { type: 'handoff_card', sizes: ['M'], defaultSize: 'M', component: 'HandoffCard' },
   { type: 'status_badge', sizes: ['S'], defaultSize: 'S', component: 'StatusBadge' },
   { type: 'score_breakdown', sizes: ['M', 'L'], defaultSize: 'M', component: 'ScoreBreakdownWidget' },
+
+  // General Purpose
+  { type: 'stat_card', sizes: ['S', 'M'], defaultSize: 'M', component: 'StatCard' },
+  { type: 'info_card', sizes: ['M'], defaultSize: 'M', component: 'InfoCard' },
+  { type: 'quote_card', sizes: ['S', 'M'], defaultSize: 'M', component: 'QuoteCard' },
+  { type: 'recommendation_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'RecommendationCard' },
+  { type: 'checklist_card', sizes: ['M'], defaultSize: 'M', component: 'ChecklistCard' },
+  { type: 'progress_card', sizes: ['M'], defaultSize: 'M', component: 'ProgressCard' },
+  { type: 'executive_summary', sizes: ['M', 'L'], defaultSize: 'M', component: 'ExecutiveSummaryCard' },
+  { type: 'data_list', sizes: ['S', 'M'], defaultSize: 'M', component: 'DataListCard' },
 
   // None
   { type: 'none', sizes: [], defaultSize: 'M', component: '' },
@@ -404,12 +436,154 @@ export interface ScoreBreakdownData {
   lastUpdated: string;
 }
 
+// NEW WIDGET DATA SCHEMAS
+
+export interface SpendExposureData {
+  totalSpend: number;
+  totalSpendFormatted: string;
+  breakdown: Array<{
+    level: 'high' | 'medium-high' | 'medium' | 'low' | 'unrated';
+    amount: number;
+    formatted: string;
+    percent: number;
+    supplierCount: number;
+  }>;
+  highestExposure?: {
+    supplierName: string;
+    amount: string;
+    riskLevel: string;
+  };
+}
+
+export interface HealthScorecardData {
+  overallScore: number;
+  scoreLabel: string;
+  metrics: Array<{
+    label: string;
+    value: string | number;
+    target?: string | number;
+    status: 'good' | 'warning' | 'critical';
+    trend?: 'up' | 'down' | 'stable';
+  }>;
+  concerns?: Array<{
+    title: string;
+    severity: 'high' | 'medium' | 'low';
+    count?: number;
+  }>;
+}
+
+export interface EventsFeedData {
+  events: Array<{
+    id: string;
+    type: 'news' | 'risk_change' | 'alert' | 'update';
+    title: string;
+    summary?: string;
+    source?: string;
+    timestamp: string;
+    impact?: 'positive' | 'negative' | 'neutral';
+    supplier?: string;
+  }>;
+}
+
+export interface StatCardData {
+  label: string;
+  value: string | number;
+  subLabel?: string;
+  change?: {
+    value: number;
+    direction: 'up' | 'down' | 'stable';
+    period?: string;
+  };
+  color?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+}
+
+export interface InfoCardData {
+  title: string;
+  content: string;
+  variant?: 'info' | 'success' | 'warning' | 'error' | 'help';
+  bullets?: string[];
+  footer?: string;
+}
+
+export interface QuoteCardData {
+  quote: string;
+  source?: string;
+  attribution?: string;
+  sentiment?: 'positive' | 'negative' | 'neutral' | 'insight';
+  highlight?: string;
+}
+
+export interface RecommendationCardData {
+  title: string;
+  recommendation: string;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning?: string[];
+  type?: 'action' | 'insight' | 'warning' | 'opportunity';
+  actions?: Array<{
+    label: string;
+    primary?: boolean;
+  }>;
+}
+
+export interface ChecklistCardData {
+  title: string;
+  subtitle?: string;
+  items: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    completed?: boolean;
+  }>;
+}
+
+export interface ProgressCardData {
+  title: string;
+  subtitle?: string;
+  steps: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    status: 'completed' | 'current' | 'upcoming';
+  }>;
+}
+
+export interface ExecutiveSummaryData {
+  title?: string;
+  period?: string;
+  keyPoints: Array<{
+    text: string;
+    type?: 'metric' | 'concern' | 'positive' | 'action';
+    value?: string;
+  }>;
+  metrics?: Array<{
+    label: string;
+    value: string;
+    change?: { value: number; direction: 'up' | 'down' };
+  }>;
+  focusAreas?: string[];
+}
+
+export interface DataListData {
+  title: string;
+  subtitle?: string;
+  items: Array<{
+    id: string;
+    label: string;
+    value?: string | number;
+    sublabel?: string;
+    status?: 'default' | 'success' | 'warning' | 'danger';
+  }>;
+  variant?: 'default' | 'compact' | 'detailed';
+}
+
 // Union type for all widget data
 export type WidgetData =
   // Portfolio & Overview
   | { type: 'risk_distribution'; data: RiskDistributionData }
   | { type: 'portfolio_summary'; data: PortfolioSummaryData }
   | { type: 'metric_row'; data: MetricRowData }
+  | { type: 'spend_exposure'; data: SpendExposureData }
+  | { type: 'health_scorecard'; data: HealthScorecardData }
 
   // Supplier Focused
   | { type: 'supplier_risk_card'; data: SupplierRiskCardData }
@@ -422,6 +596,7 @@ export type WidgetData =
   | { type: 'trend_indicator'; data: TrendIndicatorData }
   | { type: 'alert_card'; data: AlertCardData }
   | { type: 'event_timeline'; data: EventTimelineData }
+  | { type: 'events_feed'; data: EventsFeedData }
 
   // Market & Context
   | { type: 'price_gauge'; data: PriceGaugeData }
@@ -440,6 +615,16 @@ export type WidgetData =
   | { type: 'handoff_card'; data: HandoffCardData }
   | { type: 'status_badge'; data: StatusBadgeData }
   | { type: 'score_breakdown'; data: ScoreBreakdownData }
+
+  // General Purpose
+  | { type: 'stat_card'; data: StatCardData }
+  | { type: 'info_card'; data: InfoCardData }
+  | { type: 'quote_card'; data: QuoteCardData }
+  | { type: 'recommendation_card'; data: RecommendationCardData }
+  | { type: 'checklist_card'; data: ChecklistCardData }
+  | { type: 'progress_card'; data: ProgressCardData }
+  | { type: 'executive_summary'; data: ExecutiveSummaryData }
+  | { type: 'data_list'; data: DataListData }
 
   // Text Only
   | { type: 'none'; data: null };
@@ -478,6 +663,20 @@ export const WIDGET_SELECTION_RULES: WidgetSelectionRule[] = [
     requiredData: ['summary_metrics'],
     priority: 5,
     description: 'Simple row of 3-4 key metrics for quick insights',
+  },
+  {
+    widget: 'spend_exposure',
+    useWhen: ['portfolio_overview'],
+    requiredData: ['portfolio'],
+    priority: 9,
+    description: 'Shows spend at risk breakdown by risk level with horizontal bars',
+  },
+  {
+    widget: 'health_scorecard',
+    useWhen: ['portfolio_overview'],
+    requiredData: ['portfolio'],
+    priority: 7,
+    description: 'Portfolio health scorecard with overall score, metrics grid, concerns',
   },
 
   // Supplier Focused
@@ -538,6 +737,13 @@ export const WIDGET_SELECTION_RULES: WidgetSelectionRule[] = [
     requiredData: ['events'],
     priority: 6,
     description: 'Timeline of events and changes for a supplier or portfolio',
+  },
+  {
+    widget: 'events_feed',
+    useWhen: ['trend_detection', 'market_context'],
+    requiredData: ['events'],
+    priority: 7,
+    description: 'News and events feed with impact badges and sources',
   },
 
   // Market & Context
@@ -630,6 +836,64 @@ export const WIDGET_SELECTION_RULES: WidgetSelectionRule[] = [
     description: 'Detailed score breakdown with factors',
   },
 
+  // General Purpose
+  {
+    widget: 'stat_card',
+    useWhen: ['portfolio_overview', 'market_context', 'general'],
+    requiredData: ['single_metric'],
+    priority: 4,
+    description: 'Single key metric with trend indicator',
+  },
+  {
+    widget: 'info_card',
+    useWhen: ['explanation_why', 'general', 'setup_config'],
+    requiredData: [],
+    priority: 5,
+    description: 'General information card with title, content, optional bullets',
+  },
+  {
+    widget: 'quote_card',
+    useWhen: ['explanation_why', 'market_context'],
+    requiredData: ['key_insight'],
+    priority: 6,
+    description: 'Key insight or quote highlight with sentiment',
+  },
+  {
+    widget: 'recommendation_card',
+    useWhen: ['portfolio_overview', 'supplier_deep_dive', 'action_trigger'],
+    requiredData: ['recommendation'],
+    priority: 8,
+    description: 'AI recommendation with confidence level and reasoning',
+  },
+  {
+    widget: 'checklist_card',
+    useWhen: ['action_trigger', 'setup_config'],
+    requiredData: ['action_items'],
+    priority: 7,
+    description: 'Interactive checklist with progress bar',
+  },
+  {
+    widget: 'progress_card',
+    useWhen: ['setup_config'],
+    requiredData: ['setup_steps'],
+    priority: 8,
+    description: 'Setup or onboarding progress with step timeline',
+  },
+  {
+    widget: 'executive_summary',
+    useWhen: ['portfolio_overview', 'reporting_export'],
+    requiredData: ['portfolio'],
+    priority: 6,
+    description: 'Shareable executive summary with key points, metrics, focus areas',
+  },
+  {
+    widget: 'data_list',
+    useWhen: ['filtered_discovery', 'general'],
+    requiredData: ['list_items'],
+    priority: 4,
+    description: 'Generic list display with values and status indicators',
+  },
+
   // Text Only
   {
     widget: 'none',
@@ -662,6 +926,14 @@ Shows: Key metrics (suppliers, spend, avg risk)
 **metric_row** (S, M)
 Use for: Quick stats, KPIs
 Shows: 3-4 key metrics in a row
+
+**spend_exposure** (M, L)
+Use for: "What's my dollar exposure?", spend at risk
+Shows: Spend breakdown by risk level with bars, highest exposure callout
+
+**health_scorecard** (M, L)
+Use for: "Give me a health check", portfolio health
+Shows: Overall score circle, metrics grid, concerns list
 
 ### SUPPLIER FOCUSED
 
@@ -698,6 +970,10 @@ Shows: Up/down arrow with percentage
 **event_timeline** (M, L)
 Use for: Recent events for supplier/portfolio
 Shows: Timeline of changes and events
+
+**events_feed** (M, L)
+Use for: News and events feed, "any news?"
+Shows: List of news/alerts with impact badges, sources
 
 ### MARKET & CONTEXT
 
@@ -752,6 +1028,40 @@ Shows: Status indicator with label
 **score_breakdown** (M, L)
 Use for: Explain risk score
 Shows: Factor-by-factor breakdown
+
+### GENERAL PURPOSE
+
+**stat_card** (S, M)
+Use for: Single key metric highlight
+Shows: Big number with trend indicator, label
+
+**info_card** (M)
+Use for: General information, tips, explanations
+Shows: Icon, title, content, optional bullets
+
+**quote_card** (S, M)
+Use for: Key insight highlight, important quote
+Shows: Quoted text with sentiment color, source
+
+**recommendation_card** (M, L)
+Use for: AI recommendations, suggestions
+Shows: Title, confidence level, reasoning, action buttons
+
+**checklist_card** (M)
+Use for: Action items, todo lists
+Shows: Checkable items, progress bar
+
+**progress_card** (M)
+Use for: Setup progress, onboarding
+Shows: Steps with status, completion indicator
+
+**executive_summary** (M, L)
+Use for: Summaries for leadership, shareable reports
+Shows: Key points, metrics, focus areas, copy/share buttons
+
+**data_list** (S, M)
+Use for: Generic lists of items
+Shows: Items with values, status dots, optional icons
 
 ### TEXT ONLY
 

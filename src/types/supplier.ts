@@ -40,10 +40,12 @@ export const RISK_FACTORS: Record<string, { name: string; tier: DataTier }> = {
 // Supplier Risk Score
 export interface SupplierRiskScore {
   score: number; // 0-100
+  previousScore?: number; // Previous score for change calculation
   level: RiskLevel;
   trend: TrendDirection;
   lastUpdated: string; // ISO date
   factors: RiskFactor[];
+  scoreHistory?: number[]; // Historical scores for trend charts (newest last)
 }
 
 // Full supplier model

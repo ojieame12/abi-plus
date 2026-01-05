@@ -6,7 +6,16 @@ interface Props {
 }
 
 export const SupplierTableWidget = ({ data }: Props) => {
-  const { suppliers, totalCount, filters } = data;
+  // Defensive: ensure data exists
+  if (!data || !data.suppliers) {
+    return (
+      <div className="p-4 bg-slate-50 rounded-xl text-center text-sm text-slate-500">
+        No supplier data available
+      </div>
+    );
+  }
+
+  const { suppliers = [], totalCount = 0, filters = {} } = data;
 
   // Risk level colors
   const getRiskColor = (level: string) => {

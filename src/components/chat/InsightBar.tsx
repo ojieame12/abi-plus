@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
 
 interface InsightBarProps {
     text: string;
@@ -12,7 +13,11 @@ export const InsightBar = ({ text, detail, onClick, delay = 0.4 }: InsightBarPro
     return (
         <motion.button
             onClick={onClick}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-violet-50 border border-violet-100 rounded-xl hover:bg-violet-100/70 transition-colors text-left origin-left overflow-hidden"
+            className={`
+                w-full flex items-center gap-3 px-4 py-3 bg-violet-50 border border-violet-100 rounded-xl
+                ${onClick ? 'hover:bg-violet-100/70 hover:shadow-md cursor-pointer' : ''}
+                transition-all text-left origin-left overflow-hidden group
+            `}
             initial={{ scaleX: 0, opacity: 0 }}
             animate={{ scaleX: 1, opacity: 1 }}
             transition={{
@@ -48,6 +53,15 @@ export const InsightBar = ({ text, detail, onClick, delay = 0.4 }: InsightBarPro
                     <div className="text-xs text-slate-500 mt-0.5">{detail}</div>
                 )}
             </motion.div>
+            {onClick && (
+                <motion.div
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0 }}
+                >
+                    <ChevronRight className="w-4 h-4 text-violet-400" strokeWidth={1.5} />
+                </motion.div>
+            )}
         </motion.button>
     );
 };

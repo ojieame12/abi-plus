@@ -29,7 +29,7 @@ export interface Source {
   name: string;
   url?: string;
   date?: string;
-  type?: 'report' | 'news' | 'data' | 'analysis';
+  type?: 'web' | 'report' | 'news' | 'data' | 'analysis' | 'beroe' | 'dnd' | 'ecovadis' | 'internal_data' | 'supplier_data';
 }
 
 export interface ThoughtProcessData {

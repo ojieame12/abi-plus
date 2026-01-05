@@ -5,6 +5,8 @@ import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import { getPortfolioSummary, MOCK_SUPPLIERS } from './mockData';
 import type { Supplier } from '../types/supplier';
+import { extractJSONFromResponse } from './prompts';
+import { normalizeUrl } from '../utils/sources';
 
 const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY || '';
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
@@ -48,20 +50,11 @@ Focus on publicly available market intelligence and industry analysis.
 };
 
 // Parse Perplexity response
-const parsePerplexityResponse = (text: string, citations?: string[]): Partial<PerplexityResponse> => {
+const parsePerplexityResponse = (text: string): Partial<PerplexityResponse> => {
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      // Add citations as sources if not already present
-      if (citations && citations.length > 0 && (!parsed.sources || parsed.sources.length === 0)) {
-        parsed.sources = citations.map((url, i) => ({
-          name: extractDomainFromUrl(url),
-          url,
-          type: 'research',
-        }));
-      }
-      return parsed;
+    const jsonText = extractJSONFromResponse(text);
+    if (jsonText) {
+      return JSON.parse(jsonText);
     }
   } catch (e) {
     console.warn('Failed to parse Perplexity response as JSON:', e);
@@ -76,11 +69,6 @@ const parsePerplexityResponse = (text: string, citations?: string[]): Partial<Pe
       { id: '2', text: 'Compare suppliers', icon: 'compare' },
       { id: '3', text: 'View risk portfolio', icon: 'chart' },
     ],
-    sources: citations?.map((url, i) => ({
-      name: extractDomainFromUrl(url),
-      url,
-      type: 'research' as const,
-    })) || [],
   };
 };
 
@@ -92,6 +80,53 @@ const extractDomainFromUrl = (url: string): string => {
   } catch {
     return 'Source';
   }
+};
+
+const dedupeCitations = (citations: string[]): string[] => {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const citation of citations) {
+    const trimmed = citation?.trim();
+    if (!trimmed) continue;
+    const key = normalizeUrl(trimmed);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(trimmed);
+  }
+
+  return deduped;
+};
+
+const buildCitationSources = (citations: string[]): Source[] => {
+  const sources: Source[] = [];
+
+  for (const url of dedupeCitations(citations)) {
+    sources.push({
+      name: extractDomainFromUrl(url),
+      url,
+      type: 'web',
+    });
+  }
+
+  return sources;
+};
+
+const mergeSources = (primary: Source[] = [], secondary: Source[] = []): Source[] => {
+  const merged: Source[] = [];
+  const seen = new Set<string>();
+
+  const addSource = (source: Source) => {
+    const key = source.url ? normalizeUrl(source.url) : source.name?.toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(source);
+  };
+
+  primary.forEach(addSource);
+  secondary.forEach(addSource);
+
+  return merged;
 };
 
 // Generate thinking steps for the UI
@@ -149,11 +184,12 @@ export const callPerplexity = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online', // Online model for real-time search
+        model: 'sonar-pro', // Latest 2025 Perplexity model with enhanced reasoning
         messages,
         temperature: 0.2,
-        max_tokens: 1500,
+        max_tokens: 2000,
         return_citations: true,
+        search_recency_filter: 'month', // Focus on recent information
       }),
     });
 
@@ -163,16 +199,22 @@ export const callPerplexity = async (
 
     const data = await response.json();
     const textContent = data.choices?.[0]?.message?.content || '';
-    const citations = data.citations || [];
+    const rawCitations = [
+      ...(data.citations || []),
+      ...(data.choices?.[0]?.message?.citations || []),
+    ];
+    const citations = dedupeCitations(rawCitations);
 
-    const parsed = parsePerplexityResponse(textContent, citations);
+    const parsed = parsePerplexityResponse(textContent);
+    const citationSources = buildCitationSources(citations);
+    const sources = mergeSources(parsed.sources || [], citationSources);
     const thinkingSteps = generateThinkingSteps(userMessage, intent);
 
     return {
       content: parsed.content || '',
       responseType: parsed.responseType || 'summary',
       suggestions: parsed.suggestions || generateDefaultSuggestions(intent),
-      sources: parsed.sources || [],
+      sources,
       artifact: parsed.artifact,
       insight: parsed.insight,
       intent,

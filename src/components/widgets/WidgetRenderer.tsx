@@ -8,6 +8,7 @@ import {
   type RenderContext,
   type ComponentConfig,
 } from '../../services/componentSelector';
+import { extractEventsArray } from '../../services/widgetTransformers';
 
 // Widget Components
 import { RiskDistributionWidget } from './RiskDistributionWidget';
@@ -17,6 +18,34 @@ import { AlertCardWidget } from './AlertCardWidget';
 import { PriceGaugeWidget } from './PriceGaugeWidget';
 import { MetricRowWidget } from './MetricRowWidget';
 import { ComparisonTableWidget } from './ComparisonTableWidget';
+import { TrendChartWidget } from './TrendChartWidget';
+import { ScoreBreakdownWidget } from './ScoreBreakdownWidget';
+import { EventTimelineWidget } from './EventTimelineWidget';
+import { NewsItemCard } from './NewsItemCard';
+import { SupplierMiniCard } from './SupplierMiniCard';
+import { CategoryBreakdownWidget } from './CategoryBreakdownWidget';
+import { RegionListWidget } from './RegionListWidget';
+import { CategoryBadge } from './CategoryBadge';
+import { StatusBadge } from './StatusBadge';
+
+// New Widgets
+import { SpendExposureWidget } from './SpendExposureWidget';
+import { HealthScorecardWidget } from './HealthScorecardWidget';
+import { EventsFeedWidget } from './EventsFeedWidget';
+import { StatCard } from './StatCard';
+import { InfoCard } from './InfoCard';
+import { QuoteCard } from './QuoteCard';
+import { RecommendationCard } from './RecommendationCard';
+import { ChecklistCard } from './ChecklistCard';
+import { ProgressCard } from './ProgressCard';
+import { ExecutiveSummaryCard } from './ExecutiveSummaryCard';
+import { DataListCard } from './DataListCard';
+
+// Risk Analysis Widgets
+import { FactorBreakdownCard } from './FactorBreakdownCard';
+import { NewsEventsCard } from './NewsEventsCard';
+import { AlternativesPreviewCard } from './AlternativesPreviewCard';
+import { ConcentrationWarningCard } from './ConcentrationWarningCard';
 
 // Risk Components (for alternates)
 import { RiskDistributionChart } from '../risk/RiskDistributionChart';
@@ -32,14 +61,48 @@ import { ActionConfirmationCard } from '../risk/ActionConfirmationCard';
 // ============================================
 
 const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
-  // Widget components
+  // Widget components - Portfolio
   RiskDistributionWidget,
+  MetricRowWidget,
+  SpendExposureWidget,
+  HealthScorecardWidget,
+
+  // Widget components - Supplier
   SupplierRiskCardWidget,
   SupplierTableWidget,
-  AlertCardWidget,
-  PriceGaugeWidget,
-  MetricRowWidget,
+  SupplierMiniCard,
   ComparisonTableWidget,
+
+  // Widget components - Trends
+  AlertCardWidget,
+  TrendChartWidget,
+  EventTimelineWidget,
+  EventsFeedWidget,
+
+  // Widget components - Market/Categories
+  PriceGaugeWidget,
+  NewsItemCard,
+  CategoryBreakdownWidget,
+  RegionListWidget,
+  CategoryBadge,
+  StatusBadge,
+  ScoreBreakdownWidget,
+
+  // Widget components - General Purpose
+  StatCard,
+  InfoCard,
+  QuoteCard,
+  RecommendationCard,
+  ChecklistCard,
+  ProgressCard,
+  ExecutiveSummaryCard,
+  DataListCard,
+
+  // Widget components - Risk Analysis
+  FactorBreakdownCard,
+  NewsEventsCard,
+  AlternativesPreviewCard,
+  ConcentrationWarningCard,
 
   // Risk components
   RiskDistributionChart,
@@ -74,6 +137,7 @@ interface ContextWidgetProps {
   title?: string;
   className?: string;
   onExpand?: (artifactComponent: string) => void;
+  onOpenArtifact?: (type: string, payload: Record<string, unknown>) => void;
 }
 
 type WidgetRendererProps = DirectWidgetProps | ContextWidgetProps;
@@ -104,6 +168,11 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     });
 
     config = selectComponent(dataCtx, props.renderContext || 'chat');
+
+    // If no rule matched but we have widget data, try direct widget rendering
+    if (!config && props.widget) {
+      config = getConfigFromWidget(props.widget as WidgetData);
+    }
   } else {
     // Direct widget rendering (legacy path)
     config = getConfigFromWidget(props.widget);
@@ -126,6 +195,75 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     ? () => props.onExpand!(config!.expandsTo!)
     : undefined;
 
+  // Build artifact open handlers for specific widget types
+  const artifactHandlers: Record<string, () => void> = {};
+
+  if (isContextProps(props) && props.onOpenArtifact) {
+    const { onOpenArtifact } = props;
+
+    // FactorBreakdownCard → factor_breakdown artifact
+    if (config.componentType === 'FactorBreakdownCard') {
+      artifactHandlers.onViewDetails = () => {
+        onOpenArtifact('factor_breakdown', {
+          supplierName: config.props.supplierName,
+          overallScore: config.props.overallScore,
+          level: config.props.level,
+          factors: config.props.factors,
+        });
+      };
+    }
+
+    // NewsEventsCard → news_events artifact
+    if (config.componentType === 'NewsEventsCard') {
+      artifactHandlers.onViewAll = () => {
+        onOpenArtifact('news_events', {
+          title: config.props.title || 'News & Events',
+          events: config.props.events,
+        });
+      };
+    }
+
+    // AlternativesPreviewCard → supplier_alternatives artifact
+    if (config.componentType === 'AlternativesPreviewCard') {
+      artifactHandlers.onViewAll = () => {
+        onOpenArtifact('supplier_alternatives', {
+          currentSupplier: {
+            name: config.props.currentSupplier,
+            score: config.props.currentScore,
+          },
+          alternatives: config.props.alternatives,
+        });
+      };
+    }
+
+    // ConcentrationWarningCard → spend_analysis artifact
+    if (config.componentType === 'ConcentrationWarningCard') {
+      artifactHandlers.onViewDetails = () => {
+        onOpenArtifact('spend_analysis', {
+          concentrationWarnings: [{
+            type: config.props.type,
+            entity: config.props.entity,
+            concentration: config.props.concentration,
+            threshold: config.props.threshold,
+            spend: config.props.spend,
+            severity: config.props.severity,
+          }],
+        });
+      };
+    }
+
+    // SpendExposureWidget → spend_analysis artifact
+    if (config.componentType === 'SpendExposureWidget') {
+      artifactHandlers.onViewDetails = () => {
+        onOpenArtifact('spend_analysis', {
+          totalSpend: config.props.totalSpend,
+          totalSpendFormatted: config.props.totalSpendFormatted,
+          byRiskLevel: config.props.breakdown,
+        });
+      };
+    }
+  }
+
   return (
     <div className={`widget-container ${className}`}>
       {title && (
@@ -133,7 +271,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
           {title}
         </div>
       )}
-      <Component {...config.props} />
+      <Component {...config.props} {...artifactHandlers} />
       {handleExpand && (
         <button
           onClick={handleExpand}
@@ -200,21 +338,165 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
 
     case 'trend_chart':
       return {
-        componentType: 'TrendChangeIndicator',
-        variant: 'card',
-        props: { ...widget.data },
+        componentType: 'TrendChartWidget',
+        props: { data: widget.data },
       };
 
     case 'category_breakdown':
       return {
-        componentType: 'RiskDistributionChart',
-        props: { ...widget.data, compact: true },
+        componentType: 'CategoryBreakdownWidget',
+        props: { data: widget.data },
+      };
+
+    case 'region_list':
+      return {
+        componentType: 'RegionListWidget',
+        props: { data: widget.data },
       };
 
     case 'region_map':
       return null; // Not implemented
 
+    // New portfolio widgets
+    case 'spend_exposure':
+      return {
+        componentType: 'SpendExposureWidget',
+        props: { ...widget.data },
+      };
+
+    case 'health_scorecard':
+      return {
+        componentType: 'HealthScorecardWidget',
+        props: { ...widget.data },
+      };
+
+    // New trend/event widgets
+    case 'events_feed':
+      return {
+        componentType: 'EventsFeedWidget',
+        props: { events: extractEventsArray(widget.data) },
+      };
+
+    case 'event_timeline':
+      return {
+        componentType: 'EventTimelineWidget',
+        props: { data: widget.data },
+      };
+
+    case 'trend_indicator':
+      return {
+        componentType: 'TrendChangeIndicator',
+        props: { ...widget.data },
+      };
+
+    // New general purpose widgets
+    case 'stat_card':
+      return {
+        componentType: 'StatCard',
+        props: { ...widget.data },
+      };
+
+    case 'info_card':
+      return {
+        componentType: 'InfoCard',
+        props: { ...widget.data },
+      };
+
+    case 'quote_card':
+      return {
+        componentType: 'QuoteCard',
+        props: { ...widget.data },
+      };
+
+    case 'recommendation_card':
+      return {
+        componentType: 'RecommendationCard',
+        props: { ...widget.data },
+      };
+
+    case 'checklist_card':
+      return {
+        componentType: 'ChecklistCard',
+        props: { ...widget.data },
+      };
+
+    case 'progress_card':
+      return {
+        componentType: 'ProgressCard',
+        props: { ...widget.data },
+      };
+
+    case 'executive_summary':
+      return {
+        componentType: 'ExecutiveSummaryCard',
+        props: { ...widget.data },
+      };
+
+    case 'data_list':
+      return {
+        componentType: 'DataListCard',
+        props: { ...widget.data },
+      };
+
+    // Market/News widgets
+    case 'news_item':
+      return {
+        componentType: 'NewsItemCard',
+        props: { data: widget.data },
+      };
+
+    case 'supplier_mini':
+      return {
+        componentType: 'SupplierMiniCard',
+        props: { data: widget.data },
+      };
+
+    case 'score_breakdown':
+      return {
+        componentType: 'ScoreBreakdownWidget',
+        props: { data: widget.data },
+      };
+
+    case 'handoff_card':
+      return {
+        componentType: 'HandoffCard',
+        props: { ...widget.data },
+      };
+
+    case 'action_card':
+      return {
+        componentType: 'ActionConfirmationCard',
+        props: { ...widget.data },
+      };
+
+    // New Risk Analysis Widgets
+    case 'factor_breakdown':
+      return {
+        componentType: 'FactorBreakdownCard',
+        props: { ...widget.data },
+      };
+
+    case 'news_events':
+      return {
+        componentType: 'NewsEventsCard',
+        props: { ...widget.data },
+      };
+
+    case 'alternatives_preview':
+      return {
+        componentType: 'AlternativesPreviewCard',
+        props: { ...widget.data },
+      };
+
+    case 'concentration_warning':
+      return {
+        componentType: 'ConcentrationWarningCard',
+        props: { ...widget.data },
+      };
+
     default:
+      // Log unknown widget types for debugging
+      console.warn('[WidgetRenderer] Unknown widget type:', widget.type);
       return null;
   }
 };

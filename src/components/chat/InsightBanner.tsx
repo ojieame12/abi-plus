@@ -1,11 +1,13 @@
 // Insight Banner - Highlights key takeaway from AI response
 import type { ResponseInsight } from '../../types/aiResponse';
+import { ChevronRight } from 'lucide-react';
 
 interface InsightBannerProps {
   insight: ResponseInsight;
+  onClick?: () => void;
 }
 
-export const InsightBanner = ({ insight }: InsightBannerProps) => {
+export const InsightBanner = ({ insight, onClick }: InsightBannerProps) => {
   const { headline, explanation, sentiment, icon } = insight;
 
   // Sentiment-based styling
@@ -73,7 +75,15 @@ export const InsightBanner = ({ insight }: InsightBannerProps) => {
   };
 
   return (
-    <div className={`flex items-start gap-3 p-4 rounded-xl ${styles.bg} border ${styles.border}`}>
+    <button
+      onClick={onClick}
+      className={`
+        w-full flex items-start gap-3 p-4 rounded-xl text-left
+        ${styles.bg} border ${styles.border}
+        ${onClick ? 'hover:shadow-md hover:scale-[1.01] cursor-pointer' : ''}
+        transition-all duration-200 group
+      `}
+    >
       <div className={`flex-shrink-0 ${styles.icon}`}>
         {renderIcon()}
       </div>
@@ -85,7 +95,12 @@ export const InsightBanner = ({ insight }: InsightBannerProps) => {
           {explanation}
         </div>
       </div>
-    </div>
+      {onClick && (
+        <div className={`flex-shrink-0 ${styles.icon} opacity-0 group-hover:opacity-100 transition-opacity`}>
+          <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
+        </div>
+      )}
+    </button>
   );
 };
 

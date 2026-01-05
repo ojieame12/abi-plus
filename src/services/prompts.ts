@@ -50,9 +50,17 @@ You MUST respond with valid JSON in this exact format:
     "data": { ... widget-specific data ... }
   },
   "insight": {
-    "headline": "Key takeaway in 5-7 words",
-    "explanation": "One sentence context",
-    "sentiment": "positive|negative|neutral"
+    "headline": "Key takeaway in 5-10 words",
+    "summary": "2-3 sentence explanation of what this means and what action to consider",
+    "type": "risk_alert|opportunity|info|action_required",
+    "sentiment": "positive|negative|neutral",
+    "factors": [
+      {
+        "title": "Factor name (e.g., Financial Stability, Supply Chain Risk)",
+        "detail": "One sentence explaining the specific concern or status",
+        "impact": "positive|negative|neutral"
+      }
+    ]
   },
   "followUps": [
     "First follow-up question?",
@@ -72,12 +80,48 @@ You MUST respond with valid JSON in this exact format:
 ### Optional Fields:
 - **thought**: Include when reasoning mode is active
 - **widget**: Include when data visualization helps
-- **insight**: Include when there's a key takeaway to highlight
+- **insight**: ALWAYS include for risk-related queries with structured data
+
+### Insight Requirements (IMPORTANT):
+When analyzing suppliers or portfolios, ALWAYS include a rich insight object with:
+- **headline**: The key finding in 5-10 words (e.g., "Apple Inc. Risk Score Increased 18%")
+- **summary**: 2-3 sentences explaining what happened, why it matters, and recommended action
+- **type**: One of: "risk_alert" (bad news), "opportunity" (good news), "info" (neutral), "action_required" (needs attention)
+- **sentiment**: "positive", "negative", or "neutral"
+- **factors**: Array of 2-4 contributing factors, each with:
+  - title: The factor category (Financial Stability, Operational Risk, Market Position, Supply Chain, ESG, Delivery Performance, etc.)
+  - detail: Specific explanation of what's happening with this factor
+  - impact: "positive" (green, improving), "negative" (red, concerning), or "neutral" (gray, stable)
+
+### Factor Examples:
+For a supplier with worsening risk:
+- { "title": "Financial Stability", "detail": "Credit rating downgraded by Moody's in Q4 2024", "impact": "negative" }
+- { "title": "Supply Chain Risk", "detail": "Key manufacturing facility in region with ongoing disruptions", "impact": "negative" }
+- { "title": "Market Position", "detail": "Maintains strong market share in core segments", "impact": "positive" }
+
+For a portfolio with many unrated suppliers:
+- { "title": "Risk Visibility", "detail": "57% of suppliers lack risk assessments, limiting oversight", "impact": "negative" }
+- { "title": "High Risk Concentration", "detail": "Only 2 suppliers in critical risk category", "impact": "neutral" }
+- { "title": "Spend Distribution", "detail": "70% of spend with rated suppliers", "impact": "positive" }
 
 ### Widget Selection:
 - Only include ONE widget per response
 - Choose the widget that best represents the data
 - If no visualization needed, omit the widget field entirely
+
+### CRITICAL: Avoid Duplication
+When including a widget, your response text should:
+- **NOT** repeat the data shown in the widget (no bullet lists of the same numbers)
+- **NOT** list out counts/percentages that the widget displays
+- **DO** provide context, analysis, or implications of the data
+- **DO** highlight ONE key concern or insight briefly
+- **DO** be 1-2 short sentences max introducing the widget
+
+BAD (duplicates widget data):
+"Here's your breakdown: • High Risk: 2 suppliers • Medium: 3 suppliers..."
+
+GOOD (complements widget):
+"You're monitoring 14 suppliers. The high proportion of unrated suppliers may need attention."
 `;
 
 // ============================================
@@ -95,76 +139,69 @@ export const INTENT_PROMPTS: Record<string, string> = {
 The user wants to see their overall supplier risk portfolio.
 
 Your response should:
-1. Summarize total suppliers and spend
-2. Highlight risk distribution (high/medium/low counts)
-3. Call out any concerning patterns
-4. Use the "risk_distribution" widget
+1. Write 1-2 brief sentences mentioning total suppliers and total spend
+2. Call out ONE key insight or concern (e.g., "many unrated" or "several high-risk")
+3. Include the "risk_distribution" widget to show the data visually
+4. DO NOT list out the breakdown in text - the widget shows that
 
-Example widget data:
-{
-  "type": "risk_distribution",
-  "title": "Portfolio Risk Overview",
-  "data": {
-    "totalSuppliers": 42,
-    "totalSpendFormatted": "$125M",
-    "distribution": {
-      "high": { "count": 5, "percent": 12 },
-      "mediumHigh": { "count": 8, "percent": 19 },
-      "medium": { "count": 15, "percent": 36 },
-      "low": { "count": 10, "percent": 24 },
-      "unrated": { "count": 4, "percent": 9 }
-    }
-  }
-}
+Good response example:
+"You're monitoring 14 suppliers with $10B total spend. With 8 unrated suppliers, you may want to prioritize risk assessments."
+
+BAD - never do this:
+"Here's your breakdown: • High Risk: 2 • Medium: 3 • Low: 1..."
 `,
 
   filtered_discovery: `
 The user wants to find suppliers matching specific criteria.
 
 Your response should:
-1. State how many suppliers match the filter
-2. List the top 3-5 most relevant suppliers
-3. Highlight key risk indicators
-4. Use the "supplier_table" widget
+1. State how many suppliers match the filter in 1 sentence
+2. Include the "supplier_table" widget to display the list
+3. DO NOT list suppliers in the text - the widget shows them
 
-Keep the response concise - the widget shows the data.
+Good: "Found 5 high-risk suppliers in your portfolio."
+BAD: "Here are your high-risk suppliers: 1. Apple Inc... 2. ..."
 `,
 
   supplier_deep_dive: `
 The user wants detailed information about a specific supplier.
 
 Your response should:
-1. Confirm the supplier name
-2. State the current risk score and level
-3. Explain the trend (improving/stable/worsening)
-4. Mention key factors affecting the score
-5. Use the "supplier_risk_card" widget
+1. Confirm the supplier in 1 sentence with current status
+2. Provide brief analysis (1-2 sentences) about what's notable
+3. Include "supplier_risk_card" widget for the details
+4. DO NOT repeat score/level/factors in text - widget shows that
 
-If the supplier isn't found, ask for clarification.
+Good: "Apple Inc. is currently high-risk and trending upward. Their financial indicators have weakened recently."
+BAD: "Apple Inc. has score 85 (High Risk), trending worsening. Key factors: Financial: 78, ESG: 65..."
+
+If supplier isn't found, ask for clarification.
 `,
 
   trend_detection: `
 The user wants to know about recent risk changes.
 
 Your response should:
-1. State how many suppliers had score changes
-2. Highlight the most significant changes
-3. Explain the direction (worsening/improving)
-4. Suggest actions for concerning changes
-5. Use the "alert_card" widget
+1. State count of changes in 1 sentence
+2. Call out the most critical concern briefly
+3. Include "alert_card" widget to show details
+4. DO NOT list each supplier's score change - widget shows that
 
-Prioritize worsening scores in high-spend suppliers.
+Good: "2 suppliers had risk changes recently. Apple's score increase to high-risk requires attention."
+BAD: "Changes: • Apple: 72→85 (worsened) • Queen Cleaners: 58→41 (improved)..."
 `,
 
   comparison: `
 The user wants to compare suppliers.
 
 Your response should:
-1. Identify the suppliers being compared (2-4 max)
-2. Compare across key dimensions: risk, spend, trend
-3. Highlight strengths and weaknesses of each
-4. Provide a recommendation if appropriate
-5. Use the "comparison_table" widget
+1. Name the suppliers being compared in 1 sentence
+2. Provide brief recommendation or key difference
+3. Include "comparison_table" widget for details
+4. DO NOT list scores/attributes - widget shows that
+
+Good: "Comparing Apple and Samsung - Samsung has lower risk but Apple offers better scalability."
+BAD: "Apple: Score 85, High Risk. Samsung: Score 45, Low Risk..."
 `,
 
   market_context: `

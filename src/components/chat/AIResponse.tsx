@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThoughtProcess } from './ThoughtProcess';
+import { ThoughtProcess, ThoughtContent } from './ThoughtProcess';
 import { InsightBanner } from './InsightBanner';
 import { InsightBar } from './InsightBar';
 import { SourcesDisplay } from './SourcesDisplay';
@@ -8,6 +8,7 @@ import { SourceAttribution } from './SourceAttribution';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
 import { WidgetRenderer } from '../widgets/WidgetRenderer';
+import { buildInsightFromSupplier, buildInsightFromPortfolio, findSupplierFromContext } from '../../utils/insightBuilder';
 import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
 import type { Supplier, Portfolio, RiskChange } from '../../types/data';
@@ -16,22 +17,7 @@ import type { RenderContext } from '../../services/componentSelector';
 
 interface ThoughtProcessData {
     duration?: string;
-    content?: {
-        queryAnalysis?: {
-            commodity?: string;
-            informationNeeded?: string;
-            timeSensitivity?: string;
-            depthRequired?: string;
-        };
-        searchStrategy?: {
-            priority?: string;
-            bullets?: string[];
-        };
-        informationRetrieval?: {
-            sources?: string[];
-            dataQuality?: string;
-        };
-    };
+    content?: ThoughtContent;
 }
 
 // Legacy insight format (string or simple object)
@@ -66,6 +52,7 @@ interface WidgetContext {
     riskChanges?: RiskChange[];
     widgetData?: WidgetData;
     renderContext?: RenderContext;
+    onOpenArtifact?: (type: string, payload: Record<string, unknown>) => void;
 }
 
 // ============================================
@@ -104,6 +91,7 @@ interface AIResponseProps {
     onFeedback?: (type: 'up' | 'down') => void;
     onRefresh?: () => void;
     onWidgetExpand?: (artifactComponent: string) => void;
+    onInsightClick?: (insightData: any) => void;
 
     // Animation control
     isAnimating?: boolean; // When true, plays staggered entrance animation
@@ -127,12 +115,12 @@ const isResponseSources = (sources: unknown): sources is ResponseSources => {
 
 // Animation timing constants (in ms)
 const ANIMATION_TIMING = {
-    thinkingDuration: 1800,    // How long thinking phase lasts
+    thinkingDuration: 2200,    // How long thinking phase lasts (4 steps @ 400ms each + 600ms buffer)
     bodyDelay: 200,            // After thinking, body fades in
-    widgetDelay: 600,          // Widget slides in
-    insightDelay: 1000,        // Insight bar grows
-    footerDelay: 1400,         // Sources + feedback appear
-    followUpsDelay: 1800,      // Follow-ups stagger in
+    widgetDelay: 500,          // Widget slides in
+    insightDelay: 900,         // Insight bar grows
+    footerDelay: 1200,         // Sources + feedback appear
+    followUpsDelay: 1500,      // Follow-ups stagger in
 };
 
 export const AIResponse = ({
@@ -149,6 +137,7 @@ export const AIResponse = ({
     onFeedback,
     onRefresh,
     onWidgetExpand,
+    onInsightClick,
     isAnimating = false,
 }: AIResponseProps) => {
 
@@ -229,6 +218,7 @@ export const AIResponse = ({
                     riskChanges={widgetContext.riskChanges}
                     widget={widgetContext.widgetData}
                     onExpand={onWidgetExpand}
+                    onOpenArtifact={widgetContext.onOpenArtifact}
                 />
             );
         }
@@ -247,9 +237,144 @@ export const AIResponse = ({
     const renderInsight = () => {
         if (!insight) return null;
 
+        // Build insight data using utility functions with real supplier data
+        const handleInsightClick = () => {
+            if (!onInsightClick) return;
+
+            // Get headline text
+            const headlineText = isResponseInsight(insight) ? insight.headline : (typeof insight === 'string' ? insight : insight.text);
+
+            // Extract entity name from headline for supplier lookup
+            const extractEntityFromHeadline = (text: string): string | null => {
+                const patterns = [/^(.+?)\s+Risk\s/i, /^(.+?)'s\s+score/i, /^(.+?):\s/, /^(.+?)\s+score\s/i];
+                for (const pattern of patterns) {
+                    const match = text.match(pattern);
+                    if (match) return match[1].trim();
+                }
+                return null;
+            };
+
+            const entityName = extractEntityFromHeadline(headlineText);
+
+            // Build sources from response data
+            const insightSources = sources && isResponseSources(sources) ? {
+                web: sources.web?.slice(0, 3).map(s => ({ name: s.name, url: s.url })),
+                internal: sources.internal?.slice(0, 3).map(s => ({ name: s.name, type: s.type || 'data' })),
+            } : undefined;
+
+            // CHECK: If insight already has rich data (from Gemini), use it directly
+            if (isResponseInsight(insight) && insight.factors && insight.factors.length > 0) {
+                // Use the AI-generated insight data with enrichments from enhanceResponseWithData
+                const richInsight = insight as ResponseInsight;
+                onInsightClick({
+                    headline: richInsight.headline,
+                    subheadline: richInsight.entity
+                        ? `${richInsight.entity.name} - ${richInsight.entity.type === 'portfolio' ? 'Portfolio Overview' : 'Risk Assessment'}`
+                        : (entityName ? `${entityName} - Risk Assessment` : 'Risk Intelligence Update'),
+                    summary: richInsight.summary || richInsight.explanation || 'Click "View Full Profile" for detailed analysis.',
+                    type: richInsight.type || 'info',
+                    sentiment: richInsight.sentiment || 'neutral',
+                    trend: richInsight.sentiment === 'negative' ? 'up' : richInsight.sentiment === 'positive' ? 'down' : 'stable',
+                    entity: richInsight.entity,
+                    metric: richInsight.metric ? {
+                        ...richInsight.metric,
+                        trend: richInsight.sentiment === 'negative' ? 'up' : richInsight.sentiment === 'positive' ? 'down' : 'stable',
+                    } : undefined,
+                    factors: richInsight.factors?.map(f => ({
+                        title: f.title,
+                        detail: f.detail,
+                        trend: f.trend || (f.impact === 'negative' ? 'down' : f.impact === 'positive' ? 'up' : 'stable'),
+                        impact: f.impact,
+                    })),
+                    trendData: richInsight.trendData,
+                    actions: richInsight.actions?.map(a => ({
+                        label: a.label,
+                        action: a.action,
+                        icon: a.icon as 'profile' | 'alert' | 'export' | 'compare' | 'escalate' | 'watchlist',
+                    })),
+                    sources: richInsight.sources || insightSources || {
+                        internal: [{ name: 'Beroe Risk Intelligence', type: 'risk' }],
+                    },
+                    confidence: richInsight.confidence || 'high',
+                    generatedAt: richInsight.generatedAt || new Date().toISOString(),
+                });
+                return;
+            }
+
+            // Try to find supplier from widgetContext or by name
+            const supplier = widgetContext?.supplier ||
+                (widgetContext?.suppliers && entityName ? findSupplierFromContext(entityName, widgetContext.suppliers as any) : undefined);
+
+            // If we have a supplier, use the rich utility function
+            if (supplier) {
+                const insightData = buildInsightFromSupplier(
+                    supplier as any, // Type cast to Supplier from supplier.ts
+                    headlineText,
+                    insightSources
+                );
+                onInsightClick(insightData);
+                return;
+            }
+
+            // If we have portfolio data, use portfolio insight builder
+            if (widgetContext?.portfolio) {
+                const portfolio = widgetContext.portfolio;
+                const distribution = portfolio.distribution || { high: 0, mediumHigh: 0, medium: 0, low: 0, unrated: 0 };
+                const highRiskCount = (distribution.high || 0) + (distribution.mediumHigh || 0);
+                const unratedCount = distribution.unrated || 0;
+                const totalSuppliers = portfolio.totalSuppliers || 14;
+
+                const insightData = buildInsightFromPortfolio(
+                    headlineText,
+                    {
+                        label: 'Unrated Suppliers',
+                        value: Math.round((unratedCount / totalSuppliers) * 100),
+                        previousValue: Math.round((unratedCount / totalSuppliers) * 100) - 5,
+                        unit: '%',
+                    },
+                    { totalSuppliers, highRiskCount, unratedCount },
+                    insightSources
+                );
+                onInsightClick(insightData);
+                return;
+            }
+
+            // Fallback: Build basic insight data without supplier context
+            const sentiment = isResponseInsight(insight)
+                ? insight.sentiment
+                : (typeof insight !== 'string' && insight.trend === 'up' ? 'positive' : 'negative');
+
+            const insightType = sentiment === 'negative' ? 'risk_alert' : sentiment === 'positive' ? 'opportunity' : 'info';
+
+            onInsightClick({
+                headline: headlineText,
+                subheadline: entityName ? `${entityName} - Risk Assessment` : 'Portfolio Update',
+                summary: isResponseInsight(insight)
+                    ? insight.explanation || 'Click "View Full Profile" for detailed analysis.'
+                    : (typeof insight !== 'string' && insight.detail) || 'Click "View Full Profile" for detailed analysis.',
+                type: insightType,
+                sentiment: sentiment || 'neutral',
+                trend: sentiment === 'negative' ? 'up' : sentiment === 'positive' ? 'down' : 'stable',
+                entity: entityName ? { name: entityName, type: 'supplier' as const } : undefined,
+                factors: [
+                    { title: 'Risk Assessment', detail: 'Analysis based on available data', trend: 'stable' as const, impact: 'neutral' as const },
+                ],
+                actions: [
+                    { label: 'View Details', action: 'view_profile', icon: 'profile' as const },
+                ],
+                sources: insightSources || {
+                    internal: [
+                        { name: 'Beroe Risk Intelligence', type: 'risk' },
+                    ],
+                },
+                confidence: 'medium' as const,
+                generatedAt: new Date().toISOString(),
+            });
+        };
+
         // New ResponseInsight format
         if (isResponseInsight(insight)) {
-            return <InsightBanner insight={insight} />;
+            return <InsightBanner insight={insight} onClick={onInsightClick ? handleInsightClick : undefined} />;
         }
 
         // Legacy formats (string or LegacyInsightData)
@@ -262,6 +387,7 @@ export const AIResponse = ({
                 text={legacyData.text}
                 detail={legacyData.detail}
                 trend={legacyData.trend}
+                onClick={onInsightClick ? handleInsightClick : undefined}
             />
         );
     };
@@ -269,6 +395,8 @@ export const AIResponse = ({
     // ========================================
     // RENDER SOURCES
     // ========================================
+    const hasDetailedSources = sources && isResponseSources(sources);
+
     const renderSources = () => {
         if (!sources) return null;
 
@@ -277,7 +405,6 @@ export const AIResponse = ({
             return (
                 <SourcesDisplay
                     sources={sources}
-                    compact={true}
                 />
             );
         }
@@ -294,6 +421,9 @@ export const AIResponse = ({
 
     // Check if we should show the footer (feedback + sources)
     const hasFooter = sources || followUps.length > 0;
+    const footerClassName = hasDetailedSources
+        ? 'flex flex-col items-start gap-2 pt-2'
+        : 'flex items-center justify-between pt-2';
 
     // ========================================
     // RENDER
@@ -373,7 +503,7 @@ export const AIResponse = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="flex items-center justify-between pt-2"
+                        className={footerClassName}
                     >
                         <ResponseFeedback
                             onDownload={onDownload}

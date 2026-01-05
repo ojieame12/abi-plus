@@ -6,22 +6,34 @@ interface Props {
 }
 
 export const RiskDistributionWidget = ({ data }: Props) => {
-  const { totalSuppliers, totalSpendFormatted, distribution } = data;
+  // Defensive: ensure data exists
+  if (!data || !data.distribution) {
+    return (
+      <div className="p-4 bg-slate-50 rounded-xl text-center text-sm text-slate-500">
+        No distribution data available
+      </div>
+    );
+  }
+
+  const { totalSuppliers = 0, totalSpendFormatted = '$0', distribution } = data;
+
+  // Safely access distribution with defaults
+  const highCount = distribution.high?.count ?? 0;
+  const mediumHighCount = distribution.mediumHigh?.count ?? 0;
+  const mediumCount = distribution.medium?.count ?? 0;
+  const lowCount = distribution.low?.count ?? 0;
+  const unratedCount = distribution.unrated?.count ?? 0;
 
   // Calculate total for percentages
-  const total = distribution.high.count +
-    distribution.mediumHigh.count +
-    distribution.medium.count +
-    distribution.low.count +
-    distribution.unrated.count;
+  const total = highCount + mediumHighCount + mediumCount + lowCount + unratedCount;
 
-  // Risk levels with colors
+  // Risk levels with colors (using safely extracted counts)
   const levels = [
-    { key: 'high', label: 'High Risk', count: distribution.high.count, color: 'bg-red-500', textColor: 'text-red-600' },
-    { key: 'mediumHigh', label: 'Medium-High', count: distribution.mediumHigh.count, color: 'bg-orange-500', textColor: 'text-orange-600' },
-    { key: 'medium', label: 'Medium', count: distribution.medium.count, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
-    { key: 'low', label: 'Low Risk', count: distribution.low.count, color: 'bg-green-500', textColor: 'text-green-600' },
-    { key: 'unrated', label: 'Unrated', count: distribution.unrated.count, color: 'bg-slate-300', textColor: 'text-slate-500' },
+    { key: 'high', label: 'High Risk', count: highCount, color: 'bg-red-500', textColor: 'text-red-600' },
+    { key: 'mediumHigh', label: 'Medium-High', count: mediumHighCount, color: 'bg-orange-500', textColor: 'text-orange-600' },
+    { key: 'medium', label: 'Medium', count: mediumCount, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
+    { key: 'low', label: 'Low Risk', count: lowCount, color: 'bg-green-500', textColor: 'text-green-600' },
+    { key: 'unrated', label: 'Unrated', count: unratedCount, color: 'bg-slate-300', textColor: 'text-slate-500' },
   ];
 
   // Calculate donut segments

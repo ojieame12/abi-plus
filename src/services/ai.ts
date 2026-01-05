@@ -7,8 +7,13 @@ import type { ChatMessage, Suggestion, Source } from '../types/chat';
 import { generateId } from '../types/chat';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
-import type { Supplier } from '../types/supplier';
+import type { Supplier, RiskChange } from '../types/supplier';
 import { getPortfolioSummary, filterSuppliers, MOCK_SUPPLIERS, MOCK_RISK_CHANGES } from './mockData';
+import {
+  transformSuppliersToTableData,
+  transformRiskChangesToAlertData,
+  transformSupplierToRiskCardData,
+} from './widgetTransformers';
 import { generateSuggestions, suggestionEngine } from './suggestionEngine';
 
 export type ThinkingMode = 'fast' | 'reasoning';
@@ -25,16 +30,25 @@ export interface AIResponse {
     filters?: Record<string, unknown>;
     supplierId?: string;
   };
-  insight?: string;
+  insight?: string | { text?: string; headline?: string; detail?: string; trend?: string; sentiment?: string };
   handoff?: {
     required: boolean;
     reason: string;
     linkText: string;
     url?: string;
   };
+  // Widget data from AI
+  widget?: {
+    type: string;
+    title?: string;
+    data?: unknown;
+  };
+  // Acknowledgement header
+  acknowledgement?: string;
   // Data for UI rendering
   suppliers?: Supplier[];
   portfolio?: ReturnType<typeof getPortfolioSummary>;
+  riskChanges?: RiskChange[]; // Risk changes for trend detection
   // Response escalation - determines inline vs artifact
   escalation: {
     showInline: boolean;      // Show widget/table in chat
@@ -198,6 +212,7 @@ export const sendMessage = async (
 
   try {
     let response: AIResponse;
+    let provider: AIResponse['provider'];
 
     console.log('[AI] Intent classified:', intent.category, '| SubIntent:', intent.subIntent);
     console.log('[AI] Mode:', mode, '| WebSearch:', webSearchEnabled);
@@ -210,15 +225,18 @@ export const sendMessage = async (
       console.log('[AI] Calling Perplexity for deep research...');
       const perplexityResponse = await callPerplexity(message, conversationHistory);
       response = transformPerplexityResponse(perplexityResponse, intent);
+      provider = 'perplexity';
     } else if (isGeminiConfigured()) {
       console.log('[AI] Calling Gemini...');
       const geminiResponse = await callGemini(message, conversationHistory);
       console.log('[AI] Gemini response received');
       response = transformGeminiResponse(geminiResponse, intent);
+      provider = 'gemini';
     } else {
       // Both APIs unavailable - use local fallback
       console.log('[AI] No API configured, using local fallback');
       response = generateLocalResponse(message, intent);
+      provider = 'local';
     }
 
     console.log('[AI] Response ready, content length:', response.content.length);
@@ -226,7 +244,7 @@ export const sendMessage = async (
     return {
       ...response,
       id: generateId(),
-      provider: usePerplexity ? 'perplexity' : (isGeminiConfigured() ? 'gemini' : 'local'),
+      provider,
       thinkingDuration,
       thinkingSteps: mode === 'reasoning' ? thinkingSteps : response.thinkingSteps,
     };
@@ -254,11 +272,16 @@ const transformGeminiResponse = (
     content: response.content,
     responseType: response.responseType,
     suggestions: response.suggestions,
+    sources: response.sources,
     artifact: response.artifact,
     insight: response.insight,
     handoff: response.handoff,
+    // Pass through widget data and acknowledgement from AI
+    widget: response.widget,
+    acknowledgement: response.acknowledgement,
     suppliers: response.suppliers,
     portfolio: response.portfolio,
+    riskChanges: response.riskChanges, // Pass through risk changes for trend detection
     escalation: determineEscalation(resultCount, intent.category),
     intent: response.intent || intent,
   };
@@ -293,10 +316,25 @@ const generateLocalResponse = (
   switch (intent.category) {
     case 'portfolio_overview':
       return {
-        content: `You're monitoring **${portfolio.totalSuppliers} suppliers** with total spend of ${portfolio.totalSpendFormatted}.\n\n**Risk Distribution:**\n- 🔴 High Risk: ${portfolio.distribution.high}\n- 🟠 Med-High: ${portfolio.distribution.mediumHigh}\n- 🟡 Medium: ${portfolio.distribution.medium}\n- 🟢 Low: ${portfolio.distribution.low}\n- ⚪ Unrated: ${portfolio.distribution.unrated}\n\nYour highest risk exposure is with suppliers in the High Risk category. Would you like to review them?`,
+        content: `Here's your portfolio at a glance. You have ${portfolio.distribution.high} high-risk suppliers that may need attention.`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, { portfolio }),
         portfolio,
+        widget: {
+          type: 'risk_distribution',
+          title: 'Risk Portfolio Overview',
+          data: {
+            distribution: portfolio.distribution,
+            totalSuppliers: portfolio.totalSuppliers,
+            totalSpend: portfolio.totalSpendFormatted,
+          },
+        },
+        acknowledgement: "Here's your portfolio overview.",
+        insight: {
+          headline: `${portfolio.distribution.high} High Risk Suppliers`,
+          detail: `${portfolio.distribution.high + portfolio.distribution.mediumHigh} suppliers need attention out of ${portfolio.totalSuppliers} total`,
+          sentiment: portfolio.distribution.high > 2 ? 'negative' : 'neutral',
+        },
         artifact: { type: 'portfolio_dashboard', title: 'Risk Portfolio Overview' },
         escalation: determineEscalation(portfolio.totalSuppliers, 'portfolio_overview'),
         intent,
@@ -317,15 +355,16 @@ const generateLocalResponse = (
       ].filter(Boolean).join(' ') || 'your criteria';
 
       return {
-        content: `Found **${suppliers.length} supplier(s)** matching ${filterDesc}.\n\n${suppliers.length > 0
-          ? suppliers.slice(0, 3).map(s =>
-            `• **${s.name}** - SRS: ${s.srs.score} ${s.srs.level === 'high' ? '🔴' : s.srs.level === 'medium-high' ? '🟠' : s.srs.level === 'medium' ? '🟡' : '🟢'} | Spend: ${s.spendFormatted}`
-          ).join('\n')
-          : 'No suppliers match this filter.'
-          }`,
+        content: `Found ${suppliers.length} supplier(s) matching ${filterDesc}.`,
         responseType: 'table',
         suggestions: generateSuggestions(intent, { suppliers, resultCount: suppliers.length }),
         suppliers,
+        widget: {
+          type: 'supplier_table',
+          title: 'Filtered Suppliers',
+          data: transformSuppliersToTableData(suppliers, filters as Record<string, string>),
+        },
+        acknowledgement: "Here are the matching suppliers.",
         artifact: { type: 'supplier_table', title: 'Filtered Suppliers', filters },
         escalation: determineEscalation(suppliers.length, 'filtered_discovery'),
         intent,
@@ -346,10 +385,21 @@ const generateLocalResponse = (
 
       if (supplier) {
         return {
-          content: `**${supplier.name}** has a Supplier Risk Score of **${supplier.srs.score}** (${supplier.srs.level.replace('-', ' ')}).\n\n**Key Details:**\n- Category: ${supplier.category}\n- Location: ${supplier.location.city}, ${supplier.location.country}\n- Your Spend: ${supplier.spendFormatted}\n- Trend: ${supplier.srs.trend === 'worsening' ? '📈 Worsening' : supplier.srs.trend === 'improving' ? '📉 Improving' : '➡️ Stable'}\n- Last Updated: ${supplier.srs.lastUpdated}`,
+          content: `${supplier.name} has a Supplier Risk Score of ${supplier.srs.score} (${supplier.srs.level.replace('-', ' ')}). ${supplier.srs.trend === 'worsening' ? 'The risk trend is worsening.' : supplier.srs.trend === 'improving' ? 'Risk is improving.' : 'Risk level is stable.'}`,
           responseType: 'widget',
           suggestions: generateSuggestions(intent, { suppliers: [supplier] }),
           suppliers: [supplier],
+          widget: {
+            type: 'supplier_risk_card',
+            title: `${supplier.name} Risk Profile`,
+            data: transformSupplierToRiskCardData(supplier),
+          },
+          acknowledgement: "Here's the detailed profile.",
+          insight: {
+            headline: `${supplier.name} Risk: ${supplier.srs.level.replace('-', ' ').toUpperCase()}`,
+            detail: `Score: ${supplier.srs.score} | Trend: ${supplier.srs.trend}`,
+            sentiment: supplier.srs.level === 'high' ? 'negative' : supplier.srs.level === 'low' ? 'positive' : 'neutral',
+          },
           artifact: { type: 'supplier_detail', title: `${supplier.name} Risk Profile`, supplierId: supplier.id },
           escalation: determineEscalation(1, 'supplier_deep_dive'),
           intent,
@@ -360,20 +410,29 @@ const generateLocalResponse = (
 
     case 'trend_detection': {
       const changes = MOCK_RISK_CHANGES;
-      const riskChanges = changes.map(c => ({
+      const riskChangesForSuggestions = changes.map(c => ({
         supplierName: c.supplierName,
         direction: c.direction,
         previousScore: c.previousScore,
         currentScore: c.currentScore,
       }));
+      const worseningCount = changes.filter(c => c.direction === 'worsened').length;
       return {
-        content: `I found **${changes.length} supplier(s)** with notable risk changes:\n\n${changes.map(c =>
-          `${c.direction === 'worsened' ? '📉' : '📈'} **${c.supplierName}**: ${c.previousScore} → ${c.currentScore} (${c.direction === 'worsened' ? 'Now ' + c.currentLevel : 'Improved to ' + c.currentLevel})\n   Changed: ${c.changeDate}`
-        ).join('\n\n')}\n\n${changes.some(c => c.direction === 'worsened')
-          ? "⚠️ Apple Inc. moving to High Risk warrants attention given the spend exposure."
-          : ""}`,
+        content: `${changes.length} supplier(s) with notable risk changes. ${worseningCount > 0 ? `${worseningCount} have worsened and may need attention.` : 'All changes are improvements.'}`,
         responseType: 'alert',
-        suggestions: generateSuggestions(intent, { riskChanges, resultCount: changes.length }),
+        suggestions: generateSuggestions(intent, { riskChanges: riskChangesForSuggestions, resultCount: changes.length }),
+        riskChanges: changes, // Pass full RiskChange[] for componentSelector
+        widget: {
+          type: 'alert_card',
+          title: 'Risk Changes',
+          data: transformRiskChangesToAlertData(changes),
+        },
+        acknowledgement: "Spotted some changes.",
+        insight: worseningCount > 0 ? {
+          headline: `${worseningCount} Supplier(s) Risk Worsened`,
+          detail: 'Review these suppliers for potential action',
+          sentiment: 'negative',
+        } : undefined,
         artifact: { type: 'supplier_table', title: 'Risk Changes' },
         escalation: determineEscalation(changes.length, 'trend_detection'),
         intent,
@@ -422,12 +481,16 @@ const generateLocalResponse = (
       const toCompare = highRisk.slice(0, 3);
 
       return {
-        content: `Here's a comparison of ${toCompare.length} suppliers:\n\n${toCompare.map((s, i) =>
-          `**${i + 1}. ${s.name}**\n   SRS: ${s.srs.score} (${s.srs.level}) | Spend: ${s.spendFormatted} | Trend: ${s.srs.trend}`
-        ).join('\n\n')}\n\n**Summary:** ${toCompare[0]?.name} has the highest risk score. Consider reviewing alternatives.`,
+        content: `Here's a side-by-side comparison. ${toCompare[0]?.name} has the highest risk exposure.`,
         responseType: 'table',
         suggestions: generateSuggestions(intent, { suppliers: toCompare }),
         suppliers: toCompare,
+        widget: {
+          type: 'comparison_table',
+          title: 'Supplier Comparison',
+          data: { suppliers: toCompare },
+        },
+        acknowledgement: "Here's how they stack up.",
         artifact: { type: 'comparison', title: 'Supplier Comparison' },
         escalation: determineEscalation(toCompare.length, 'comparison'),
         intent,

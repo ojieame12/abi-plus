@@ -81,8 +81,8 @@ export const SupplierMiniTable = ({
                         </div>
                         <div className="w-20 flex justify-end">
                             <RiskScoreBadge
-                                score={supplier.srs.score}
-                                level={supplier.srs.level}
+                                score={supplier.srs?.score}
+                                level={supplier.srs?.level}
                                 size="sm"
                                 showLabel={false}
                             />
@@ -94,7 +94,7 @@ export const SupplierMiniTable = ({
                         )}
                         {showTrend && (
                             <div className="w-12 flex justify-center">
-                                {getTrendIcon(supplier.srs.trend)}
+                                {getTrendIcon(supplier.srs?.trend)}
                             </div>
                         )}
                     </button>
@@ -140,10 +140,10 @@ export const SupplierRiskList = ({
                 >
                     <div className="flex items-center gap-2 min-w-0">
                         <span className={`w-2 h-2 rounded-full ${
-                            supplier.srs.level === 'high' ? 'bg-red-500' :
-                            supplier.srs.level === 'medium-high' ? 'bg-orange-500' :
-                            supplier.srs.level === 'medium' ? 'bg-yellow-500' :
-                            supplier.srs.level === 'low' ? 'bg-green-500' :
+                            supplier.srs?.level === 'high' ? 'bg-red-500' :
+                            supplier.srs?.level === 'medium-high' ? 'bg-orange-500' :
+                            supplier.srs?.level === 'medium' ? 'bg-yellow-500' :
+                            supplier.srs?.level === 'low' ? 'bg-green-500' :
                             'bg-slate-400'
                         }`} />
                         <span className="text-sm font-medium text-slate-900 truncate">
@@ -151,7 +151,7 @@ export const SupplierRiskList = ({
                         </span>
                     </div>
                     <span className="text-sm font-semibold text-slate-700 ml-2">
-                        {supplier.srs.score ?? '—'}
+                        {supplier.srs?.score ?? '—'}
                     </span>
                 </button>
             ))}

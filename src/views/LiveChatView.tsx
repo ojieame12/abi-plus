@@ -10,6 +10,7 @@ import { sendMessage } from '../services/ai';
 import type { ChatMessage } from '../types/chat';
 import { generateId } from '../types/chat';
 import type { Supplier } from '../types/supplier';
+import { buildResponseSources } from '../utils/sources';
 
 interface LiveChatViewProps {
   initialQuestion?: string;
@@ -135,11 +136,24 @@ export const LiveChatView = ({ initialQuestion, onArtifactChange }: LiveChatView
                         } : undefined,
                       },
                     } : undefined}
-                    insight={msg.response?.insight}
-                    sources={msg.response?.sources?.length ? {
-                      count: msg.response.sources.length,
-                      name: msg.response.sources[0]?.name || 'Sources',
+                    // Widget context for WidgetRenderer - enables context-based widget selection
+                    widgetContext={msg.response ? {
+                      intent: msg.response.intent?.category || 'general',
+                      portfolio: msg.response.portfolio,
+                      suppliers: msg.response.suppliers,
+                      supplier: msg.response.suppliers?.[0],
+                      riskChanges: msg.response.riskChanges,
+                      widgetData: msg.response.widget,
+                      renderContext: 'chat',
                     } : undefined}
+                    insight={msg.response?.insight}
+                    sources={(() => {
+                      if (!msg.response?.sources?.length) return undefined;
+                      const responseSources = buildResponseSources(msg.response.sources);
+                      return responseSources.totalWebCount > 0 || responseSources.totalInternalCount > 0
+                        ? responseSources
+                        : undefined;
+                    })()}
                     followUps={msg.response?.suggestions?.map(s => ({
                       id: s.id,
                       text: s.text,

@@ -36,6 +36,18 @@ import {
     RegionListWidget,
     CategoryBadge,
     StatusBadge,
+    // New widgets
+    StatCard,
+    InfoCard,
+    QuoteCard,
+    RecommendationCard,
+    ChecklistCard,
+    ProgressCard,
+    SpendExposureWidget,
+    HealthScorecardWidget,
+    EventsFeedWidget,
+    ExecutiveSummaryCard,
+    DataListCard,
 } from '../components/widgets';
 
 // Demo Data
@@ -255,6 +267,84 @@ const demoCategoryBadgeData = {
     supplierCount: 8,
     riskLevel: 'medium-high' as const,
     spend: '$45M',
+};
+
+// Demo data for new widgets
+const demoSpendExposure = {
+    totalSpend: 10000000000,
+    totalSpendFormatted: '$10.0B',
+    breakdown: [
+        { level: 'high' as const, amount: 1500000000, formatted: '$1.5B', percent: 15, supplierCount: 2 },
+        { level: 'medium-high' as const, amount: 2000000000, formatted: '$2.0B', percent: 20, supplierCount: 3 },
+        { level: 'medium' as const, amount: 3000000000, formatted: '$3.0B', percent: 30, supplierCount: 4 },
+        { level: 'low' as const, amount: 2500000000, formatted: '$2.5B', percent: 25, supplierCount: 3 },
+        { level: 'unrated' as const, amount: 1000000000, formatted: '$1.0B', percent: 10, supplierCount: 2 },
+    ],
+    highestExposure: { supplierName: 'Acme Corp', amount: '$1.2B', riskLevel: 'high' },
+};
+
+const demoHealthScorecard = {
+    overallScore: 68,
+    scoreLabel: 'Moderate Health',
+    metrics: [
+        { label: 'High Risk', value: '14%', target: '<10%', status: 'warning' as const, trend: 'up' as const },
+        { label: 'Unrated', value: '72%', target: '<50%', status: 'critical' as const },
+        { label: 'Avg Score', value: 62, target: '<50', status: 'warning' as const },
+        { label: 'Coverage', value: '28%', target: '>80%', status: 'critical' as const },
+    ],
+    concerns: [
+        { title: 'High concentration in China', severity: 'high' as const, count: 15 },
+        { title: 'ESG gaps identified', severity: 'medium' as const, count: 8 },
+    ],
+};
+
+const demoEventsFeed = {
+    events: [
+        { id: '1', type: 'alert' as const, title: 'Risk Alert: Apple Inc. moved to High', timestamp: '2h ago', impact: 'negative' as const, supplier: 'Apple Inc.' },
+        { id: '2', type: 'news' as const, title: 'Semiconductor shortage update from Reuters', summary: 'Shortage expected to continue through Q3', timestamp: '5h ago', source: 'Reuters', impact: 'negative' as const },
+        { id: '3', type: 'risk_change' as const, title: 'Flash Cleaning improved to Medium', timestamp: '1d ago', impact: 'positive' as const, supplier: 'Flash Cleaning' },
+        { id: '4', type: 'update' as const, title: 'Quarterly review completed', timestamp: '2d ago' },
+    ],
+};
+
+const demoExecutiveSummary = {
+    title: 'Portfolio Risk Summary',
+    period: 'Q2 2024',
+    keyPoints: [
+        { text: 'High risk suppliers increased to 14%', type: 'concern' as const, value: '+3%' },
+        { text: 'Total spend at risk reached $3.5B', type: 'metric' as const, value: '$3.5B' },
+        { text: 'Coverage improved with 8 new assessments', type: 'positive' as const },
+        { text: 'Action required: Review China suppliers', type: 'action' as const },
+    ],
+    metrics: [
+        { label: 'Suppliers', value: '14', change: { value: 2, direction: 'up' as const } },
+        { label: 'Spend at Risk', value: '$3.5B', change: { value: 12, direction: 'up' as const } },
+        { label: 'Avg SRS', value: '62' },
+    ],
+    focusAreas: ['China concentration', 'ESG compliance', 'Financial health'],
+};
+
+const demoChecklist = {
+    title: 'Risk Mitigation Actions',
+    subtitle: '3 of 5 complete',
+    items: [
+        { id: '1', label: 'Review high-risk suppliers', description: 'Apple Inc., Acme Corp', completed: true },
+        { id: '2', label: 'Update ESG certifications', description: '8 suppliers pending', completed: true },
+        { id: '3', label: 'Schedule quarterly review', completed: true },
+        { id: '4', label: 'Assess China alternatives', description: 'Find backup suppliers' },
+        { id: '5', label: 'Complete D&B integration' },
+    ],
+};
+
+const demoProgress = {
+    title: 'Onboarding Progress',
+    subtitle: 'Setting up your risk profile',
+    steps: [
+        { id: '1', label: 'Upload supplier list', status: 'completed' as const },
+        { id: '2', label: 'Connect data sources', description: 'D&B, EcoVadis', status: 'completed' as const },
+        { id: '3', label: 'Configure risk thresholds', status: 'current' as const },
+        { id: '4', label: 'Set up alerts', status: 'upcoming' as const },
+    ],
 };
 
 export const RiskComponentsShowcase = () => {
@@ -700,6 +790,192 @@ export const RiskComponentsShowcase = () => {
                             onFindAlternatives={() => console.log('Find alternatives')}
                             onAddToShortlist={() => console.log('Add to shortlist')}
                             onViewDashboard={() => console.log('View dashboard')}
+                        />
+                    </div>
+                </Section>
+
+                {/* NEW WIDGETS SECTION - GENERAL PURPOSE */}
+                <div className="mt-32 mb-16 pt-8 border-t border-slate-200/60 max-w-3xl mx-auto text-center">
+                    <h2 className="text-3xl font-light text-[#1d1d1f] mb-2 tracking-tight">General Purpose Widgets</h2>
+                    <p className="text-[#86868b] font-light">Flexible widgets for various AI response scenarios.</p>
+                </div>
+
+                {/* Stat Card */}
+                <Section title="Stat Card">
+                    <div className="max-w-3xl mx-auto grid md:grid-cols-3 gap-4">
+                        <StatCard
+                            label="High Risk Suppliers"
+                            value={14}
+                            change={{ value: 12, direction: 'up', period: 'vs last month' }}
+                            color="danger"
+                        />
+                        <StatCard
+                            label="Total Spend"
+                            value="$10.2B"
+                            change={{ value: 5, direction: 'down', period: 'vs Q1' }}
+                            color="success"
+                        />
+                        <StatCard
+                            label="Average SRS"
+                            value={62}
+                            color="warning"
+                        />
+                    </div>
+                </Section>
+
+                {/* Info Card */}
+                <Section title="Info Card">
+                    <div className="max-w-md mx-auto space-y-4">
+                        <InfoCard
+                            title="Understanding Risk Scores"
+                            content="SRS (Supplier Risk Score) is calculated from multiple data sources including financial health, ESG compliance, and operational metrics."
+                            variant="info"
+                            bullets={['Scores range from 0-100', 'Higher scores indicate higher risk', 'Updated weekly']}
+                        />
+                        <InfoCard
+                            title="Action Required"
+                            content="2 suppliers require immediate review due to recent risk level changes."
+                            variant="warning"
+                        />
+                    </div>
+                </Section>
+
+                {/* Quote Card */}
+                <Section title="Quote Card">
+                    <div className="max-w-md mx-auto space-y-4">
+                        <QuoteCard
+                            quote="Copper prices down 2.3% month-over-month due to increased Chinese production and softening demand."
+                            source="Beroe Market Intelligence"
+                            sentiment="negative"
+                            highlight="2.3%"
+                        />
+                        <QuoteCard
+                            quote="ESG compliance improved across 8 suppliers following recent certifications."
+                            source="Internal Assessment"
+                            sentiment="positive"
+                        />
+                    </div>
+                </Section>
+
+                {/* Recommendation Card */}
+                <Section title="Recommendation Card">
+                    <div className="max-w-md mx-auto">
+                        <RecommendationCard
+                            title="Diversify China Exposure"
+                            recommendation="Consider adding alternative suppliers from Vietnam or India to reduce concentration risk in China region."
+                            confidence="high"
+                            reasoning={[
+                                '15 suppliers concentrated in China (33% of portfolio)',
+                                'Geopolitical tensions increasing supply risk',
+                                'Alternative regions show 20% lower average SRS'
+                            ]}
+                            type="action"
+                            actions={[
+                                { label: 'Find Alternatives', primary: true },
+                                { label: 'Dismiss' }
+                            ]}
+                        />
+                    </div>
+                </Section>
+
+                {/* Checklist Card */}
+                <Section title="Checklist Card">
+                    <div className="max-w-md mx-auto">
+                        <ChecklistCard
+                            title={demoChecklist.title}
+                            subtitle={demoChecklist.subtitle}
+                            items={demoChecklist.items}
+                            interactive={true}
+                            showProgress={true}
+                        />
+                    </div>
+                </Section>
+
+                {/* Progress Card */}
+                <Section title="Progress Card">
+                    <div className="max-w-md mx-auto">
+                        <ProgressCard
+                            title={demoProgress.title}
+                            subtitle={demoProgress.subtitle}
+                            steps={demoProgress.steps}
+                        />
+                    </div>
+                </Section>
+
+                {/* NEW WIDGETS SECTION - PORTFOLIO */}
+                <div className="mt-32 mb-16 pt-8 border-t border-slate-200/60 max-w-3xl mx-auto text-center">
+                    <h2 className="text-3xl font-light text-[#1d1d1f] mb-2 tracking-tight">Portfolio Widgets</h2>
+                    <p className="text-[#86868b] font-light">Portfolio-level risk visualization widgets.</p>
+                </div>
+
+                {/* Spend Exposure Widget */}
+                <Section title="Spend Exposure Widget">
+                    <div className="max-w-md mx-auto">
+                        <SpendExposureWidget
+                            totalSpendFormatted={demoSpendExposure.totalSpendFormatted}
+                            breakdown={demoSpendExposure.breakdown}
+                            highestExposure={demoSpendExposure.highestExposure}
+                        />
+                    </div>
+                </Section>
+
+                {/* Health Scorecard Widget */}
+                <Section title="Health Scorecard Widget">
+                    <div className="max-w-md mx-auto">
+                        <HealthScorecardWidget
+                            overallScore={demoHealthScorecard.overallScore}
+                            scoreLabel={demoHealthScorecard.scoreLabel}
+                            metrics={demoHealthScorecard.metrics}
+                            concerns={demoHealthScorecard.concerns}
+                        />
+                    </div>
+                </Section>
+
+                {/* Events Feed Widget */}
+                <Section title="Events Feed Widget">
+                    <div className="max-w-md mx-auto">
+                        <EventsFeedWidget
+                            events={demoEventsFeed.events}
+                            onViewAll={() => console.log('View all events')}
+                            onEventClick={(id) => console.log('Event clicked:', id)}
+                        />
+                    </div>
+                </Section>
+
+                {/* Executive Summary Card */}
+                <Section title="Executive Summary Card">
+                    <div className="max-w-lg mx-auto">
+                        <ExecutiveSummaryCard
+                            title={demoExecutiveSummary.title}
+                            period={demoExecutiveSummary.period}
+                            keyPoints={demoExecutiveSummary.keyPoints}
+                            metrics={demoExecutiveSummary.metrics}
+                            focusAreas={demoExecutiveSummary.focusAreas}
+                        />
+                    </div>
+                </Section>
+
+                {/* Data List Card */}
+                <Section title="Data List Card">
+                    <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-6">
+                        <DataListCard
+                            title="Top Risk Factors"
+                            items={[
+                                { id: '1', label: 'China Concentration', value: '33%', status: 'danger' },
+                                { id: '2', label: 'ESG Gaps', value: '8 suppliers', status: 'warning' },
+                                { id: '3', label: 'Single Source', value: '5 categories', status: 'warning' },
+                                { id: '4', label: 'Financial Health', value: '3 concerns', status: 'default' },
+                            ]}
+                            variant="default"
+                        />
+                        <DataListCard
+                            title="Recent Actions"
+                            items={[
+                                { id: '1', label: 'Reviewed Apple Inc.', sublabel: '2h ago', status: 'success' },
+                                { id: '2', label: 'Updated thresholds', sublabel: '1d ago', status: 'success' },
+                                { id: '3', label: 'Pending: ESG review', sublabel: '3 suppliers', status: 'warning' },
+                            ]}
+                            variant="compact"
                         />
                     </div>
                 </Section>

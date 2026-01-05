@@ -10,9 +10,41 @@ import type { DetectedIntent } from './intents';
 
 export interface ResponseInsight {
   headline: string;        // Short, impactful statement: "Prices down 2.3%"
-  explanation: string;     // Context: "Month-over-month due to increased Chinese production"
+  explanation?: string;    // Context: "Month-over-month due to increased Chinese production" (legacy)
+  summary?: string;        // NEW: 2-3 sentence explanation
+  type?: 'risk_alert' | 'opportunity' | 'info' | 'action_required';
   sentiment: 'positive' | 'negative' | 'neutral';
   icon?: 'trending_up' | 'trending_down' | 'alert' | 'info' | 'check';
+  // Rich insight data (populated by enhanceResponseWithData)
+  factors?: Array<{
+    title: string;
+    detail: string;
+    impact: 'positive' | 'negative' | 'neutral';
+    trend?: 'up' | 'down' | 'stable';
+  }>;
+  entity?: {
+    name: string;
+    type: 'supplier' | 'category' | 'region' | 'portfolio';
+  };
+  metric?: {
+    label: string;
+    previousValue: number;
+    currentValue: number;
+    unit?: string;
+    level?: string;
+  };
+  trendData?: number[];
+  actions?: Array<{
+    label: string;
+    action: string;
+    icon?: string;
+  }>;
+  sources?: {
+    web?: Array<{ name: string; url?: string }>;
+    internal?: Array<{ name: string; type: string }>;
+  };
+  confidence?: 'high' | 'medium' | 'low';
+  generatedAt?: string;
 }
 
 // ============================================

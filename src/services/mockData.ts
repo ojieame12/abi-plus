@@ -11,6 +11,44 @@ import {
   formatSpend,
 } from '../types/supplier';
 
+// Generate score history for trend charts (last 9 data points)
+const generateScoreHistory = (currentScore: number, trend: 'improving' | 'worsening' | 'stable'): number[] => {
+  const history: number[] = [];
+  let score = currentScore;
+
+  // Work backwards from current score
+  for (let i = 8; i >= 0; i--) {
+    if (i === 8) {
+      history.push(currentScore);
+    } else {
+      // Add variance based on trend
+      const variance = Math.floor(Math.random() * 5) + 2;
+      if (trend === 'worsening') {
+        score = Math.max(20, score - variance); // Score was lower before (worsening = increasing)
+      } else if (trend === 'improving') {
+        score = Math.min(95, score + variance); // Score was higher before (improving = decreasing)
+      } else {
+        score = score + (Math.random() > 0.5 ? variance : -variance);
+        score = Math.max(20, Math.min(95, score));
+      }
+      history.unshift(score);
+    }
+  }
+
+  return history;
+};
+
+// Generate previous score based on trend
+const generatePreviousScore = (currentScore: number, trend: 'improving' | 'worsening' | 'stable'): number => {
+  const change = Math.floor(Math.random() * 10) + 8; // 8-18 point change
+  if (trend === 'worsening') {
+    return Math.max(20, currentScore - change);
+  } else if (trend === 'improving') {
+    return Math.min(95, currentScore + change);
+  }
+  return currentScore + (Math.random() > 0.5 ? 3 : -3);
+};
+
 // Generate risk factors for a supplier (respecting data tiers)
 const generateRiskFactors = (overallScore: number): RiskFactor[] => {
   const factors: RiskFactor[] = [];
@@ -60,10 +98,12 @@ export const MOCK_SUPPLIERS: Supplier[] = [
     revenue: '$394B Revenue',
     srs: {
       score: 85,
+      previousScore: 72,
       level: 'high',
       trend: 'worsening',
       lastUpdated: '2024-05-03',
       factors: generateRiskFactors(85),
+      scoreHistory: generateScoreHistory(85, 'worsening'),
     },
   },
   {
@@ -80,10 +120,12 @@ export const MOCK_SUPPLIERS: Supplier[] = [
     revenue: '$45M Revenue',
     srs: {
       score: 68,
+      previousScore: 65,
       level: 'medium-high',
       trend: 'stable',
       lastUpdated: '2023-07-23',
       factors: generateRiskFactors(68),
+      scoreHistory: generateScoreHistory(68, 'stable'),
     },
   },
   {
@@ -100,10 +142,12 @@ export const MOCK_SUPPLIERS: Supplier[] = [
     revenue: '$12M Revenue',
     srs: {
       score: 41,
+      previousScore: 58,
       level: 'medium',
       trend: 'improving',
       lastUpdated: '2024-05-05',
       factors: generateRiskFactors(41),
+      scoreHistory: generateScoreHistory(41, 'improving'),
     },
   },
   {
@@ -120,10 +164,12 @@ export const MOCK_SUPPLIERS: Supplier[] = [
     revenue: '$43B Revenue',
     srs: {
       score: 85,
+      previousScore: 82,
       level: 'high',
       trend: 'stable',
       lastUpdated: '2024-04-15',
       factors: generateRiskFactors(85),
+      scoreHistory: generateScoreHistory(85, 'stable'),
     },
   },
   {
@@ -140,10 +186,12 @@ export const MOCK_SUPPLIERS: Supplier[] = [
     revenue: '$25B Revenue',
     srs: {
       score: 32,
+      previousScore: 25,
       level: 'low',
       trend: 'worsening',
       lastUpdated: '2024-05-01',
       factors: generateRiskFactors(32),
+      scoreHistory: generateScoreHistory(32, 'worsening'),
     },
   },
   {
@@ -160,10 +208,12 @@ export const MOCK_SUPPLIERS: Supplier[] = [
     revenue: '$450M Revenue',
     srs: {
       score: 55,
+      previousScore: 52,
       level: 'medium',
       trend: 'stable',
       lastUpdated: '2024-04-20',
       factors: generateRiskFactors(55),
+      scoreHistory: generateScoreHistory(55, 'stable'),
     },
   },
   {
@@ -412,4 +462,266 @@ export const getCategories = (): string[] => {
 // Get unique regions
 export const getRegions = (): string[] => {
   return [...new Set(MOCK_SUPPLIERS.map(s => s.location.region))];
+};
+
+// ============================================
+// MOCK DATA GENERATORS FOR NEW WIDGETS
+// ============================================
+
+import type { FactorData } from '../components/widgets/FactorBreakdownCard';
+import type { NewsEvent, EventType, EventSentiment, EventImpact } from '../components/widgets/NewsEventsCard';
+import type { AlternativeSupplier } from '../components/widgets/AlternativesPreviewCard';
+import type { ConcentrationType, SeverityLevel } from '../components/widgets/ConcentrationWarningCard';
+
+// Generate Factor Breakdown data
+export const generateFactorBreakdownData = (supplier: Supplier): {
+  supplierName: string;
+  overallScore: number;
+  level: RiskLevel;
+  factors: FactorData[];
+} => {
+  const tierMapping: Record<string, 'tier1' | 'tier2' | 'tier3'> = {
+    'freely-displayable': 'tier1',
+    'conditionally-displayable': 'tier2',
+    'restricted': 'tier3',
+  };
+
+  const factors: FactorData[] = supplier.srs.factors.map(f => ({
+    id: f.id,
+    name: f.name,
+    score: f.tier === 'restricted' ? null : (f.score ?? null),
+    weight: f.weight,
+    tier: tierMapping[f.tier],
+    trend: Math.random() > 0.6 ? (Math.random() > 0.5 ? 'up' : 'down') : 'stable',
+  }));
+
+  // Add Overall SRS as tier1
+  factors.unshift({
+    id: 'overall_srs',
+    name: 'Overall SRS',
+    score: supplier.srs.score,
+    weight: 1,
+    tier: 'tier1',
+    trend: supplier.srs.trend === 'worsening' ? 'up' : supplier.srs.trend === 'improving' ? 'down' : 'stable',
+  });
+
+  return {
+    supplierName: supplier.name,
+    overallScore: supplier.srs.score,
+    level: supplier.srs.level,
+    factors,
+  };
+};
+
+// Generate mock news events
+const NEWS_HEADLINES = [
+  { headline: 'Announces Q4 earnings beat expectations', type: 'financial' as EventType, sentiment: 'positive' as EventSentiment },
+  { headline: 'Faces supply chain disruptions due to port congestion', type: 'news' as EventType, sentiment: 'negative' as EventSentiment },
+  { headline: 'Receives regulatory approval for new facility', type: 'regulatory' as EventType, sentiment: 'positive' as EventSentiment },
+  { headline: 'Data breach exposes customer information', type: 'alert' as EventType, sentiment: 'negative' as EventSentiment },
+  { headline: 'Partners with major sustainability initiative', type: 'news' as EventType, sentiment: 'positive' as EventSentiment },
+  { headline: 'Faces lawsuit over labor practices', type: 'regulatory' as EventType, sentiment: 'negative' as EventSentiment },
+  { headline: 'Credit rating downgraded by Moody\'s', type: 'financial' as EventType, sentiment: 'negative' as EventSentiment },
+  { headline: 'Expands operations to new markets', type: 'news' as EventType, sentiment: 'positive' as EventSentiment },
+  { headline: 'Factory inspection reveals compliance issues', type: 'alert' as EventType, sentiment: 'negative' as EventSentiment },
+  { headline: 'Wins industry award for innovation', type: 'news' as EventType, sentiment: 'positive' as EventSentiment },
+];
+
+const NEWS_SOURCES = ['Reuters', 'Bloomberg', 'WSJ', 'Financial Times', 'Industry Week', 'Supply Chain Dive'];
+
+export const generateNewsEventsData = (
+  supplierName?: string,
+  count: number = 5
+): NewsEvent[] => {
+  const events: NewsEvent[] = [];
+  const now = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const template = NEWS_HEADLINES[Math.floor(Math.random() * NEWS_HEADLINES.length)];
+    const daysAgo = Math.floor(Math.random() * 30);
+    const eventDate = new Date(now);
+    eventDate.setDate(eventDate.getDate() - daysAgo);
+
+    events.push({
+      id: `event_${i}_${Date.now()}`,
+      date: eventDate.toISOString(),
+      headline: supplierName ? `${supplierName} ${template.headline}` : template.headline,
+      source: NEWS_SOURCES[Math.floor(Math.random() * NEWS_SOURCES.length)],
+      type: template.type,
+      sentiment: template.sentiment,
+      impact: template.sentiment === 'negative'
+        ? (Math.random() > 0.5 ? 'high' : 'medium') as EventImpact
+        : (Math.random() > 0.7 ? 'medium' : 'low') as EventImpact,
+    });
+  }
+
+  // Sort by date (most recent first)
+  return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
+
+// Generate alternative suppliers
+export const generateAlternativesData = (
+  currentSupplier: Supplier
+): {
+  currentSupplier: string;
+  currentScore: number;
+  alternatives: AlternativeSupplier[];
+} => {
+  // Find suppliers in the same category with lower risk
+  const sameCategory = MOCK_SUPPLIERS.filter(
+    s => s.id !== currentSupplier.id && s.category === currentSupplier.category
+  );
+
+  // If not enough in same category, add from similar categories
+  const alternatives: AlternativeSupplier[] = [];
+  const candidates = sameCategory.length >= 3 ? sameCategory : MOCK_SUPPLIERS.filter(s => s.id !== currentSupplier.id);
+
+  // Pick up to 5 alternatives
+  const selected = candidates.slice(0, 5);
+
+  selected.forEach(s => {
+    alternatives.push({
+      id: s.id,
+      name: s.name,
+      score: s.srs.score,
+      level: s.srs.level,
+      category: s.category,
+      matchScore: Math.floor(Math.random() * 30) + 70, // 70-99% match
+    });
+  });
+
+  // Sort by score (lower is better)
+  alternatives.sort((a, b) => a.score - b.score);
+
+  return {
+    currentSupplier: currentSupplier.name,
+    currentScore: currentSupplier.srs.score,
+    alternatives,
+  };
+};
+
+// Generate concentration warning data
+export const generateConcentrationData = (
+  suppliers: Supplier[] = MOCK_SUPPLIERS
+): {
+  type: ConcentrationType;
+  entity: string;
+  concentration: number;
+  threshold: number;
+  spend: string;
+  recommendation: string;
+  severity: SeverityLevel;
+} | null => {
+  const totalSpend = suppliers.reduce((sum, s) => sum + s.spend, 0);
+
+  // Check supplier concentration
+  const sortedBySpend = [...suppliers].sort((a, b) => b.spend - a.spend);
+  const topSupplier = sortedBySpend[0];
+  const topSupplierPercent = (topSupplier.spend / totalSpend) * 100;
+
+  if (topSupplierPercent > 30) {
+    return {
+      type: 'supplier',
+      entity: topSupplier.name,
+      concentration: Math.round(topSupplierPercent * 10) / 10,
+      threshold: 30,
+      spend: topSupplier.spendFormatted,
+      recommendation: `Consider diversifying spend away from ${topSupplier.name} to reduce single-supplier dependency. Explore alternative suppliers in the ${topSupplier.category} category.`,
+      severity: topSupplierPercent > 50 ? 'high' : 'medium',
+    };
+  }
+
+  // Check category concentration
+  const categorySpend: Record<string, number> = {};
+  suppliers.forEach(s => {
+    categorySpend[s.category] = (categorySpend[s.category] || 0) + s.spend;
+  });
+
+  const topCategory = Object.entries(categorySpend).sort((a, b) => b[1] - a[1])[0];
+  const topCategoryPercent = (topCategory[1] / totalSpend) * 100;
+
+  if (topCategoryPercent > 40) {
+    return {
+      type: 'category',
+      entity: topCategory[0],
+      concentration: Math.round(topCategoryPercent * 10) / 10,
+      threshold: 40,
+      spend: formatSpend(topCategory[1]),
+      recommendation: `Heavy concentration in ${topCategory[0]} category increases vulnerability to sector-specific disruptions. Consider expanding supplier base across other categories.`,
+      severity: topCategoryPercent > 60 ? 'high' : 'medium',
+    };
+  }
+
+  // Check regional concentration
+  const regionSpend: Record<string, number> = {};
+  suppliers.forEach(s => {
+    regionSpend[s.location.region] = (regionSpend[s.location.region] || 0) + s.spend;
+  });
+
+  const topRegion = Object.entries(regionSpend).sort((a, b) => b[1] - a[1])[0];
+  const topRegionPercent = (topRegion[1] / totalSpend) * 100;
+
+  if (topRegionPercent > 50) {
+    return {
+      type: 'region',
+      entity: topRegion[0],
+      concentration: Math.round(topRegionPercent * 10) / 10,
+      threshold: 50,
+      spend: formatSpend(topRegion[1]),
+      recommendation: `Over half of spend concentrated in ${topRegion[0]}. Geographic diversification would reduce exposure to regional disruptions and geopolitical risks.`,
+      severity: topRegionPercent > 70 ? 'high' : 'medium',
+    };
+  }
+
+  return null;
+};
+
+// Generate spend exposure data matching SpendExposureWidget interface
+export const generateSpendExposureData = (
+  suppliers: Supplier[] = MOCK_SUPPLIERS
+): {
+  totalSpend: number;
+  totalSpendFormatted: string;
+  breakdown: Array<{
+    level: RiskLevel;
+    amount: number;
+    formatted: string;
+    percent: number;
+    supplierCount: number;
+  }>;
+  highestExposure?: {
+    supplierName: string;
+    amount: string;
+    riskLevel: string;
+  };
+} => {
+  const totalSpend = suppliers.reduce((sum, s) => sum + s.spend, 0);
+
+  const levels: RiskLevel[] = ['high', 'medium-high', 'medium', 'low', 'unrated'];
+  const breakdown = levels.map(level => {
+    const levelSuppliers = suppliers.filter(s => s.srs.level === level);
+    const amount = levelSuppliers.reduce((sum, s) => sum + s.spend, 0);
+    return {
+      level,
+      amount,
+      formatted: formatSpend(amount),
+      percent: totalSpend > 0 ? (amount / totalSpend) * 100 : 0,
+      supplierCount: levelSuppliers.length,
+    };
+  });
+
+  // Find highest risk exposure supplier
+  const highRiskSuppliers = suppliers.filter(s => s.srs.level === 'high' || s.srs.level === 'medium-high');
+  const topRiskSupplier = highRiskSuppliers.sort((a, b) => b.spend - a.spend)[0];
+
+  return {
+    totalSpend,
+    totalSpendFormatted: formatSpend(totalSpend),
+    breakdown,
+    highestExposure: topRiskSupplier ? {
+      supplierName: topRiskSupplier.name,
+      amount: topRiskSupplier.spendFormatted,
+      riskLevel: topRiskSupplier.srs.level,
+    } : undefined,
+  };
 };

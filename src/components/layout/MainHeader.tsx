@@ -1,12 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, MessageSquare, Globe, Paperclip, LayoutGrid, Sparkles } from 'lucide-react';
+import { Bell, MessageSquare, Globe, LayoutGrid } from 'lucide-react';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 interface MainHeaderProps {
     variant?: 'home' | 'conversation' | 'transitioning';
     isSidebarExpanded?: boolean;
     conversationTitle?: string;
-    fileCount?: number;
     artifactCount?: number;
     notificationCount?: number;
     isLoading?: boolean;
@@ -16,7 +15,6 @@ export const MainHeader = ({
     variant = 'home',
     isSidebarExpanded = false,
     conversationTitle = '',
-    fileCount = 0,
     artifactCount = 0,
     notificationCount = 0,
     isLoading = false,
@@ -69,8 +67,9 @@ export const MainHeader = ({
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 transition={{ delay: 0.1, type: 'spring', stiffness: 300 }}
+                                className="shrink-0"
                             >
-                                <Sparkles size={18} className="text-violet-500" strokeWidth={1.5} />
+                                <img src="/Abi.svg" alt="" className="w-5 h-5" />
                             </motion.div>
 
                             {isLoading ? (
@@ -80,7 +79,7 @@ export const MainHeader = ({
                                     initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.2, duration: 0.3 }}
-                                    className="text-sm font-medium text-primary"
+                                    className="text-sm font-medium text-primary truncate max-w-[300px]"
                                 >
                                     {conversationTitle}
                                 </motion.span>
@@ -126,20 +125,13 @@ export const MainHeader = ({
                         >
                             {isLoading ? (
                                 <>
-                                    <SkeletonLoader width={80} height={32} rounded="full" />
                                     <SkeletonLoader width={100} height={32} rounded="full" />
                                     <SkeletonLoader width={90} height={32} rounded="full" />
                                 </>
                             ) : (
                                 <>
-                                    <HeaderPill icon={Paperclip} label={`${fileCount} Files`} variant="dark" />
                                     <HeaderPill icon={LayoutGrid} label={`${artifactCount} Artifacts`} variant="dark" />
                                     <HeaderPill icon={Globe} label="Worldview" variant="dark" />
-                                    {notificationCount > 0 && (
-                                        <span className="w-7 h-7 bg-violet-100 text-violet-600 text-xs font-medium rounded-full flex items-center justify-center">
-                                            {notificationCount}
-                                        </span>
-                                    )}
                                 </>
                             )}
                         </motion.div>

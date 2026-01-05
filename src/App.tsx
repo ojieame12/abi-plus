@@ -2,25 +2,24 @@ import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './components/layout/MainLayout';
 import { ArtifactPanel } from './components/panel/ArtifactPanel';
+import { InsightDetailArtifact } from './components/panel/InsightDetailArtifact';
 import { HomeView } from './views/HomeView';
+import { ChatHistoryView } from './views/ChatHistoryView';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
 import { ChatInput } from './components/chat/ChatInput';
-import { ThoughtProcess } from './components/chat/ThoughtProcess';
-import {
-  RiskDistributionChart,
-  SupplierMiniTable,
-  SupplierRiskCard,
-  RiskChangeAlert,
-  TrendChangeIndicator,
-  HandoffCard,
-  PortfolioOverviewCard,
-} from './components/risk';
+import { ThoughtProcess, buildThoughtContent } from './components/chat/ThoughtProcess';
+import { PortfolioOverviewCard } from './components/risk';
 import type { AIResponse as AIResponseType } from './services/ai';
 import { sendMessage } from './services/ai';
+import { buildResponseSources } from './utils/sources';
+// Artifact system imports
+import { ArtifactRenderer } from './components/artifacts/ArtifactRenderer';
+import type { ArtifactType, ArtifactPayload } from './components/artifacts/registry';
+import { getArtifactTitle, getArtifactMeta } from './components/artifacts/registry';
 import './App.css';
 
-type ViewState = 'home' | 'chat';
+type ViewState = 'home' | 'chat' | 'history';
 
 interface Message {
   id: string;
@@ -30,11 +29,46 @@ interface Message {
   isNew?: boolean; // Flag to trigger staggered animation
 }
 
+// Get visitor ID for persistence
+function getVisitorId(): string {
+  if (typeof window === 'undefined') return 'ssr-placeholder';
+  const key = 'abi_visitor_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+// API helpers for chat persistence
+async function createConversation(title: string, category = 'general') {
+  const res = await fetch('/api/conversations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visitorId: getVisitorId(), title, category }),
+  });
+  if (!res.ok) throw new Error('Failed to create conversation');
+  return res.json();
+}
+
+async function saveMessage(conversationId: string, role: 'user' | 'assistant', content: string, metadata?: unknown) {
+  const res = await fetch('/api/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conversationId, role, content, metadata }),
+  });
+  if (!res.ok) throw new Error('Failed to save message');
+  return res.json();
+}
+
 function App() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
   const [viewState, setViewState] = useState<ViewState>('home');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [conversationTitle, setConversationTitle] = useState('');
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,7 +76,11 @@ function App() {
   const [mode, setMode] = useState<'fast' | 'reasoning'>('fast');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [currentArtifact, setCurrentArtifact] = useState<AIResponseType['artifact'] | null>(null);
-  const [artifactData, setArtifactData] = useState<{ suppliers?: any[]; portfolio?: any } | null>(null);
+  const [artifactData, setArtifactData] = useState<{ suppliers?: any[]; portfolio?: any; insight?: any } | null>(null);
+
+  // New artifact system state
+  const [artifactType, setArtifactType] = useState<ArtifactType | null>(null);
+  const [artifactPayload, setArtifactPayload] = useState<ArtifactPayload | null>(null);
 
   // Ref for auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -59,12 +97,61 @@ function App() {
     }
   }, [messages]);
 
+  // Open insight in artifact panel
+  const openInsightPanel = (insightData: any) => {
+    setArtifactType('insight_detail');
+    setArtifactPayload({ type: 'insight_detail', data: insightData });
+    setCurrentArtifact({ type: 'insight_detail', title: 'Insight Details' });
+    setArtifactData({ insight: insightData });
+    setIsPanelOpen(true);
+  };
+
+  // Open artifact panel with specific type (new system)
+  const openArtifact = (type: ArtifactType, payload: Partial<ArtifactPayload> = {}) => {
+    const meta = getArtifactMeta(type);
+    setArtifactType(type);
+    setArtifactPayload({ type, ...payload } as ArtifactPayload);
+    setCurrentArtifact({ type, title: meta.title });
+    // Reset expansion if artifact doesn't allow it
+    if (!meta.allowExpand) {
+      setIsArtifactExpanded(false);
+    }
+    setIsPanelOpen(true);
+  };
+
+  // Handle artifact actions (from ArtifactRenderer callbacks)
+  const handleArtifactAction = (action: string, data?: unknown) => {
+    console.log('[App] Artifact action:', action, data);
+    switch (action) {
+      case 'alert_created':
+        // Could show a toast or update state
+        console.log('Alert created:', data);
+        break;
+      case 'export_complete':
+        console.log('Export complete:', data);
+        break;
+      case 'select_supplier':
+        // Open supplier detail
+        if (data) {
+          openArtifact('supplier_detail', { supplier: data });
+        }
+        break;
+      case 'view_dashboard':
+        // Could navigate to external dashboard
+        console.log('Navigate to dashboard');
+        break;
+      default:
+        console.log('Unhandled action:', action);
+    }
+  };
+
   // Handle starting a chat from home
-  const handleStartChat = (question: string) => {
-    setConversationTitle(generateTitle(question));
+  const handleStartChat = async (question: string) => {
+    const title = generateTitle(question);
+    setConversationTitle(title);
     setIsTransitioning(true);
 
-    // Add user message immediately
+    // Add user message immediately (optimistic UI)
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -72,19 +159,35 @@ function App() {
     };
     setMessages([userMsg]);
 
+    // Create conversation and save user message in background
+    let convId: string | null = null;
+    try {
+      const conv = await createConversation(title);
+      convId = conv.id;
+      setCurrentConversationId(conv.id);
+      // Save the initial user message
+      await saveMessage(conv.id, 'user', question);
+    } catch (err) {
+      console.error('[App] Failed to persist conversation:', err);
+      // Continue anyway - chat works without persistence
+    }
+
     // Switch to chat view after fade
     setTimeout(() => {
       setViewState('chat');
       setIsTransitioning(false);
       // Fetch AI response
-      fetchAIResponse(question, []);
+      fetchAIResponse(question, [], convId);
     }, 400);
   };
 
   // Fetch AI response
-  const fetchAIResponse = async (question: string, history: Message[]) => {
+  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null) => {
     console.log('[App] fetchAIResponse called with:', question);
     setIsThinking(true);
+
+    // Use provided convId or fall back to state
+    const conversationId = convId ?? currentConversationId;
 
     try {
       console.log('[App] Calling sendMessage...');
@@ -111,6 +214,15 @@ function App() {
       };
       setMessages(prev => [...prev, aiMsg]);
 
+      // Save AI response to database
+      if (conversationId) {
+        saveMessage(conversationId, 'assistant', response.content, {
+          intent: response.intent,
+          sources: response.sources,
+          artifact: response.artifact,
+        }).catch(err => console.error('[App] Failed to save AI message:', err));
+      }
+
       // Clear isNew flag after animation completes (~4s)
       setTimeout(() => {
         setMessages(prev => prev.map(m =>
@@ -118,17 +230,14 @@ function App() {
         ));
       }, 4000);
 
-      // Handle artifact based on escalation logic
+      // Store artifact data but DON'T auto-open - user must trigger it
       if (response.artifact && response.artifact.type !== 'none') {
         setCurrentArtifact(response.artifact);
         setArtifactData({
           suppliers: response.suppliers,
           portfolio: response.portfolio,
         });
-        // Only auto-open panel if escalation says to expand to artifact
-        if (response.escalation?.expandToArtifact) {
-          setIsPanelOpen(true);
-        }
+        // Panel only opens when user explicitly clicks to view details
       }
 
     } catch (error) {
@@ -156,6 +265,13 @@ function App() {
       content,
     };
     setMessages(prev => [...prev, userMsg]);
+
+    // Save user message to database
+    if (currentConversationId) {
+      saveMessage(currentConversationId, 'user', content)
+        .catch(err => console.error('[App] Failed to save user message:', err));
+    }
+
     fetchAIResponse(content, [...messages, userMsg]);
   };
 
@@ -170,127 +286,41 @@ function App() {
     setViewState('home');
     setIsTransitioning(false);
     setConversationTitle('');
+    setCurrentConversationId(null);
     setMessages([]);
     setIsThinking(false);
     setCurrentArtifact(null);
     setArtifactData(null);
     setIsPanelOpen(false);
+    // Reset new artifact system state
+    setArtifactType(null);
+    setArtifactPayload(null);
+    setIsArtifactExpanded(false);
   };
 
-  // Render widget based on response type and data
-  const renderResponseWidget = (msg: Message) => {
-    const response = msg.response;
-    if (!response) return undefined;
+  // Widget rendering is now handled by WidgetRenderer via widgetContext prop
 
-    const { responseType, portfolio, suppliers, handoff, intent } = response;
-
-    // 1. Portfolio overview - show risk distribution chart
-    if (portfolio && (responseType === 'widget' || intent?.category === 'portfolio_overview')) {
-      return (
-        <RiskDistributionChart
-          distribution={portfolio.distribution}
-          totalSuppliers={portfolio.totalSuppliers}
-        />
-      );
-    }
-
-    // 2. Handoff response - show handoff card
-    if (responseType === 'handoff' && handoff) {
-      return (
-        <HandoffCard
-          title="View in Dashboard"
-          description={handoff.reason}
-          linkText={handoff.linkText}
-          linkUrl={handoff.url || '/dashboard'}
-          restrictions={['Some data comes from partners with viewing restrictions']}
-        />
-      );
-    }
-
-    // 3. Alert/Trend response - show risk change alerts
-    if (responseType === 'alert' && intent?.category === 'trend_detection') {
-      // Extract risk changes from content or use mock
-      return (
-        <div className="space-y-3">
-          <RiskChangeAlert
-            supplierName="Apple Inc."
-            previousScore={72}
-            currentScore={85}
-            currentLevel="High Risk"
-            changeDate="3 days ago"
-          />
-          <RiskChangeAlert
-            supplierName="Queen Cleaners Inc"
-            previousScore={58}
-            currentScore={41}
-            currentLevel="Medium Risk"
-            changeDate="7 days ago"
-          />
-        </div>
-      );
-    }
-
-    // 4. Single supplier deep dive - show detailed risk card
-    if (suppliers && suppliers.length === 1) {
-      const s = suppliers[0];
-      return (
-        <SupplierRiskCard
-          name={s.name}
-          score={s.srs?.score || 0}
-          level={s.srs?.level as any}
-          trend={s.srs?.trend as any}
-          category={s.category}
-          location={`${s.location?.city}, ${s.location?.country}`}
-          spend={s.spendFormatted}
-          variant="standard"
-        />
-      );
-    }
-
-    // 5. Supplier list/table - show mini table
-    if (suppliers && suppliers.length > 1 && (responseType === 'table' || intent?.category === 'filtered_discovery')) {
-      return (
-        <SupplierMiniTable
-          suppliers={suppliers.slice(0, 5).map(s => ({
-            id: s.id,
-            name: s.name,
-            score: s.srs?.score || null,
-            level: s.srs?.level as any,
-            trend: s.srs?.trend as any,
-            category: s.category,
-          }))}
-          maxRows={5}
-          onRowClick={(supplier) => console.log('Clicked supplier:', supplier.name)}
-        />
-      );
-    }
-
-    // 6. Comparison - show comparison table
-    if (suppliers && suppliers.length > 1 && intent?.category === 'comparison') {
-      return (
-        <SupplierMiniTable
-          suppliers={suppliers.map(s => ({
-            id: s.id,
-            name: s.name,
-            score: s.srs?.score || null,
-            level: s.srs?.level as any,
-            trend: s.srs?.trend as any,
-            category: s.category,
-          }))}
-          maxRows={5}
-          onRowClick={(supplier) => console.log('Compare supplier:', supplier.name)}
-        />
-      );
-    }
-
-    return undefined;
+  // Navigate to history view
+  const handleNavigateToHistory = () => {
+    setViewState('history');
+    setIsPanelOpen(false);
   };
 
-  // Background opacity: 100 for home, 10 for chat/transitioning
-  const backgroundOpacity = viewState === 'home' && !isTransitioning ? 100 : 10;
+  // Background opacity: 100 for home, 30 for history, 10 for chat/transitioning
+  const backgroundOpacity = viewState === 'home' && !isTransitioning
+    ? 100
+    : viewState === 'history'
+      ? 30
+      : 10;
 
   // Header variant
-  const headerVariant = viewState === 'home' && !isTransitioning ? 'home' : 'conversation';
+  const headerVariant = (viewState === 'home' || viewState === 'history') && !isTransitioning ? 'home' : 'conversation';
+
+  // Close panel and reset expanded state
+  const handleClosePanel = () => {
+    setIsPanelOpen(false);
+    setIsArtifactExpanded(false);
+  };
 
   return (
     <MainLayout
@@ -298,33 +328,51 @@ function App() {
       conversationTitle={conversationTitle}
       backgroundOpacity={backgroundOpacity}
       isHeaderLoading={isTransitioning || isThinking}
-      fileCount={0}
       artifactCount={currentArtifact ? 1 : 0}
       onNewChat={handleNewChat}
+      onNavigateToHistory={handleNavigateToHistory}
+      isArtifactExpanded={isArtifactExpanded}
       panel={
         <ArtifactPanel
           isOpen={isPanelOpen}
-          title={currentArtifact?.title || 'Results'}
-          onClose={() => setIsPanelOpen(false)}
-          isExpanded={false}
-          onToggleExpand={() => { }}
+          title={artifactType ? getArtifactTitle(artifactType) : (currentArtifact?.title || 'Results')}
+          onClose={handleClosePanel}
+          isExpanded={isArtifactExpanded}
+          onToggleExpand={() => setIsArtifactExpanded(!isArtifactExpanded)}
+          defaultWidth={artifactType ? getArtifactMeta(artifactType).defaultWidth : '40%'}
+          allowExpand={artifactType ? getArtifactMeta(artifactType).allowExpand : true}
         >
-          <div className="p-6">
-            {currentArtifact?.type === 'portfolio_dashboard' && artifactData?.portfolio && (
-              <PortfolioWidget portfolio={artifactData.portfolio} />
-            )}
-            {currentArtifact?.type === 'supplier_table' && artifactData?.suppliers && (
-              <SupplierTableWidget suppliers={artifactData.suppliers} />
-            )}
-            {currentArtifact?.type === 'supplier_detail' && artifactData?.suppliers?.[0] && (
-              <SupplierDetailWidget supplier={artifactData.suppliers[0]} />
-            )}
-            {!currentArtifact && (
-              <div className="text-center text-muted py-8">
-                No artifact to display
-              </div>
-            )}
-          </div>
+          {/* Use new ArtifactRenderer when artifactType is set */}
+          {artifactType && artifactPayload ? (
+            <ArtifactRenderer
+              type={artifactType}
+              payload={artifactPayload}
+              isExpanded={isArtifactExpanded}
+              onClose={handleClosePanel}
+              onAction={handleArtifactAction}
+            />
+          ) : (
+            <div className="p-6">
+              {/* Legacy artifact rendering for backwards compatibility */}
+              {currentArtifact?.type === 'portfolio_dashboard' && artifactData?.portfolio && (
+                <PortfolioWidget portfolio={artifactData.portfolio} />
+              )}
+              {currentArtifact?.type === 'supplier_table' && artifactData?.suppliers && (
+                <SupplierTableWidget suppliers={artifactData.suppliers} />
+              )}
+              {currentArtifact?.type === 'supplier_detail' && artifactData?.suppliers?.[0] && (
+                <SupplierDetailWidget supplier={artifactData.suppliers[0]} />
+              )}
+              {currentArtifact?.type === 'insight_detail' && artifactData?.insight && (
+                <InsightDetailArtifact data={artifactData.insight} isExpanded={isArtifactExpanded} />
+              )}
+              {!currentArtifact && (
+                <div className="text-center text-muted py-8">
+                  No artifact to display
+                </div>
+              )}
+            </div>
+          )}
         </ArtifactPanel>
       }
     >
@@ -341,6 +389,23 @@ function App() {
             <HomeView
               onOpenArtifact={() => setIsPanelOpen(true)}
               onStartChat={handleStartChat}
+            />
+          </motion.div>
+        ) : viewState === 'history' ? (
+          <motion.div
+            key="history"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ChatHistoryView
+              onNewChat={handleNewChat}
+              onSelectConversation={(id) => {
+                console.log('Selected conversation:', id);
+                // TODO: Load conversation and navigate to chat
+              }}
             />
           </motion.div>
         ) : (
@@ -360,6 +425,12 @@ function App() {
                     index === messages.length - 1 ||
                     (index === messages.length - 2 && messages[messages.length - 1]?.role === 'user');
                   const showExtras = isLastAssistantMessage && !isThinking;
+                  const responseSources = msg.response?.sources
+                    ? buildResponseSources(msg.response.sources)
+                    : null;
+                  const hasSources = responseSources
+                    ? responseSources.totalWebCount > 0 || responseSources.totalInternalCount > 0
+                    : false;
 
                   return (
                     <motion.div
@@ -373,29 +444,29 @@ function App() {
                         <UserMessage message={msg.content} initial="S" />
                       ) : (
                         <AIResponse
-                          // 1. Thought Process - show demo if no real data
-                          thoughtProcess={showExtras ? {
-                            duration: msg.response?.thinkingDuration || '2min',
-                            content: msg.response?.thinkingSteps ? {
-                              queryAnalysis: {
-                                commodity: msg.response.intent?.category?.replace(/_/g, ' ') || 'Risk Analysis',
-                                informationNeeded: msg.response.thinkingSteps[0]?.content || 'Analyzing supplier risk data',
-                                timeSensitivity: 'Standard',
-                                depthRequired: 'Comprehensive portfolio analysis',
-                              },
-                            } : {
-                              queryAnalysis: {
-                                commodity: 'Supplier Risk Portfolio',
-                                informationNeeded: 'Risk distribution, high-risk suppliers, trends',
-                                timeSensitivity: 'Standard',
-                                depthRequired: 'Portfolio-level analysis',
-                              },
-                            },
+                          // 1. Thought Process - animated with widget selection reasoning
+                          thoughtProcess={showExtras && msg.response ? {
+                            duration: msg.response.thinkingDuration || '2s',
+                            content: buildThoughtContent({
+                              intent: msg.response.intent,
+                              widget: msg.response.widget,
+                              portfolio: msg.response.portfolio,
+                              suppliers: msg.response.suppliers,
+                              sources: msg.response.sources,
+                            }),
                           } : undefined}
                           // 2. Acknowledgement header
                           acknowledgement={showExtras ? (msg.response?.acknowledgement || undefined) : undefined}
-                          // 3. Widget - render based on response type
-                          widget={showExtras ? renderResponseWidget(msg) : undefined}
+                          // 3. Widget - use context-based rendering with WidgetRenderer
+                          widgetContext={showExtras && msg.response ? {
+                            intent: msg.response.intent?.category || 'general',
+                            portfolio: msg.response.portfolio,
+                            suppliers: msg.response.suppliers,
+                            supplier: msg.response.suppliers?.[0],
+                            widgetData: msg.response.widget,
+                            renderContext: 'chat',
+                            onOpenArtifact: (type, payload) => openArtifact(type as ArtifactType, payload as Partial<ArtifactPayload>),
+                          } : undefined}
                           // 4. Insight bar
                           insight={showExtras && msg.response?.insight ? {
                             text: typeof msg.response.insight === 'string'
@@ -405,11 +476,7 @@ function App() {
                             trend: typeof msg.response.insight === 'object' ? msg.response.insight.trend : undefined,
                           } : undefined}
                           // 5. Sources - proper format
-                          sources={showExtras ? {
-                            webPages: msg.response?.sources?.filter((s: any) => s.type === 'web').length || 12,
-                            dataSources: msg.response?.sources?.filter((s: any) => s.type !== 'web').length || 4,
-                            dataSourceName: 'Beroe Data Sources',
-                          } : undefined}
+                          sources={showExtras && hasSources ? responseSources : undefined}
                           // 6. Follow-ups
                           followUps={showExtras ? msg.response?.suggestions?.map(s => ({
                             id: s.id,
@@ -423,9 +490,11 @@ function App() {
                           onFollowUpClick={handleSuggestionClick}
                           // 7. Animation - trigger staggered entrance for new messages
                           isAnimating={msg.isNew && showExtras}
+                          // 8. Insight click - open in artifact panel
+                          onInsightClick={openInsightPanel}
                         >
                           <div dangerouslySetInnerHTML={{
-                            __html: formatMarkdown(msg.content, !!renderResponseWidget(msg))
+                            __html: formatMarkdown(msg.content, !!msg.response?.widget || !!msg.response?.portfolio || !!msg.response?.suppliers?.length)
                           }} />
 
                           {/* Handoff card */}
@@ -527,8 +596,13 @@ function formatMarkdown(text: string, hasWidget: boolean = false): string {
     </table>`;
   });
 
+  // First apply number styling BEFORE bold (to avoid matching inside CSS classes)
+  // Only match numbers that are: preceded by space/start OR followed by space/end/punctuation
+  // Skip numbers that are part of CSS classes (preceded by hyphen like slate-800)
+  processed = processed.replace(/(?<![-\w])(\$[\d,.]+[BMK]?|\d{1,3}(?:,\d{3})*(?:\.\d+)?%?)(?![\w-])/g, '<span class="font-medium">$1</span>');
+
   return processed
-    .replace(/\*\*(.*?)\*\*/g, '<span class="font-medium text-slate-800">$1</span>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-800">$1</strong>')
     .replace(/\n- /g, '<br/>• ')
     .replace(/\n\* /g, '<br/>• ')
     .replace(/\n/g, '<br/>');

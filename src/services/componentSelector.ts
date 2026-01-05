@@ -4,6 +4,11 @@
 import type { IntentCategory } from '../types/intents';
 import type { WidgetType, WidgetData } from '../types/widgets';
 import type { Supplier, Portfolio, RiskChange } from '../types/data';
+import {
+  transformSupplierToRiskCardData,
+  transformSuppliersToComparisonData,
+  mapRiskLevelToMarketContext,
+} from './widgetTransformers';
 
 // ============================================
 // RENDER CONTEXT
@@ -78,15 +83,15 @@ const SELECTION_RULES: SelectionRule[] = [
       size: 'md',
       props: {
         data: {
-          distribution: [
-            { level: 'high', count: ctx.portfolio!.distribution.high, percentage: Math.round((ctx.portfolio!.distribution.high / ctx.portfolio!.totalSuppliers) * 100) },
-            { level: 'medium-high', count: ctx.portfolio!.distribution.mediumHigh, percentage: Math.round((ctx.portfolio!.distribution.mediumHigh / ctx.portfolio!.totalSuppliers) * 100) },
-            { level: 'medium', count: ctx.portfolio!.distribution.medium, percentage: Math.round((ctx.portfolio!.distribution.medium / ctx.portfolio!.totalSuppliers) * 100) },
-            { level: 'low', count: ctx.portfolio!.distribution.low, percentage: Math.round((ctx.portfolio!.distribution.low / ctx.portfolio!.totalSuppliers) * 100) },
-            { level: 'unrated', count: ctx.portfolio!.distribution.unrated, percentage: Math.round((ctx.portfolio!.distribution.unrated / ctx.portfolio!.totalSuppliers) * 100) },
-          ],
+          distribution: {
+            high: { count: ctx.portfolio!.distribution.high },
+            mediumHigh: { count: ctx.portfolio!.distribution.mediumHigh },
+            medium: { count: ctx.portfolio!.distribution.medium },
+            low: { count: ctx.portfolio!.distribution.low },
+            unrated: { count: ctx.portfolio!.distribution.unrated },
+          },
           totalSuppliers: ctx.portfolio!.totalSuppliers,
-          totalSpend: ctx.portfolio!.totalSpend,
+          totalSpendFormatted: ctx.portfolio!.spendFormatted || `$${ctx.portfolio!.totalSpend}`,
         },
       },
       expandsTo: 'PortfolioDashboardArtifact',
@@ -149,15 +154,15 @@ const SELECTION_RULES: SelectionRule[] = [
           suppliers: ctx.suppliers!.slice(0, 5).map(s => ({
             id: s.id,
             name: s.name,
-            riskScore: s.srsScore,
-            riskLevel: s.riskLevel,
-            trend: s.trend,
-            spend: s.spend,
+            riskScore: s.srs?.score ?? 0,
+            riskLevel: s.srs?.level ?? 'unrated',
+            trend: s.srs?.trend ?? 'stable',
+            spend: s.spendFormatted || `$${(s.spend / 1000000).toFixed(1)}M`,
             category: s.category,
-            location: s.location,
+            country: s.location?.country || '',
           })),
           totalCount: ctx.suppliers!.length,
-          filters: [],
+          filters: {},
         },
       },
       expandsTo: 'SupplierTableArtifact',
@@ -216,19 +221,7 @@ const SELECTION_RULES: SelectionRule[] = [
       componentType: 'SupplierRiskCardWidget',
       size: 'md',
       props: {
-        data: {
-          supplierName: ctx.supplier!.name,
-          riskScore: ctx.supplier!.srsScore,
-          riskLevel: ctx.supplier!.riskLevel,
-          trend: ctx.supplier!.trend,
-          previousScore: ctx.supplier!.previousScore,
-          keyFactors: ctx.supplier!.riskFactors?.slice(0, 4).map(f => ({
-            name: f.name,
-            impact: f.impact,
-            score: f.score,
-          })) || [],
-          lastUpdated: new Date().toISOString(),
-        },
+        data: transformSupplierToRiskCardData(ctx.supplier!),
       },
       expandsTo: 'SupplierDetailArtifact',
     }),
@@ -275,27 +268,36 @@ const SELECTION_RULES: SelectionRule[] = [
       renderCtx === 'chat' &&
       (ctx.riskChanges?.length || 0) > 0,
     priority: 100,
-    getConfig: (ctx) => ({
-      componentType: 'AlertCardWidget',
-      size: 'md',
-      props: {
-        data: {
-          alertType: 'risk_increase',
-          severity: ctx.riskChanges!.some(c => c.change > 10) ? 'critical' : 'warning',
-          title: `${ctx.riskChanges!.length} suppliers with risk changes`,
-          description: `Risk scores have changed for these suppliers in your portfolio.`,
-          affectedSuppliers: ctx.riskChanges!.slice(0, 5).map(c => ({
-            name: c.supplierName,
-            previousScore: c.previousScore,
-            currentScore: c.currentScore,
-            change: c.change,
-          })),
-          suggestedAction: 'Review the affected suppliers and consider risk mitigation strategies.',
-          timestamp: new Date().toISOString(),
+    getConfig: (ctx) => {
+      const worsenedCount = ctx.riskChanges!.filter(c => c.direction === 'worsened').length;
+      const hasCritical = ctx.riskChanges!.some(c =>
+        c.direction === 'worsened' && (c.currentScore - c.previousScore) > 10
+      );
+      return {
+        componentType: 'AlertCardWidget',
+        size: 'md',
+        props: {
+          data: {
+            alertType: worsenedCount > 0 ? 'risk_increase' : 'risk_decrease',
+            severity: hasCritical ? 'critical' : worsenedCount > 0 ? 'warning' : 'info',
+            title: `${ctx.riskChanges!.length} suppliers with risk changes`,
+            description: `Risk scores have changed for these suppliers in your portfolio.`,
+            affectedSuppliers: ctx.riskChanges!.slice(0, 5).map(c => ({
+              name: c.supplierName,
+              previousScore: c.previousScore,
+              currentScore: c.currentScore,
+              change: c.currentScore - c.previousScore,
+            })),
+            suggestedAction: worsenedCount > 0
+              ? 'Review the affected suppliers and consider risk mitigation strategies.'
+              : 'Risk improvements detected. Consider updating your risk assessment.',
+            timestamp: new Date().toISOString(),
+            actionRequired: worsenedCount > 0,
+          },
         },
-      },
-      expandsTo: 'SupplierTableArtifact',
-    }),
+        expandsTo: 'SupplierTableArtifact',
+      };
+    },
   },
   {
     id: 'trend_changes_compact',
@@ -330,19 +332,7 @@ const SELECTION_RULES: SelectionRule[] = [
       componentType: 'ComparisonTableWidget',
       size: 'md',
       props: {
-        data: {
-          suppliers: ctx.suppliers!.slice(0, 3).map(s => ({
-            name: s.name,
-            riskScore: s.srsScore,
-            riskLevel: s.riskLevel,
-            spend: s.spend,
-            location: s.location,
-          })),
-          dimensions: ['riskScore', 'spend', 'location'],
-          recommendation: ctx.suppliers!.reduce((best, s) =>
-            s.srsScore < best.srsScore ? s : best
-          ).name,
-        },
+        data: transformSuppliersToComparisonData(ctx.suppliers!),
       },
       expandsTo: 'ComparisonArtifact',
     }),
@@ -377,10 +367,10 @@ const SELECTION_RULES: SelectionRule[] = [
       size: 'md',
       props: {
         sector: 'Market',
-        riskLevel: 'medium',
+        riskLevel: mapRiskLevelToMarketContext('medium'), // 'moderate' not 'medium'
         keyFactors: [],
         exposedSuppliers: ctx.suppliers?.length || 0,
-        totalSpend: ctx.portfolio?.totalSpend || 0,
+        totalSpend: ctx.portfolio?.spendFormatted || '$0',
       },
     }),
   },
@@ -444,34 +434,18 @@ const SELECTION_RULES: SelectionRule[] = [
   },
 
   // ==========================================
-  // FALLBACK: Widget from AI response
-  // ==========================================
-  {
-    id: 'ai_widget_passthrough',
-    matches: (ctx, renderCtx) =>
-      renderCtx === 'chat' &&
-      !!ctx.widget &&
-      ctx.widget.type !== 'none',
-    priority: 50, // Lower priority, use when no specific rule matches
-    getConfig: (ctx) => ({
-      componentType: 'WidgetRenderer',
-      size: 'md',
-      props: {
-        widget: ctx.widget,
-      },
-    }),
-  },
-
-  // ==========================================
   // NO WIDGET NEEDED
   // ==========================================
   {
     id: 'no_widget',
+    // Only suppress widgets when no widget data is provided
     matches: (ctx) =>
-      ctx.intent === 'explanation_why' ||
-      ctx.intent === 'setup_config' ||
-      ctx.intent === 'reporting_export' ||
-      ctx.intent === 'general',
+      !ctx.widget && (
+        ctx.intent === 'explanation_why' ||
+        ctx.intent === 'setup_config' ||
+        ctx.intent === 'reporting_export' ||
+        ctx.intent === 'general'
+      ),
     priority: 10,
     getConfig: () => ({
       componentType: 'none',
@@ -559,6 +533,8 @@ export const WIDGET_COMPONENT_MAP: Record<WidgetType, string> = {
   risk_distribution: 'RiskDistributionWidget',
   portfolio_summary: 'PortfolioOverviewCard',
   metric_row: 'MetricRowWidget',
+  spend_exposure: 'SpendExposureWidget',
+  health_scorecard: 'HealthScorecardWidget',
 
   // Supplier Focused
   supplier_risk_card: 'SupplierRiskCardWidget',
@@ -571,6 +547,7 @@ export const WIDGET_COMPONENT_MAP: Record<WidgetType, string> = {
   trend_indicator: 'TrendChangeIndicator',
   alert_card: 'AlertCardWidget',
   event_timeline: 'EventTimelineWidget',
+  events_feed: 'EventsFeedWidget',
 
   // Market & Context
   price_gauge: 'PriceGaugeWidget',
@@ -589,6 +566,16 @@ export const WIDGET_COMPONENT_MAP: Record<WidgetType, string> = {
   handoff_card: 'HandoffCard',
   status_badge: 'StatusBadge',
   score_breakdown: 'ScoreBreakdownWidget',
+
+  // General Purpose
+  stat_card: 'StatCard',
+  info_card: 'InfoCard',
+  quote_card: 'QuoteCard',
+  recommendation_card: 'RecommendationCard',
+  checklist_card: 'ChecklistCard',
+  progress_card: 'ProgressCard',
+  executive_summary: 'ExecutiveSummaryCard',
+  data_list: 'DataListCard',
 
   // Text Only
   none: '',

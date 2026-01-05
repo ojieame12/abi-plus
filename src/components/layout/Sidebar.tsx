@@ -5,9 +5,10 @@ interface SidebarProps {
     isExpanded: boolean;
     onToggle: () => void;
     onNewChat?: () => void;
+    onNavigateToHistory?: () => void;
 }
 
-export const Sidebar = ({ isExpanded, onToggle, onNewChat }: SidebarProps) => {
+export const Sidebar = ({ isExpanded, onToggle, onNewChat, onNavigateToHistory }: SidebarProps) => {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         'Today': true,
         'Yesterday': false,
@@ -56,7 +57,7 @@ export const Sidebar = ({ isExpanded, onToggle, onNewChat }: SidebarProps) => {
                 <nav className={`flex flex-col gap-1 mt-6 ${isExpanded ? 'px-2' : 'px-1'}`}>
                     {/* New Chat - Special colored button */}
                     <NewChatButton isExpanded={isExpanded} onClick={onNewChat} />
-                    <NavItem icon={MessageSquare} label="Conversations" isExpanded={isExpanded} />
+                    <NavItem icon={MessageSquare} label="Conversations" isExpanded={isExpanded} onClick={onNavigateToHistory} />
                     <NavItem icon={Compass} label="Discovery" isExpanded={isExpanded} />
                     <NavItem icon={Bot} label="Agents" isExpanded={isExpanded} />
                 </nav>
@@ -145,6 +146,7 @@ interface NavItemProps {
     isExpanded: boolean;
     isActive?: boolean;
     isHighlighted?: boolean;
+    onClick?: () => void;
 }
 
 const NewChatButton = ({ isExpanded, onClick }: { isExpanded: boolean; onClick?: () => void }) => (
@@ -165,8 +167,9 @@ const NewChatButton = ({ isExpanded, onClick }: { isExpanded: boolean; onClick?:
     </button>
 );
 
-const NavItem = ({ icon: Icon, label, isExpanded, isActive }: NavItemProps) => (
+const NavItem = ({ icon: Icon, label, isExpanded, isActive, onClick }: NavItemProps) => (
     <button
+        onClick={onClick}
         className={`h-10 rounded-xl flex items-center transition-all duration-200 ${
             isActive
                 ? 'bg-slate-200/50 text-primary'
