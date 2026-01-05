@@ -196,9 +196,10 @@ export const extractEventsArray = (
     const eventsData = data as { events: unknown };
     // Check if events itself is EventsFeedData (double-wrapped)
     if (eventsData.events && typeof eventsData.events === 'object' && 'events' in eventsData.events) {
-      return (eventsData.events as EventsFeedData).events;
+      return (eventsData.events as EventsFeedData).events ?? [];
     }
-    return eventsData.events as EventsFeedData['events'];
+    // Return events or empty array if null/undefined
+    return (eventsData.events as EventsFeedData['events']) ?? [];
   }
 
   // Fallback: empty array

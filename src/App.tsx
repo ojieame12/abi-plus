@@ -62,6 +62,48 @@ async function saveMessage(conversationId: string, role: 'user' | 'assistant', c
   return res.json();
 }
 
+async function fetchConversation(id: string) {
+  const res = await fetch(`/api/conversations/${id}`);
+  if (!res.ok) throw new Error('Failed to fetch conversation');
+  return res.json();
+}
+
+async function updateConversationCategory(id: string, category: string) {
+  const res = await fetch(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category }),
+  });
+  if (!res.ok) throw new Error('Failed to update conversation');
+  return res.json();
+}
+
+// Map AI intent to conversation category (uses actual IntentCategory values from types/intents.ts)
+function intentToCategory(intent?: { category?: string }): string {
+  if (!intent?.category) return 'general';
+
+  const mapping: Record<string, string> = {
+    // Supplier-related intents
+    'supplier_deep_dive': 'suppliers',
+    'filtered_discovery': 'suppliers',
+    'comparison': 'suppliers',
+    // Risk-related intents
+    'portfolio_overview': 'risk',
+    'trend_detection': 'risk',
+    'explanation_why': 'risk',
+    // Research-related intents
+    'market_context': 'research',
+    // Action/config intents → general
+    'action_trigger': 'general',
+    'setup_config': 'general',
+    'reporting_export': 'general',
+    'restricted_query': 'general',
+    'general': 'general',
+  };
+
+  return mapping[intent.category] || 'general';
+}
+
 function App() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
@@ -217,10 +259,29 @@ function App() {
       // Save AI response to database
       if (conversationId) {
         saveMessage(conversationId, 'assistant', response.content, {
+          // Core response data
           intent: response.intent,
           sources: response.sources,
           artifact: response.artifact,
+          // Widget/UI data for full restoration
+          portfolio: response.portfolio,
+          suppliers: response.suppliers,
+          widget: response.widget,
+          insight: response.insight,
+          suggestions: response.suggestions,
+          acknowledgement: response.acknowledgement,
+          handoff: response.handoff,
+          riskChanges: response.riskChanges,
         }).catch(err => console.error('[App] Failed to save AI message:', err));
+
+        // Auto-detect and update category from intent (only on first message)
+        if (history.length === 0 && response.intent) {
+          const category = intentToCategory(response.intent);
+          if (category !== 'general') {
+            updateConversationCategory(conversationId, category)
+              .catch(err => console.error('[App] Failed to update category:', err));
+          }
+        }
       }
 
       // Clear isNew flag after animation completes (~4s)
@@ -304,6 +365,56 @@ function App() {
   const handleNavigateToHistory = () => {
     setViewState('history');
     setIsPanelOpen(false);
+  };
+
+  // Load an existing conversation from history
+  const handleLoadConversation = async (id: string) => {
+    try {
+      const data = await fetchConversation(id);
+
+      // Set conversation metadata
+      setCurrentConversationId(data.id);
+      setConversationTitle(data.title);
+
+      // Reset artifact state to prevent stale data from previous session
+      setCurrentArtifact(null);
+      setArtifactData(null);
+      setArtifactType(null);
+      setArtifactPayload(null);
+      setIsArtifactExpanded(false);
+      setIsPanelOpen(false);
+
+      // Convert DB messages to app Message format
+      const loadedMessages: Message[] = data.messages.map((m: any) => ({
+        id: m.id,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        // Restore full response metadata for UI rehydration
+        response: m.metadata ? {
+          id: m.id,
+          content: m.content,
+          // Core response data
+          intent: m.metadata.intent,
+          sources: m.metadata.sources,
+          artifact: m.metadata.artifact,
+          // Widget/UI data
+          portfolio: m.metadata.portfolio,
+          suppliers: m.metadata.suppliers,
+          widget: m.metadata.widget,
+          insight: m.metadata.insight,
+          suggestions: m.metadata.suggestions,
+          acknowledgement: m.metadata.acknowledgement,
+          handoff: m.metadata.handoff,
+          riskChanges: m.metadata.riskChanges,
+        } : undefined,
+        isNew: false,
+      }));
+
+      setMessages(loadedMessages);
+      setViewState('chat');
+    } catch (err) {
+      console.error('[App] Failed to load conversation:', err);
+    }
   };
 
   // Background opacity: 100 for home, 30 for history, 10 for chat/transitioning
@@ -402,10 +513,7 @@ function App() {
           >
             <ChatHistoryView
               onNewChat={handleNewChat}
-              onSelectConversation={(id) => {
-                console.log('Selected conversation:', id);
-                // TODO: Load conversation and navigate to chat
-              }}
+              onSelectConversation={handleLoadConversation}
             />
           </motion.div>
         ) : (
@@ -463,6 +571,7 @@ function App() {
                             portfolio: msg.response.portfolio,
                             suppliers: msg.response.suppliers,
                             supplier: msg.response.suppliers?.[0],
+                            riskChanges: msg.response.riskChanges,
                             widgetData: msg.response.widget,
                             renderContext: 'chat',
                             onOpenArtifact: (type, payload) => openArtifact(type as ArtifactType, payload as Partial<ArtifactPayload>),

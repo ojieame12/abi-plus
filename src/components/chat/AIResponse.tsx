@@ -12,6 +12,7 @@ import { buildInsightFromSupplier, buildInsightFromPortfolio, findSupplierFromCo
 import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
 import type { Supplier, Portfolio, RiskChange } from '../../types/data';
+import type { RiskPortfolio } from '../../types/supplier';
 import type { ResponseInsight, ResponseSources } from '../../types/aiResponse';
 import type { RenderContext } from '../../services/componentSelector';
 
@@ -46,7 +47,7 @@ interface FollowUpItem {
 
 interface WidgetContext {
     intent: IntentCategory;
-    portfolio?: Portfolio;
+    portfolio?: Portfolio | RiskPortfolio; // Accept both types
     suppliers?: Supplier[];
     supplier?: Supplier;
     riskChanges?: RiskChange[];

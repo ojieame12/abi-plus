@@ -1,8 +1,20 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, X, ArrowUpDown, Check, MessageSquare, Sparkles } from 'lucide-react';
 import { ConversationRow } from '../components/chat/ConversationRow';
 import { useConversations, type Conversation } from '../hooks/useConversations';
+
+// Debounce hook for search
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 interface ChatHistoryViewProps {
   onNewChat?: () => void;
@@ -49,20 +61,29 @@ function formatTimestamp(dateStr: string, group: DateGroup): string {
 }
 
 export const ChatHistoryView = ({ onNewChat, onSelectConversation }: ChatHistoryViewProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search input for server-side search
+  const debouncedSearch = useDebounce(searchInput, 300);
 
   // Use real data from API
   const {
     conversations,
     isLoading,
     error,
+    search,
     updateConversation,
     deleteConversation,
   } = useConversations();
+
+  // Trigger server-side search when debounced value changes
+  useEffect(() => {
+    search(debouncedSearch);
+  }, [debouncedSearch, search]);
 
   // Close sort menu when clicking outside
   useEffect(() => {
@@ -94,22 +115,16 @@ export const ChatHistoryView = ({ onNewChat, onSelectConversation }: ChatHistory
     return counts;
   }, [conversations]);
 
-  // Filter and sort conversations
+  // Filter and sort conversations (search is now server-side)
   const filteredConversations = useMemo(() => {
     let result = [...conversations];
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(c => c.title.toLowerCase().includes(query));
-    }
-
-    // Apply category filter
+    // Apply category filter (client-side)
     if (activeFilter !== 'all') {
       result = result.filter(c => c.category === activeFilter);
     }
 
-    // Apply sort
+    // Apply sort (client-side)
     result.sort((a, b) => {
       switch (sortBy) {
         case 'recent':
@@ -124,7 +139,7 @@ export const ChatHistoryView = ({ onNewChat, onSelectConversation }: ChatHistory
     });
 
     return result;
-  }, [conversations, searchQuery, activeFilter, sortBy]);
+  }, [conversations, activeFilter, sortBy]);
 
   // Group conversations by date
   const groupedConversations = useMemo(() => {
@@ -274,14 +289,14 @@ export const ChatHistoryView = ({ onNewChat, onSelectConversation }: ChatHistory
                   />
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Search conversations and messages..."
                     className="w-full h-12 pl-11 pr-10 rounded-2xl bg-white border border-slate-200/80 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300 transition-all"
                   />
-                  {searchQuery && (
+                  {searchInput && (
                     <button
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => setSearchInput('')}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                     >
                       <X size={16} strokeWidth={1.5} />
@@ -400,7 +415,7 @@ export const ChatHistoryView = ({ onNewChat, onSelectConversation }: ChatHistory
               </div>
 
               {/* Empty Search Results */}
-              {filteredConversations.length === 0 && conversations.length > 0 && (
+              {filteredConversations.length === 0 && (
                 <motion.div
                   className="text-center py-16"
                   initial={{ opacity: 0 }}
@@ -412,7 +427,7 @@ export const ChatHistoryView = ({ onNewChat, onSelectConversation }: ChatHistory
                   </div>
                   <p className="text-secondary font-medium mb-1">No conversations found</p>
                   <p className="text-sm text-muted">
-                    {searchQuery ? 'Try a different search term' : 'No conversations match this filter'}
+                    {searchInput ? 'Try a different search term' : 'No conversations match this filter'}
                   </p>
                 </motion.div>
               )}

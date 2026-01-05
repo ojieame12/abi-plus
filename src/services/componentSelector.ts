@@ -91,7 +91,7 @@ const SELECTION_RULES: SelectionRule[] = [
             unrated: { count: ctx.portfolio!.distribution.unrated },
           },
           totalSuppliers: ctx.portfolio!.totalSuppliers,
-          totalSpendFormatted: ctx.portfolio!.spendFormatted || `$${ctx.portfolio!.totalSpend}`,
+          totalSpendFormatted: ctx.portfolio!.spendFormatted || (ctx.portfolio as any).totalSpendFormatted || `$${ctx.portfolio!.totalSpend}`,
         },
       },
       expandsTo: 'PortfolioDashboardArtifact',
@@ -282,12 +282,15 @@ const SELECTION_RULES: SelectionRule[] = [
             severity: hasCritical ? 'critical' : worsenedCount > 0 ? 'warning' : 'info',
             title: `${ctx.riskChanges!.length} suppliers with risk changes`,
             description: `Risk scores have changed for these suppliers in your portfolio.`,
-            affectedSuppliers: ctx.riskChanges!.slice(0, 5).map(c => ({
-              name: c.supplierName,
-              previousScore: c.previousScore,
-              currentScore: c.currentScore,
-              change: c.currentScore - c.previousScore,
-            })),
+            affectedSuppliers: ctx.riskChanges!.slice(0, 5).map(c => {
+              const diff = c.currentScore - c.previousScore;
+              return {
+                name: c.supplierName,
+                previousScore: c.previousScore,
+                currentScore: c.currentScore,
+                change: `${diff > 0 ? '+' : ''}${diff}`,
+              };
+            }),
             suggestedAction: worsenedCount > 0
               ? 'Review the affected suppliers and consider risk mitigation strategies.'
               : 'Risk improvements detected. Consider updating your risk assessment.',
@@ -370,7 +373,7 @@ const SELECTION_RULES: SelectionRule[] = [
         riskLevel: mapRiskLevelToMarketContext('medium'), // 'moderate' not 'medium'
         keyFactors: [],
         exposedSuppliers: ctx.suppliers?.length || 0,
-        totalSpend: ctx.portfolio?.spendFormatted || '$0',
+        totalSpend: ctx.portfolio?.spendFormatted || (ctx.portfolio as any)?.totalSpendFormatted || '$0',
       },
     }),
   },
@@ -544,15 +547,15 @@ export const WIDGET_COMPONENT_MAP: Record<WidgetType, string> = {
 
   // Trends & Alerts
   trend_chart: 'TrendChartWidget',
-  trend_indicator: 'TrendChangeIndicator',
+  trend_indicator: 'TrendBadge',
   alert_card: 'AlertCardWidget',
   event_timeline: 'EventTimelineWidget',
   events_feed: 'EventsFeedWidget',
 
   // Market & Context
   price_gauge: 'PriceGaugeWidget',
-  market_card: 'MarketContextCard',
-  benchmark_card: 'BenchmarkCard',
+  market_card: 'NewsItemCard',
+  benchmark_card: 'BenchmarkCard', // Not implemented - renders nothing
   news_item: 'NewsItemCard',
 
   // Categories & Regions

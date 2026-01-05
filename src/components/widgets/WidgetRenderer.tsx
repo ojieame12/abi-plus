@@ -2,6 +2,7 @@
 import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
 import type { Supplier, Portfolio, RiskChange } from '../../types/data';
+import type { RiskPortfolio } from '../../types/supplier';
 import {
   selectComponent,
   buildDataContext,
@@ -55,6 +56,9 @@ import { TrendChangeIndicator } from '../risk/TrendChangeIndicator';
 import { MarketContextCard } from '../risk/MarketContextCard';
 import { HandoffCard } from '../risk/HandoffCard';
 import { ActionConfirmationCard } from '../risk/ActionConfirmationCard';
+
+// Utility Components
+import { TrendBadge } from './TrendBadge';
 
 // ============================================
 // COMPONENT REGISTRY
@@ -112,6 +116,9 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   MarketContextCard,
   HandoffCard,
   ActionConfirmationCard,
+
+  // Utility components
+  TrendBadge,
 };
 
 // ============================================
@@ -129,7 +136,7 @@ interface DirectWidgetProps {
 interface ContextWidgetProps {
   intent: IntentCategory;
   renderContext?: RenderContext;
-  portfolio?: Portfolio;
+  portfolio?: Portfolio | RiskPortfolio; // Accept both types
   suppliers?: Supplier[];
   supplier?: Supplier;
   riskChanges?: RiskChange[];
@@ -199,16 +206,27 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   const artifactHandlers: Record<string, () => void> = {};
 
   if (isContextProps(props) && props.onOpenArtifact) {
-    const { onOpenArtifact } = props;
+    const { onOpenArtifact, supplier, portfolio } = props;
 
     // FactorBreakdownCard → factor_breakdown artifact
     if (config.componentType === 'FactorBreakdownCard') {
       artifactHandlers.onViewDetails = () => {
+        // Map scoreHistory numbers to {date, score} objects if available
+        const scoreHistory = supplier?.srs?.scoreHistory?.map((score, i, arr) => ({
+          date: new Date(Date.now() - (arr.length - 1 - i) * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          score,
+        }));
+
         onOpenArtifact('factor_breakdown', {
           supplierName: config.props.supplierName,
+          supplierId: supplier?.id,
           overallScore: config.props.overallScore,
+          previousScore: supplier?.srs?.previousScore,
           level: config.props.level,
+          trend: supplier?.srs?.trend || 'stable',
+          lastUpdated: supplier?.srs?.lastUpdated || new Date().toISOString(),
           factors: config.props.factors,
+          scoreHistory,
         });
       };
     }
@@ -218,6 +236,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
       artifactHandlers.onViewAll = () => {
         onOpenArtifact('news_events', {
           title: config.props.title || 'News & Events',
+          context: supplier ? { type: 'supplier', name: supplier.name, id: supplier.id } : undefined,
           events: config.props.events,
         });
       };
@@ -228,8 +247,10 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
       artifactHandlers.onViewAll = () => {
         onOpenArtifact('supplier_alternatives', {
           currentSupplier: {
+            id: supplier?.id || 'unknown',
             name: config.props.currentSupplier,
             score: config.props.currentScore,
+            category: supplier?.category || config.props.alternatives?.[0]?.category || 'General',
           },
           alternatives: config.props.alternatives,
         });
@@ -239,7 +260,48 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     // ConcentrationWarningCard → spend_analysis artifact
     if (config.componentType === 'ConcentrationWarningCard') {
       artifactHandlers.onViewDetails = () => {
+        // Enrich with portfolio data when available
+        // Handle both Portfolio (spendFormatted) and RiskPortfolio (totalSpendFormatted)
+        const totalSpend = portfolio?.totalSpend || 0;
+        const totalSpendFormatted =
+          ('totalSpendFormatted' in (portfolio || {}))
+            ? (portfolio as RiskPortfolio).totalSpendFormatted
+            : ('spendFormatted' in (portfolio || {}))
+              ? (portfolio as Portfolio).spendFormatted
+              : formatCurrency(totalSpend);
+        const dist = portfolio?.distribution;
+        const totalSuppliers = portfolio?.totalSuppliers || 1; // Avoid division by zero
+
+        // Distribution values are supplier counts, calculate percentages
+        const buildRiskLevelData = () => {
+          if (!dist) return [];
+          const total = dist.high + dist.mediumHigh + dist.medium + dist.low + (dist.unrated || 0);
+          if (total === 0) return [];
+
+          const makeEntry = (level: string, count: number) => {
+            const percent = (count / total) * 100;
+            const amount = (percent / 100) * totalSpend;
+            return {
+              level,
+              amount,
+              formatted: formatCurrency(amount),
+              percent,
+              supplierCount: count,
+            };
+          };
+
+          return [
+            makeEntry('high', dist.high),
+            makeEntry('medium-high', dist.mediumHigh),
+            makeEntry('medium', dist.medium),
+            makeEntry('low', dist.low),
+          ].filter(e => e.supplierCount > 0);
+        };
+
         onOpenArtifact('spend_analysis', {
+          totalSpend,
+          totalSpendFormatted,
+          byRiskLevel: buildRiskLevelData(),
           concentrationWarnings: [{
             type: config.props.type,
             entity: config.props.entity,
@@ -255,13 +317,32 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     // SpendExposureWidget → spend_analysis artifact
     if (config.componentType === 'SpendExposureWidget') {
       artifactHandlers.onViewDetails = () => {
+        // Handle both Portfolio (spendFormatted) and RiskPortfolio (totalSpendFormatted)
+        const fallbackSpendFormatted =
+          ('totalSpendFormatted' in (portfolio || {}))
+            ? (portfolio as RiskPortfolio).totalSpendFormatted
+            : ('spendFormatted' in (portfolio || {}))
+              ? (portfolio as Portfolio).spendFormatted
+              : '$0';
+
         onOpenArtifact('spend_analysis', {
-          totalSpend: config.props.totalSpend,
-          totalSpendFormatted: config.props.totalSpendFormatted,
-          byRiskLevel: config.props.breakdown,
+          totalSpend: config.props.totalSpend || portfolio?.totalSpend || 0,
+          totalSpendFormatted: config.props.totalSpendFormatted || fallbackSpendFormatted,
+          byRiskLevel: config.props.breakdown || [],
+          // Note: category/region breakdowns not available in Portfolio type
+          byCategory: [],
+          byRegion: [],
         });
       };
     }
+  }
+
+  // Helper for currency formatting
+  function formatCurrency(value: number): string {
+    if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+    return `$${value.toFixed(0)}`;
   }
 
   return (
@@ -385,7 +466,7 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
 
     case 'trend_indicator':
       return {
-        componentType: 'TrendChangeIndicator',
+        componentType: 'TrendBadge',
         props: { ...widget.data },
       };
 
@@ -493,6 +574,56 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
         componentType: 'ConcentrationWarningCard',
         props: { ...widget.data },
       };
+
+    // Market & Context widgets
+    // market_card data shape doesn't match MarketContextCard - use NewsItemCard instead
+    case 'market_card':
+      return {
+        componentType: 'NewsItemCard',
+        props: {
+          data: {
+            title: widget.data.title,
+            source: widget.data.source,
+            timestamp: widget.data.timestamp,
+            snippet: widget.data.summary,
+            category: widget.data.category,
+            sentiment: widget.data.sentiment,
+          },
+        },
+      };
+
+    // Badge widgets - these expect { data: ... } wrapper
+    case 'category_badge':
+      return {
+        componentType: 'CategoryBadge',
+        props: { data: widget.data },
+      };
+
+    case 'status_badge':
+      return {
+        componentType: 'StatusBadge',
+        props: { data: widget.data },
+      };
+
+    // Portfolio summary - maps to MetricRowWidget for now
+    case 'portfolio_summary':
+      return {
+        componentType: 'MetricRowWidget',
+        props: {
+          data: {
+            metrics: [
+              { label: 'Suppliers', value: String(widget.data.totalSuppliers) },
+              { label: 'Spend', value: widget.data.spendFormatted },
+              { label: 'Avg Risk', value: String(widget.data.avgRiskScore) },
+              { label: 'High Risk', value: String(widget.data.highRiskCount) },
+            ],
+          },
+        },
+      };
+
+    // Benchmark - not yet implemented
+    case 'benchmark_card':
+      return null;
 
     default:
       // Log unknown widget types for debugging

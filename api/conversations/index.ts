@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, or, ilike, sql as rawSql } from 'drizzle-orm';
 import { conversations, messages } from '../../src/db/schema';
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -20,12 +20,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // GET - List conversations
     if (req.method === 'GET') {
-      const { visitorId, includeArchived } = req.query;
+      const { visitorId, includeArchived, search } = req.query;
 
       if (!visitorId) {
         return res.status(400).json({ error: 'visitorId is required' });
       }
 
+      // If search query is provided, search both title and message content
+      if (search && typeof search === 'string' && search.trim()) {
+        const searchTerm = `%${search.trim()}%`;
+
+        // Find conversations where title matches OR any message content matches
+        const result = await db
+          .selectDistinct({
+            id: conversations.id,
+            visitorId: conversations.visitorId,
+            title: conversations.title,
+            category: conversations.category,
+            createdAt: conversations.createdAt,
+            updatedAt: conversations.updatedAt,
+            isStarred: conversations.isStarred,
+            isArchived: conversations.isArchived,
+          })
+          .from(conversations)
+          .leftJoin(messages, eq(messages.conversationId, conversations.id))
+          .where(
+            and(
+              eq(conversations.visitorId, visitorId as string),
+              includeArchived !== 'true' ? eq(conversations.isArchived, false) : undefined,
+              or(
+                ilike(conversations.title, searchTerm),
+                ilike(messages.content, searchTerm)
+              )
+            )
+          )
+          .orderBy(desc(conversations.updatedAt));
+
+        return res.status(200).json(result);
+      }
+
+      // No search - return all conversations
       const conditions = [eq(conversations.visitorId, visitorId as string)];
 
       if (includeArchived !== 'true') {

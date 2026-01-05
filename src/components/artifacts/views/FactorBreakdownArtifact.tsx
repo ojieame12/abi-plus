@@ -51,8 +51,8 @@ export interface FactorBreakdownArtifactProps {
   overallScore: number;
   previousScore?: number;
   level: RiskLevel;
-  trend: 'improving' | 'stable' | 'worsening';
-  lastUpdated: string;
+  trend?: 'improving' | 'stable' | 'worsening';
+  lastUpdated?: string;
   factors: FactorData[];
   scoreHistory?: HistoryPoint[];
   contributingEvents?: ContributingEvent[];
@@ -252,9 +252,9 @@ export const FactorBreakdownArtifact = ({
   overallScore,
   previousScore,
   level,
-  trend,
+  trend = 'stable',
   lastUpdated,
-  factors,
+  factors = [],
   scoreHistory,
   contributingEvents,
   onViewDashboard,
@@ -262,6 +262,11 @@ export const FactorBreakdownArtifact = ({
   onClose,
 }: FactorBreakdownArtifactProps) => {
   const colors = RISK_COLORS[level];
+
+  // Format lastUpdated safely
+  const formattedDate = lastUpdated
+    ? new Date(lastUpdated).toLocaleDateString()
+    : 'Recently';
   const [activeTab, setActiveTab] = useState<'all' | 'tier1' | 'tier2' | 'tier3'>('all');
 
   // Group factors by tier
@@ -294,7 +299,7 @@ export const FactorBreakdownArtifact = ({
             <div>
               <h3 className="text-lg font-medium text-slate-900">{supplierName}</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Last updated: {new Date(lastUpdated).toLocaleDateString()}
+                Last updated: {formattedDate}
               </p>
             </div>
             <div className="text-right">

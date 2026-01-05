@@ -291,21 +291,29 @@ const ConcentrationAlert = ({ warning }: { warning: ConcentrationWarning }) => {
 // ============================================
 
 export const SpendAnalysisArtifact = ({
-  totalSpend,
-  totalSpendFormatted,
-  byRiskLevel,
-  byCategory,
-  byRegion,
+  totalSpend = 0,
+  totalSpendFormatted = '$0',
+  byRiskLevel = [],
+  byCategory = [],
+  byRegion = [],
   concentrationWarnings = [],
   trend,
   onExport,
   onDrillDown,
   onClose,
 }: SpendAnalysisArtifactProps) => {
-  const [activeTab, setActiveTab] = useState<TabType>('risk');
+  // Determine which tabs have data
+  const hasRiskData = byRiskLevel.length > 0;
+  const hasCategoryData = byCategory.length > 0;
+  const hasRegionData = byRegion.length > 0;
 
-  // Calculate at-risk spend
+  // Default to first available tab
+  const defaultTab = hasRiskData ? 'risk' : hasCategoryData ? 'category' : hasRegionData ? 'region' : 'risk';
+  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+
+  // Calculate at-risk spend (safe for empty arrays)
   const atRiskSpend = useMemo(() => {
+    if (byRiskLevel.length === 0) return { amount: 0, percent: 0 };
     const highRisk = byRiskLevel.filter(
       b => b.level === 'high' || b.level === 'medium-high'
     );
@@ -314,10 +322,12 @@ export const SpendAnalysisArtifact = ({
     return { amount, percent };
   }, [byRiskLevel]);
 
+  // Only show tabs that have data (or all if at least one has data for nav purposes)
+  const hasAnyBreakdown = hasRiskData || hasCategoryData || hasRegionData;
   const tabConfig = [
-    { id: 'risk' as TabType, label: 'By Risk Level', icon: BarChart3 },
-    { id: 'category' as TabType, label: 'By Category', icon: Package },
-    { id: 'region' as TabType, label: 'By Region', icon: MapPin },
+    { id: 'risk' as TabType, label: 'By Risk Level', icon: BarChart3, hasData: hasRiskData },
+    { id: 'category' as TabType, label: 'By Category', icon: Package, hasData: hasCategoryData },
+    { id: 'region' as TabType, label: 'By Region', icon: MapPin, hasData: hasRegionData },
   ];
 
   return (
@@ -359,35 +369,37 @@ export const SpendAnalysisArtifact = ({
           </div>
         </motion.div>
 
-        {/* At-Risk Highlight */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="p-4 bg-red-50/60 rounded-xl border border-red-100/60"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="text-red-500" />
-              <span className="text-sm font-medium text-red-700">Spend at Risk</span>
-            </div>
-            <div className="text-right">
-              <span className="text-xl font-light text-red-700">
-                {atRiskSpend.percent.toFixed(1)}%
-              </span>
-              <span className="text-xs text-red-600 ml-1">of portfolio</span>
-            </div>
-          </div>
-          <StackedBar data={byRiskLevel} />
-          <div className="flex items-center justify-between mt-3">
-            {byRiskLevel.slice(0, 4).map(item => (
-              <div key={item.level} className="flex items-center gap-1.5 text-xs">
-                <span className={`w-2 h-2 rounded-full ${RISK_COLORS[item.level].bar}`} />
-                <span className="text-slate-500">{item.percent.toFixed(0)}%</span>
+        {/* At-Risk Highlight - only show when we have risk data */}
+        {hasRiskData && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-4 bg-red-50/60 rounded-xl border border-red-100/60"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-red-500" />
+                <span className="text-sm font-medium text-red-700">Spend at Risk</span>
               </div>
-            ))}
-          </div>
-        </motion.div>
+              <div className="text-right">
+                <span className="text-xl font-light text-red-700">
+                  {atRiskSpend.percent.toFixed(1)}%
+                </span>
+                <span className="text-xs text-red-600 ml-1">of portfolio</span>
+              </div>
+            </div>
+            <StackedBar data={byRiskLevel} />
+            <div className="flex items-center justify-between mt-3">
+              {byRiskLevel.slice(0, 4).map(item => (
+                <div key={item.level} className="flex items-center gap-1.5 text-xs">
+                  <span className={`w-2 h-2 rounded-full ${RISK_COLORS[item.level].bar}`} />
+                  <span className="text-slate-500">{item.percent.toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Concentration Warnings */}
         {concentrationWarnings.length > 0 && (
@@ -404,68 +416,85 @@ export const SpendAnalysisArtifact = ({
           </ArtifactSection>
         )}
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
-          {tabConfig.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Icon size={14} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Tab Navigation - only show if we have any breakdown data */}
+        {hasAnyBreakdown && (
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+            {tabConfig.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  disabled={!tab.hasData}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : tab.hasData
+                        ? 'text-slate-500 hover:text-slate-700'
+                        : 'text-slate-300 cursor-not-allowed'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Tab Content */}
-        <ArtifactSection
-          title={
-            activeTab === 'risk' ? 'Spend by Risk Level' :
-            activeTab === 'category' ? 'Spend by Category' :
-            'Spend by Region'
-          }
-          badge={
-            activeTab === 'risk' ? byRiskLevel.length :
-            activeTab === 'category' ? byCategory.length :
-            byRegion.length
-          }
-          collapsible={false}
-        >
-          <div className="space-y-2">
-            {activeTab === 'risk' && byRiskLevel.map((item, i) => (
-              <RiskLevelRow
-                key={item.level}
-                item={item}
-                index={i}
-                onClick={onDrillDown ? () => onDrillDown('risk', item.level) : undefined}
-              />
-            ))}
-            {activeTab === 'category' && byCategory.map((item, i) => (
-              <CategoryRow
-                key={item.category}
-                item={item}
-                index={i}
-                onClick={onDrillDown ? () => onDrillDown('category', item.category) : undefined}
-              />
-            ))}
-            {activeTab === 'region' && byRegion.map((item, i) => (
-              <RegionRow
-                key={item.region}
-                item={item}
-                index={i}
-                onClick={onDrillDown ? () => onDrillDown('region', item.region) : undefined}
-              />
-            ))}
-          </div>
-        </ArtifactSection>
+        {hasAnyBreakdown && (
+          <ArtifactSection
+            title={
+              activeTab === 'risk' ? 'Spend by Risk Level' :
+              activeTab === 'category' ? 'Spend by Category' :
+              'Spend by Region'
+            }
+            badge={
+              activeTab === 'risk' ? byRiskLevel.length :
+              activeTab === 'category' ? byCategory.length :
+              byRegion.length
+            }
+            collapsible={false}
+          >
+            <div className="space-y-2">
+              {activeTab === 'risk' && hasRiskData && byRiskLevel.map((item, i) => (
+                <RiskLevelRow
+                  key={item.level}
+                  item={item}
+                  index={i}
+                  onClick={onDrillDown ? () => onDrillDown('risk', item.level) : undefined}
+                />
+              ))}
+              {activeTab === 'category' && hasCategoryData && byCategory.map((item, i) => (
+                <CategoryRow
+                  key={item.category}
+                  item={item}
+                  index={i}
+                  onClick={onDrillDown ? () => onDrillDown('category', item.category) : undefined}
+                />
+              ))}
+              {activeTab === 'region' && hasRegionData && byRegion.map((item, i) => (
+                <RegionRow
+                  key={item.region}
+                  item={item}
+                  index={i}
+                  onClick={onDrillDown ? () => onDrillDown('region', item.region) : undefined}
+                />
+              ))}
+              {/* Empty state for tabs without data */}
+              {activeTab === 'risk' && !hasRiskData && (
+                <p className="text-sm text-slate-400 text-center py-4">No risk breakdown data available</p>
+              )}
+              {activeTab === 'category' && !hasCategoryData && (
+                <p className="text-sm text-slate-400 text-center py-4">No category breakdown data available</p>
+              )}
+              {activeTab === 'region' && !hasRegionData && (
+                <p className="text-sm text-slate-400 text-center py-4">No region breakdown data available</p>
+              )}
+            </div>
+          </ArtifactSection>
+        )}
       </div>
 
       {/* Footer */}

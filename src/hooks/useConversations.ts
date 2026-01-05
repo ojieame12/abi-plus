@@ -52,11 +52,12 @@ export function useConversations(includeArchived = false) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const visitorId = getVisitorId();
 
-  // Fetch conversations
-  const fetchConversations = useCallback(async () => {
+  // Fetch conversations with optional search
+  const fetchConversations = useCallback(async (search?: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -65,6 +66,11 @@ export function useConversations(includeArchived = false) {
         visitorId,
         includeArchived: includeArchived.toString(),
       });
+
+      // Add search param if provided
+      if (search && search.trim()) {
+        params.set('search', search.trim());
+      }
 
       const response = await fetch(`${API_BASE}/api/conversations?${params}`);
 
@@ -84,6 +90,12 @@ export function useConversations(includeArchived = false) {
   // Initial fetch
   useEffect(() => {
     fetchConversations();
+  }, [fetchConversations]);
+
+  // Server-side search with debounce
+  const search = useCallback((query: string) => {
+    setSearchQuery(query);
+    fetchConversations(query);
   }, [fetchConversations]);
 
   // Create new conversation
@@ -161,7 +173,9 @@ export function useConversations(includeArchived = false) {
     isLoading,
     error,
     visitorId,
+    searchQuery,
     refetch: fetchConversations,
+    search,
     createConversation,
     updateConversation,
     deleteConversation,

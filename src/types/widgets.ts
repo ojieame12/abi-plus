@@ -130,15 +130,16 @@ export const WIDGET_VARIANTS: WidgetVariant[] = [
 
   // Trends
   { type: 'trend_chart', sizes: ['M', 'L'], defaultSize: 'M', component: 'TrendChartWidget' },
-  { type: 'trend_indicator', sizes: ['S', 'M'], defaultSize: 'S', component: 'TrendChangeIndicator' },
+  { type: 'trend_indicator', sizes: ['S', 'M'], defaultSize: 'S', component: 'TrendBadge' },
   { type: 'alert_card', sizes: ['M'], defaultSize: 'M', component: 'AlertCardWidget' },
   { type: 'event_timeline', sizes: ['M', 'L'], defaultSize: 'M', component: 'EventTimelineWidget' },
   { type: 'events_feed', sizes: ['M', 'L'], defaultSize: 'M', component: 'EventsFeedWidget' },
 
   // Market
   { type: 'price_gauge', sizes: ['M', 'L'], defaultSize: 'M', component: 'PriceGaugeWidget' },
-  { type: 'market_card', sizes: ['M'], defaultSize: 'M', component: 'MarketContextCard' },
-  { type: 'benchmark_card', sizes: ['M'], defaultSize: 'M', component: 'BenchmarkCard' },
+  { type: 'market_card', sizes: ['M'], defaultSize: 'M', component: 'NewsItemCard' },
+  // benchmark_card - not implemented, commented out
+  // { type: 'benchmark_card', sizes: ['M'], defaultSize: 'M', component: 'BenchmarkCard' },
   { type: 'news_item', sizes: ['S', 'M'], defaultSize: 'S', component: 'NewsItemCard' },
 
   // Categories & Regions
@@ -162,6 +163,12 @@ export const WIDGET_VARIANTS: WidgetVariant[] = [
   { type: 'progress_card', sizes: ['M'], defaultSize: 'M', component: 'ProgressCard' },
   { type: 'executive_summary', sizes: ['M', 'L'], defaultSize: 'M', component: 'ExecutiveSummaryCard' },
   { type: 'data_list', sizes: ['S', 'M'], defaultSize: 'M', component: 'DataListCard' },
+
+  // Risk Analysis
+  { type: 'factor_breakdown', sizes: ['M', 'L'], defaultSize: 'M', component: 'FactorBreakdownCard', componentL: 'FactorBreakdownArtifact' },
+  { type: 'news_events', sizes: ['M', 'L'], defaultSize: 'M', component: 'NewsEventsCard', componentL: 'NewsEventsArtifact' },
+  { type: 'alternatives_preview', sizes: ['M', 'L'], defaultSize: 'M', component: 'AlternativesPreviewCard', componentL: 'AlternativesArtifact' },
+  { type: 'concentration_warning', sizes: ['M'], defaultSize: 'M', component: 'ConcentrationWarningCard' },
 
   // None
   { type: 'none', sizes: [], defaultSize: 'M', component: '' },
@@ -576,6 +583,59 @@ export interface DataListData {
   variant?: 'default' | 'compact' | 'detailed';
 }
 
+// Risk Analysis Widget Data Types
+export interface FactorBreakdownData {
+  supplierName: string;
+  overallScore: number;
+  level: 'low' | 'medium' | 'medium-high' | 'high' | 'unrated';
+  factors: Array<{
+    id: string;
+    name: string;
+    score: number | null;
+    weight: number;
+    tier: 'tier1' | 'tier2' | 'tier3';
+    trend?: 'up' | 'down' | 'stable';
+  }>;
+}
+
+export interface NewsEventsData {
+  title?: string;
+  events: Array<{
+    id: string;
+    date: string;
+    headline: string;
+    source: string;
+    type: 'news' | 'alert' | 'regulatory' | 'financial';
+    sentiment: 'positive' | 'negative' | 'neutral';
+    impact?: 'high' | 'medium' | 'low';
+    url?: string;
+  }>;
+  maxItems?: number;
+}
+
+export interface AlternativesPreviewData {
+  currentSupplier: string;
+  currentScore: number;
+  alternatives: Array<{
+    id: string;
+    name: string;
+    score: number;
+    level: 'low' | 'medium' | 'medium-high' | 'high' | 'unrated';
+    category: string;
+    matchScore: number;
+  }>;
+}
+
+export interface ConcentrationWarningData {
+  type: 'supplier' | 'category' | 'region';
+  entity: string;
+  concentration: number;
+  threshold: number;
+  spend: string;
+  recommendation: string;
+  severity: 'high' | 'medium' | 'low';
+}
+
 // Union type for all widget data
 export type WidgetData =
   // Portfolio & Overview
@@ -625,6 +685,12 @@ export type WidgetData =
   | { type: 'progress_card'; data: ProgressCardData }
   | { type: 'executive_summary'; data: ExecutiveSummaryData }
   | { type: 'data_list'; data: DataListData }
+
+  // Risk Analysis
+  | { type: 'factor_breakdown'; data: FactorBreakdownData }
+  | { type: 'news_events'; data: NewsEventsData }
+  | { type: 'alternatives_preview'; data: AlternativesPreviewData }
+  | { type: 'concentration_warning'; data: ConcentrationWarningData }
 
   // Text Only
   | { type: 'none'; data: null };
@@ -761,13 +827,14 @@ export const WIDGET_SELECTION_RULES: WidgetSelectionRule[] = [
     priority: 8,
     description: 'Market news and context summary card',
   },
-  {
-    widget: 'benchmark_card',
-    useWhen: ['market_context', 'comparison'],
-    requiredData: ['benchmark_data'],
-    priority: 7,
-    description: 'Industry benchmark comparison card',
-  },
+  // benchmark_card - not implemented yet, removed from selection
+  // {
+  //   widget: 'benchmark_card',
+  //   useWhen: ['market_context', 'comparison'],
+  //   requiredData: ['benchmark_data'],
+  //   priority: 7,
+  //   description: 'Industry benchmark comparison card',
+  // },
   {
     widget: 'news_item',
     useWhen: ['market_context'],
