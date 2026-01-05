@@ -9,6 +9,8 @@ import { CommunityView } from './views/CommunityView';
 import { QuestionDetailView } from './views/QuestionDetailView';
 import { AskQuestionView } from './views/AskQuestionView';
 import { useSession } from './hooks/useSession';
+import { usePreloader } from './hooks/usePreloader';
+import { Preloader } from './components/Preloader';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
 import { ChatInput } from './components/chat/ChatInput';
@@ -109,6 +111,9 @@ function intentToCategory(intent?: { category?: string }): string {
 }
 
 function App() {
+  // Preloader state
+  const { phase, progress, isDone, isExiting } = usePreloader();
+
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
   const [viewState, setViewState] = useState<ViewState>('home');
@@ -473,17 +478,31 @@ function App() {
   };
 
   return (
-    <MainLayout
-      headerVariant={headerVariant}
-      conversationTitle={conversationTitle}
-      backgroundOpacity={backgroundOpacity}
-      isHeaderLoading={isTransitioning || isThinking}
-      artifactCount={currentArtifact ? 1 : 0}
-      onNewChat={handleNewChat}
-      onNavigateToHistory={handleNavigateToHistory}
-      onNavigateToCommunity={handleNavigateToCommunity}
-      isArtifactExpanded={isArtifactExpanded}
-      panel={
+    <>
+      {/* Preloader */}
+      <AnimatePresence>
+        {!isDone && (
+          <Preloader progress={progress} isExiting={isExiting} />
+        )}
+      </AnimatePresence>
+
+      {/* Main app - animate in after preloader */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isDone ? 1 : 0 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <MainLayout
+          headerVariant={headerVariant}
+          conversationTitle={conversationTitle}
+          backgroundOpacity={backgroundOpacity}
+          isHeaderLoading={isTransitioning || isThinking}
+          artifactCount={currentArtifact ? 1 : 0}
+          onNewChat={handleNewChat}
+          onNavigateToHistory={handleNavigateToHistory}
+          onNavigateToCommunity={handleNavigateToCommunity}
+          isArtifactExpanded={isArtifactExpanded}
+          panel={
         <ArtifactPanel
           isOpen={isPanelOpen}
           title={artifactType ? getArtifactTitle(artifactType) : (currentArtifact?.title || 'Results')}
@@ -749,6 +768,8 @@ function App() {
         )}
       </AnimatePresence>
     </MainLayout>
+      </motion.div>
+    </>
   );
 }
 

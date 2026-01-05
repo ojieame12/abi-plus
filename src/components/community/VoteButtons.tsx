@@ -1,4 +1,5 @@
 import { ChevronUp, ChevronDown } from 'lucide-react';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 import type { VoteValue } from '../../types/community';
 
 interface VoteButtonsProps {
@@ -68,7 +69,10 @@ export function VoteButtons({
       </button>
 
       {/* Score */}
-      <span className={scoreClass}>{score}</span>
+      <AnimatedNumber
+        value={score}
+        className={scoreClass}
+      />
 
       {/* Downvote */}
       <button
