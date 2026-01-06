@@ -5,7 +5,7 @@ import type { PerplexityResponse } from './perplexity';
 import { callPerplexity, isPerplexityConfigured } from './perplexity';
 import type { ChatMessage, Suggestion, Source } from '../types/chat';
 import { generateId } from '../types/chat';
-import type { DetectedIntent } from '../types/intents';
+import type { DetectedIntent, IntentCategory } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import type { Supplier, RiskChange } from '../types/supplier';
 import { getPortfolioSummary, filterSuppliers, MOCK_SUPPLIERS, MOCK_RISK_CHANGES } from './mockData';
@@ -137,10 +137,21 @@ const determineEscalation = (
   };
 };
 
+// Builder metadata for deterministic intent routing
+export interface BuilderMeta {
+  path: string;
+  intent: string;
+  subIntent: string;
+  widgets: string[];
+  requiresResearch?: boolean;
+}
+
 export interface SendMessageOptions {
   mode: ThinkingMode;
   webSearchEnabled: boolean;
   conversationHistory?: ChatMessage[];
+  // Pre-classified intent from builder - bypasses regex classification
+  builderMeta?: BuilderMeta;
 }
 
 // Simulate thinking duration for UX
@@ -204,10 +215,29 @@ export const sendMessage = async (
   message: string,
   options: SendMessageOptions
 ): Promise<AIResponse> => {
-  const { mode, webSearchEnabled, conversationHistory = [] } = options;
+  const { mode, webSearchEnabled, conversationHistory = [], builderMeta } = options;
 
-  // Classify intent - now includes smart research detection
-  const intent = classifyIntent(message);
+  // Use builder's deterministic intent if provided, otherwise classify from message
+  let intent: DetectedIntent;
+
+  if (builderMeta) {
+    // Builder provided pre-classified intent - use it directly
+    console.log('[AI] Using builder metadata for intent:', builderMeta.intent, builderMeta.subIntent);
+    intent = {
+      category: builderMeta.intent as IntentCategory,
+      subIntent: builderMeta.subIntent as any,
+      confidence: 1.0, // Deterministic from builder
+      responseType: 'widget',
+      artifactType: 'none',
+      extractedEntities: {},
+      requiresHandoff: false,
+      requiresResearch: builderMeta.requiresResearch || false,
+      requiresDiscovery: false,
+    };
+  } else {
+    // Classify intent from message text
+    intent = classifyIntent(message);
+  }
 
   // Determine which provider to use:
   // 1. User explicitly chose reasoning mode

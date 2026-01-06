@@ -12,6 +12,14 @@ export type IntentCategory =
   | 'reporting_export'      // I: "Generate a report"
   | 'market_context'        // Market research triggers
   | 'restricted_query'      // X: Needs dashboard handoff
+  // Inflation Watch Categories
+  | 'inflation_summary'     // "What changed this month?" - Price overview
+  | 'inflation_drivers'     // "Why did steel go up?" - Root cause
+  | 'inflation_impact'      // "How does this affect my spend?" - Portfolio exposure
+  | 'inflation_justification' // "Validate this price increase" - Supplier negotiation
+  | 'inflation_scenarios'   // "What if prices rise 10%?" - What-if modeling
+  | 'inflation_communication' // "Help me explain this to leadership"
+  | 'inflation_benchmark'   // "Is this normal for the market?"
   | 'general';              // Fallback for unclear intents
 
 // Sub-intents for more granular routing
@@ -42,6 +50,30 @@ export type SubIntent =
   | 'mitigation_plan'       // F2
   | 'communication_help'    // F3
   | 'strategic_advice'      // F4 → triggers research
+  // Inflation sub-intents
+  | 'monthly_changes'       // Inflation summary default
+  | 'category_changes'      // Changes by commodity category
+  | 'region_changes'        // Geographic price variations
+  | 'top_movers'            // Biggest price changes
+  | 'commodity_drivers'     // Why specific commodity changed
+  | 'market_drivers'        // Macro factors
+  | 'supplier_drivers'      // Supplier-specific factors
+  | 'historical_drivers'    // Historical context
+  | 'spend_impact'          // Dollar impact on portfolio
+  | 'category_exposure'     // Exposure by category
+  | 'supplier_exposure'     // Exposure by supplier
+  | 'risk_correlation'      // Inflation + risk score correlation
+  | 'validate_increase'     // Is this increase justified?
+  | 'negotiate_support'     // Data for negotiation
+  | 'market_fairness'       // Is price fair vs market?
+  | 'price_forecast'        // Future price projections
+  | 'what_if_increase'      // Model price increase scenarios
+  | 'what_if_supplier'      // Model supplier switch scenarios
+  | 'budget_impact'         // Budget planning scenarios
+  | 'executive_brief'       // Summary for leadership
+  | 'procurement_report'    // Detailed procurement report
+  | 'supplier_letter'       // Communication to supplier
+  | 'stakeholder_deck'      // Presentation materials
   | 'none';
 
 export type ResponseType =
@@ -56,6 +88,14 @@ export type ArtifactType =
   | 'supplier_detail'     // Single supplier tabbed view
   | 'comparison'          // Multi-supplier comparison
   | 'portfolio_dashboard' // Overview with charts
+  // Inflation artifacts
+  | 'inflation_dashboard'     // Full inflation overview
+  | 'commodity_dashboard'     // Single commodity deep dive
+  | 'driver_analysis'         // Driver breakdown analysis
+  | 'impact_analysis'         // Portfolio impact analysis
+  | 'justification_report'    // Price justification report
+  | 'scenario_planner'        // What-if scenario planner
+  | 'executive_presentation'  // Stakeholder communication
   | 'none';               // No artifact needed
 
 export type WidgetType =
@@ -224,6 +264,69 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /show.*individual.*factor/i,
     /specific.*(score|rating)/i,
   ],
+  // Inflation Watch Patterns
+  inflation_summary: [
+    /what('?s| is| has).*(changed|happening).*(price|inflation|cost)/i,
+    /price.*(change|movement|update)/i,
+    /inflation.*(summary|overview|update)/i,
+    /commodity.*(price|cost).*(this|last).*month/i,
+    /cost.*(increase|decrease).*(summary|overview)/i,
+    /monthly.*(inflation|price).*report/i,
+    /what.*(price|cost).*(changed|moved)/i,
+    /show.*(price|inflation).*(changes|movement)/i,
+  ],
+  inflation_drivers: [
+    /why.*(price|cost|inflation).*(up|down|increase|decrease|change)/i,
+    /what('?s| is).*(driving|causing|behind).*(price|cost|inflation)/i,
+    /explain.*(price|cost).*(increase|decrease|change)/i,
+    /root cause.*(price|inflation)/i,
+    /factors?.*(affecting|impacting|driving).*(price|cost)/i,
+    /why did.*(price|cost|steel|aluminum|copper|commodity)/i,
+  ],
+  inflation_impact: [
+    /how.*(affect|impact).*(my|our).*(spend|budget|portfolio|cost)/i,
+    /what('?s| is).*(my|our).*(exposure|impact)/i,
+    /inflation.*(impact|exposure|effect)/i,
+    /(spend|cost|budget).*(at risk|exposed|impacted)/i,
+    /how much.*(cost|spend).*(increase|go up|affected)/i,
+    /dollar.*(impact|exposure)/i,
+    /(my|our).*(exposure|impact).*(inflation|price)/i,
+  ],
+  inflation_justification: [
+    /is.*(this|the).*(price|increase).*(justified|fair|reasonable)/i,
+    /validate.*(price|increase|cost)/i,
+    /should.*(accept|agree|pay).*(price|increase)/i,
+    /supplier.*(asking|requesting|claiming).*(increase|more)/i,
+    /fair.*(price|increase|market)/i,
+    /negotiate.*(price|increase|supplier)/i,
+    /justified.*(price|increase|cost)/i,
+    /price increase.*(valid|legitimate|reasonable)/i,
+  ],
+  inflation_scenarios: [
+    /what if.*(price|cost|inflation).*(increase|go up|rise)/i,
+    /scenario.*(price|cost|inflation)/i,
+    /model.*(price|cost).*(change|increase)/i,
+    /forecast.*(price|cost|spend)/i,
+    /if.*(price|cost).*(rise|increase|go up).*(%|percent)/i,
+    /project.*(price|spend|cost)/i,
+    /what.*(happen|would).*(price|cost).*(increase|rise)/i,
+  ],
+  inflation_communication: [
+    /help.*(explain|present|communicate).*(price|cost|inflation)/i,
+    /how.*(explain|present|tell).*(leadership|executive|stakeholder|board)/i,
+    /executive.*(summary|brief|report).*(inflation|price|cost)/i,
+    /stakeholder.*(communication|update|report)/i,
+    /talking points?.*(price|inflation|cost)/i,
+    /prepare.*(presentation|brief).*(inflation|price)/i,
+  ],
+  inflation_benchmark: [
+    /is.*(this|the).*(price|increase).*(normal|typical|expected)/i,
+    /how.*(compare|benchmark).*(market|industry|peer)/i,
+    /market.*(average|benchmark|rate).*(price|increase)/i,
+    /industry.*(price|rate|benchmark)/i,
+    /what.*(others|competitors|peers).*(paying|charged)/i,
+    /normal.*(price|increase|market)/i,
+  ],
   general: [], // Fallback, no specific patterns
 };
 
@@ -284,6 +387,45 @@ const detectSubIntent = (query: string, category: IntentCategory): SubIntent => 
       if (/plan|strategy/i.test(q)) return 'mitigation_plan';
       if (/explain|present|stakeholder/i.test(q)) return 'communication_help';
       return 'none';
+
+    // Inflation sub-intent detection
+    case 'inflation_summary':
+      if (/category|categories/i.test(q)) return 'category_changes';
+      if (/region|geographic|country/i.test(q)) return 'region_changes';
+      if (/top|biggest|most/i.test(q)) return 'top_movers';
+      return 'monthly_changes';
+
+    case 'inflation_drivers':
+      if (/supplier/i.test(q)) return 'supplier_drivers';
+      if (/market|macro|economy/i.test(q)) return 'market_drivers';
+      if (/history|historical|past/i.test(q)) return 'historical_drivers';
+      return 'commodity_drivers';
+
+    case 'inflation_impact':
+      if (/supplier/i.test(q)) return 'supplier_exposure';
+      if (/category|categories/i.test(q)) return 'category_exposure';
+      if (/risk/i.test(q)) return 'risk_correlation';
+      return 'spend_impact';
+
+    case 'inflation_justification':
+      if (/compare|comparison|vs/i.test(q)) return 'market_fairness';
+      if (/negotiate|negotiation/i.test(q)) return 'negotiate_support';
+      return 'validate_increase';
+
+    case 'inflation_scenarios':
+      if (/supplier|switch|alternative/i.test(q)) return 'what_if_supplier';
+      if (/budget/i.test(q)) return 'budget_impact';
+      if (/forecast|predict/i.test(q)) return 'price_forecast';
+      return 'what_if_increase';
+
+    case 'inflation_communication':
+      if (/procurement|detailed/i.test(q)) return 'procurement_report';
+      if (/supplier|letter/i.test(q)) return 'supplier_letter';
+      if (/presentation|deck|slides/i.test(q)) return 'stakeholder_deck';
+      return 'executive_brief';
+
+    case 'inflation_benchmark':
+      return 'market_fairness';
 
     default:
       return 'none';
@@ -364,6 +506,14 @@ const getResponseTypeForIntent = (intent: IntentCategory): ResponseType => {
     case 'reporting_export': return 'summary';
     case 'market_context': return 'summary';
     case 'restricted_query': return 'handoff';
+    // Inflation intents
+    case 'inflation_summary': return 'widget';
+    case 'inflation_drivers': return 'widget';
+    case 'inflation_impact': return 'widget';
+    case 'inflation_justification': return 'widget';
+    case 'inflation_scenarios': return 'widget';
+    case 'inflation_communication': return 'widget';
+    case 'inflation_benchmark': return 'widget';
     default: return 'summary';
   }
 };
@@ -381,6 +531,14 @@ const getArtifactTypeForIntent = (intent: IntentCategory): ArtifactType => {
     case 'reporting_export': return 'none';
     case 'market_context': return 'none';
     case 'restricted_query': return 'supplier_detail';
+    // Inflation intents
+    case 'inflation_summary': return 'inflation_dashboard';
+    case 'inflation_drivers': return 'driver_analysis';
+    case 'inflation_impact': return 'impact_analysis';
+    case 'inflation_justification': return 'justification_report';
+    case 'inflation_scenarios': return 'scenario_planner';
+    case 'inflation_communication': return 'executive_presentation';
+    case 'inflation_benchmark': return 'inflation_dashboard';
     default: return 'none';
   }
 };

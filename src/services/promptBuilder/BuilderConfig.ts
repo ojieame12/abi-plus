@@ -1326,44 +1326,45 @@ export interface RouteMapping {
 }
 
 // Maps action paths to intent routing
+// NOTE: These intents must match IntentCategory values from types/intents.ts
 const ROUTE_MAPPINGS: Record<string, Omit<RouteMapping, 'promptTemplate'>> = {
-  // Risk domain
-  'risk:portfolio-health:executive-summary': { intent: 'analysis', subIntent: 'portfolio_overview', widgets: ['executive_summary', 'risk_distribution'] },
-  'risk:portfolio-health:risk-distribution': { intent: 'analysis', subIntent: 'portfolio_overview', widgets: ['risk_distribution', 'supplier_table'] },
-  'risk:portfolio-health:health-scorecard': { intent: 'analysis', subIntent: 'portfolio_overview', widgets: ['health_scorecard', 'stat_card'] },
-  'risk:exposure-analysis:spend-at-risk': { intent: 'analysis', subIntent: 'spend_analysis', widgets: ['spend_exposure', 'supplier_table'] },
-  'risk:exposure-analysis:category-exposure': { intent: 'analysis', subIntent: 'spend_analysis', widgets: ['risk_distribution', 'supplier_table'] },
-  'risk:exposure-analysis:regional-exposure': { intent: 'analysis', subIntent: 'spend_analysis', widgets: ['risk_distribution', 'supplier_table'] },
-  'risk:risk-changes:recent-changes': { intent: 'analysis', subIntent: 'risk_change', widgets: ['events_feed', 'supplier_table'] },
-  'risk:risk-changes:score-investigation': { intent: 'supplier_inquiry', subIntent: 'deep_dive', widgets: ['supplier_risk_card', 'factor_breakdown'], requiresSupplierInput: true },
-  'risk:concentration:single-source': { intent: 'analysis', subIntent: 'concentration', widgets: ['supplier_table', 'alert_card'] },
-  'risk:concentration:concentration-analysis': { intent: 'analysis', subIntent: 'concentration', widgets: ['risk_distribution', 'supplier_table'] },
+  // Risk domain → portfolio_overview or trend_detection
+  'risk:portfolio-health:executive-summary': { intent: 'portfolio_overview', subIntent: 'overall_summary', widgets: ['executive_summary', 'risk_distribution'] },
+  'risk:portfolio-health:risk-distribution': { intent: 'portfolio_overview', subIntent: 'overall_summary', widgets: ['risk_distribution', 'supplier_table'] },
+  'risk:portfolio-health:health-scorecard': { intent: 'portfolio_overview', subIntent: 'overall_summary', widgets: ['health_scorecard', 'stat_card'] },
+  'risk:exposure-analysis:spend-at-risk': { intent: 'portfolio_overview', subIntent: 'spend_weighted', widgets: ['spend_exposure', 'supplier_table'] },
+  'risk:exposure-analysis:category-exposure': { intent: 'portfolio_overview', subIntent: 'by_dimension', widgets: ['risk_distribution', 'supplier_table'] },
+  'risk:exposure-analysis:regional-exposure': { intent: 'portfolio_overview', subIntent: 'by_dimension', widgets: ['risk_distribution', 'supplier_table'] },
+  'risk:risk-changes:recent-changes': { intent: 'trend_detection', subIntent: 'recent_changes', widgets: ['events_feed', 'supplier_table'] },
+  'risk:risk-changes:score-investigation': { intent: 'supplier_deep_dive', subIntent: 'score_inquiry', widgets: ['supplier_risk_card', 'stat_card'], requiresSupplierInput: true },
+  'risk:concentration:single-source': { intent: 'filtered_discovery', subIntent: 'by_attribute', widgets: ['supplier_table', 'alert_card'] },
+  'risk:concentration:concentration-analysis': { intent: 'portfolio_overview', subIntent: 'by_dimension', widgets: ['risk_distribution', 'supplier_table'] },
 
-  // Market domain
-  'market:commodity-prices:price-impact': { intent: 'analysis', subIntent: 'market_analysis', widgets: ['trend_chart', 'supplier_table'], requiresResearch: true },
-  'market:commodity-prices:price-forecast': { intent: 'analysis', subIntent: 'market_analysis', widgets: ['trend_chart', 'info_card'], requiresResearch: true },
-  'market:industry-news:market-briefing': { intent: 'analysis', subIntent: 'market_analysis', widgets: ['news_item', 'events_feed'], requiresResearch: true },
-  'market:industry-news:supplier-news': { intent: 'supplier_inquiry', subIntent: 'news', widgets: ['news_item', 'supplier_risk_card'], requiresResearch: true, requiresSupplierInput: true },
-  'market:disruptions:active-disruptions': { intent: 'analysis', subIntent: 'disruption', widgets: ['events_feed', 'alert_card'] },
-  'market:disruptions:disruption-scenario': { intent: 'analysis', subIntent: 'disruption', widgets: ['info_card', 'supplier_table'] },
-  'market:geopolitical:regional-risks': { intent: 'analysis', subIntent: 'geopolitical', widgets: ['info_card', 'risk_distribution'], requiresResearch: true },
+  // Market domain → market_context (triggers research)
+  'market:commodity-prices:price-impact': { intent: 'market_context', subIntent: 'none', widgets: ['trend_chart', 'supplier_table'], requiresResearch: true },
+  'market:commodity-prices:price-forecast': { intent: 'market_context', subIntent: 'none', widgets: ['trend_chart', 'info_card'], requiresResearch: true },
+  'market:industry-news:market-briefing': { intent: 'market_context', subIntent: 'none', widgets: ['news_item', 'events_feed'], requiresResearch: true },
+  'market:industry-news:supplier-news': { intent: 'supplier_deep_dive', subIntent: 'news_events', widgets: ['news_item', 'supplier_risk_card'], requiresResearch: true, requiresSupplierInput: true },
+  'market:disruptions:active-disruptions': { intent: 'market_context', subIntent: 'none', widgets: ['events_feed', 'alert_card'] },
+  'market:disruptions:disruption-scenario': { intent: 'market_context', subIntent: 'none', widgets: ['info_card', 'supplier_table'] },
+  'market:geopolitical:regional-risks': { intent: 'market_context', subIntent: 'none', widgets: ['info_card', 'risk_distribution'], requiresResearch: true },
 
-  // Suppliers domain
-  'suppliers:deep-dive:full-profile': { intent: 'supplier_inquiry', subIntent: 'deep_dive', widgets: ['supplier_risk_card', 'factor_breakdown'], requiresSupplierInput: true },
-  'suppliers:deep-dive:risk-factors': { intent: 'supplier_inquiry', subIntent: 'deep_dive', widgets: ['factor_breakdown', 'trend_chart'], requiresSupplierInput: true },
-  'suppliers:compare:side-by-side': { intent: 'supplier_inquiry', subIntent: 'comparison', widgets: ['comparison_table', 'stat_card'] },
-  'suppliers:discover:high-risk-list': { intent: 'supplier_inquiry', subIntent: 'list_filter', widgets: ['supplier_table', 'risk_distribution'] },
-  'suppliers:discover:category-suppliers': { intent: 'supplier_inquiry', subIntent: 'list_filter', widgets: ['supplier_table', 'stat_card'] },
-  'suppliers:discover:regional-suppliers': { intent: 'supplier_inquiry', subIntent: 'list_filter', widgets: ['supplier_table', 'risk_distribution'] },
+  // Suppliers domain → supplier_deep_dive, filtered_discovery, or comparison
+  'suppliers:deep-dive:full-profile': { intent: 'supplier_deep_dive', subIntent: 'supplier_overview', widgets: ['supplier_risk_card', 'stat_card'], requiresSupplierInput: true },
+  'suppliers:deep-dive:risk-factors': { intent: 'supplier_deep_dive', subIntent: 'score_inquiry', widgets: ['stat_card', 'trend_chart'], requiresSupplierInput: true },
+  'suppliers:compare:side-by-side': { intent: 'comparison', subIntent: 'none', widgets: ['comparison_table', 'stat_card'] },
+  'suppliers:discover:high-risk-list': { intent: 'filtered_discovery', subIntent: 'by_risk_level', widgets: ['supplier_table', 'risk_distribution'] },
+  'suppliers:discover:category-suppliers': { intent: 'filtered_discovery', subIntent: 'by_attribute', widgets: ['supplier_table', 'stat_card'] },
+  'suppliers:discover:regional-suppliers': { intent: 'filtered_discovery', subIntent: 'by_attribute', widgets: ['supplier_table', 'risk_distribution'] },
   'suppliers:alternatives:find-alternatives': { intent: 'action_trigger', subIntent: 'find_alternatives', widgets: ['supplier_table', 'comparison_table'], requiresSupplierInput: true },
 
-  // Actions domain
-  'actions:executive-report:board-summary': { intent: 'action_trigger', subIntent: 'generate_report', widgets: ['executive_summary', 'risk_distribution'] },
-  'actions:executive-report:category-report': { intent: 'action_trigger', subIntent: 'generate_report', widgets: ['executive_summary', 'supplier_table'] },
-  'actions:alerts:setup-alerts': { intent: 'action_trigger', subIntent: 'configure_alerts', widgets: ['info_card', 'checklist'] },
-  'actions:alerts:view-alerts': { intent: 'analysis', subIntent: 'alerts', widgets: ['events_feed', 'alert_card'] },
-  'actions:mitigation:mitigation-plan': { intent: 'action_trigger', subIntent: 'mitigation_plan', widgets: ['recommendation_card', 'checklist'] },
-  'actions:export:export-portfolio': { intent: 'action_trigger', subIntent: 'export_data', widgets: ['info_card'] },
+  // Actions domain → action_trigger, reporting_export, or setup_config
+  'actions:executive-report:board-summary': { intent: 'reporting_export', subIntent: 'none', widgets: ['executive_summary', 'risk_distribution'] },
+  'actions:executive-report:category-report': { intent: 'reporting_export', subIntent: 'none', widgets: ['executive_summary', 'supplier_table'] },
+  'actions:alerts:setup-alerts': { intent: 'setup_config', subIntent: 'none', widgets: ['info_card', 'checklist_card'] },
+  'actions:alerts:view-alerts': { intent: 'trend_detection', subIntent: 'recent_changes', widgets: ['events_feed', 'alert_card'] },
+  'actions:mitigation:mitigation-plan': { intent: 'action_trigger', subIntent: 'mitigation_plan', widgets: ['recommendation_card', 'checklist_card'] },
+  'actions:export:export-portfolio': { intent: 'reporting_export', subIntent: 'none', widgets: ['info_card'] },
 };
 
 export function getRouteMappingForPath(path: string): RouteMapping | null {

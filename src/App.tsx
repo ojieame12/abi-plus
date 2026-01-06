@@ -13,7 +13,7 @@ import { usePreloader } from './hooks/usePreloader';
 import { Preloader } from './components/Preloader';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
-import { ChatInput } from './components/chat/ChatInput';
+import { ChatInput, type BuilderMetadata } from './components/chat/ChatInput';
 import { ThoughtProcess, buildThoughtContent } from './components/chat/ThoughtProcess';
 import { PortfolioOverviewCard } from './components/risk';
 import type { AIResponse as AIResponseType } from './services/ai';
@@ -244,7 +244,7 @@ function App() {
   };
 
   // Handle starting a chat from home
-  const handleStartChat = async (question: string) => {
+  const handleStartChat = async (question: string, builderMeta?: BuilderMetadata) => {
     const title = generateTitle(question);
     setConversationTitle(title);
     setIsTransitioning(true);
@@ -274,14 +274,14 @@ function App() {
     setTimeout(() => {
       setViewState('chat');
       setIsTransitioning(false);
-      // Fetch AI response
-      fetchAIResponse(question, [], convId);
+      // Fetch AI response - pass builder metadata for deterministic intent
+      fetchAIResponse(question, [], convId, builderMeta);
     }, 400);
   };
 
   // Fetch AI response
-  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null) => {
-    console.log('[App] fetchAIResponse called with:', question);
+  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null, builderMeta?: BuilderMetadata) => {
+    console.log('[App] fetchAIResponse called with:', question, 'builderMeta:', builderMeta);
     setIsThinking(true);
 
     // Use provided convId or fall back to state
@@ -298,6 +298,8 @@ function App() {
           content: m.content,
           timestamp: new Date(),
         })),
+        // Pass builder metadata for deterministic intent routing
+        builderMeta,
       });
 
       console.log('[App] Got response:', response.id, response.content.slice(0, 100));

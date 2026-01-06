@@ -11,7 +11,18 @@ import {
     getActionConfig,
     getInputOptions,
     buildPrompt,
+    buildPath,
+    getRouteMappingForPath,
 } from '../../services/promptBuilder';
+
+// Builder metadata to pass along with the message
+export interface BuilderMetadata {
+    path: string;           // e.g., "market:commodity-prices:price-impact"
+    intent: string;         // e.g., "analysis"
+    subIntent: string;      // e.g., "market_analysis"
+    widgets: string[];      // Suggested widgets
+    requiresResearch?: boolean;
+}
 
 interface AttachedFile {
     id: string;
@@ -28,7 +39,7 @@ interface SourceCount {
 export type InputMode = 'ask' | 'find';
 
 interface ChatInputProps {
-    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode) => void;
+    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode, builderMeta?: BuilderMetadata) => void;
     onFocusChange?: (focused: boolean) => void;
     onMessageChange?: (message: string) => void;
     onModeChange?: (mode: 'fast' | 'reasoning') => void;
@@ -189,15 +200,34 @@ export const ChatInput = ({
             ? getActionConfig(builderSelection.domain, builderSelection.subject, action)
             : null;
 
-        // If no inputs required, generate prompt immediately
+        // If no inputs required, generate prompt and send immediately
         if (!actionConfig?.inputs || actionConfig.inputs.length === 0) {
             const prompt = buildPrompt(newSelection);
             if (prompt) {
+                // Get route mapping for deterministic intent
+                const path = buildPath(newSelection);
+                const routeMapping = path ? getRouteMappingForPath(path) : null;
+
+                // Build metadata to pass with the message
+                const builderMeta: BuilderMetadata | undefined = routeMapping ? {
+                    path,
+                    intent: routeMapping.intent,
+                    subIntent: routeMapping.subIntent,
+                    widgets: routeMapping.widgets,
+                    requiresResearch: routeMapping.requiresResearch,
+                } : undefined;
+
                 handleMessageChange(prompt);
-                // Auto-exit builder mode after selection complete
+
+                // Auto-send with builder metadata
                 setTimeout(() => {
+                    onSend?.(prompt, attachedFiles, inputMode, builderMeta);
                     setBuilderMode(false);
                     setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
+                    if (value === undefined) {
+                        setInternalMessage('');
+                    }
+                    setAttachedFiles([]);
                 }, 100);
             }
         }
@@ -214,10 +244,33 @@ export const ChatInput = ({
     const handleGeneratePrompt = () => {
         const prompt = buildPrompt(builderSelection);
         if (prompt) {
+            // Get route mapping for deterministic intent
+            const path = buildPath(builderSelection);
+            const routeMapping = path ? getRouteMappingForPath(path) : null;
+
+            // Build metadata to pass with the message
+            const builderMeta: BuilderMetadata | undefined = routeMapping ? {
+                path,
+                intent: routeMapping.intent,
+                subIntent: routeMapping.subIntent,
+                widgets: routeMapping.widgets,
+                requiresResearch: routeMapping.requiresResearch,
+            } : undefined;
+
+            // Set the prompt in the input
             handleMessageChange(prompt);
+
+            // Auto-send with builder metadata
             setTimeout(() => {
+                onSend?.(prompt, attachedFiles, inputMode, builderMeta);
+                // Reset builder state
                 setBuilderMode(false);
                 setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
+                // Clear message after sending
+                if (value === undefined) {
+                    setInternalMessage('');
+                }
+                setAttachedFiles([]);
             }, 100);
         }
     };

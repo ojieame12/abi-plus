@@ -98,6 +98,26 @@ export type WidgetType =
   | 'alternatives_preview'  // Alternative supplier preview
   | 'concentration_warning' // Portfolio concentration warning
 
+  // Inflation Watch Widgets
+  | 'inflation_summary_card'      // Monthly inflation overview
+  | 'price_movement_table'        // Commodity price changes table
+  | 'commodity_gauge'             // Single commodity with gauge
+  | 'top_movers_list'             // Biggest price movers
+  | 'driver_breakdown_card'       // Root cause analysis
+  | 'factor_contribution_chart'   // Contributing factors breakdown
+  | 'market_context_card'         // Macro context with news
+  | 'spend_impact_card'           // Portfolio spend impact
+  | 'exposure_heatmap'            // Category x Risk heatmap
+  | 'budget_variance_card'        // Actual vs budgeted
+  | 'justification_card'          // Price validation card
+  | 'market_fairness_gauge'       // Price vs market gauge
+  | 'negotiation_ammo_card'       // Negotiation data points
+  | 'scenario_card'               // What-if result
+  | 'forecast_chart'              // Price forecast
+  | 'sensitivity_table'           // Impact at price levels
+  | 'executive_brief_card'        // Shareable exec summary
+  | 'talking_points_card'         // Key stakeholder points
+
   // Text Only
   | 'none';                 // Text-only response
 
@@ -169,6 +189,26 @@ export const WIDGET_VARIANTS: WidgetVariant[] = [
   { type: 'news_events', sizes: ['M', 'L'], defaultSize: 'M', component: 'NewsEventsCard', componentL: 'NewsEventsArtifact' },
   { type: 'alternatives_preview', sizes: ['M', 'L'], defaultSize: 'M', component: 'AlternativesPreviewCard', componentL: 'AlternativesArtifact' },
   { type: 'concentration_warning', sizes: ['M'], defaultSize: 'M', component: 'ConcentrationWarningCard' },
+
+  // Inflation Watch
+  { type: 'inflation_summary_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'InflationSummaryCard', componentL: 'InflationDashboardArtifact' },
+  { type: 'price_movement_table', sizes: ['M', 'L'], defaultSize: 'M', component: 'PriceMovementTable', componentL: 'InflationDashboardArtifact' },
+  { type: 'commodity_gauge', sizes: ['M', 'L'], defaultSize: 'M', component: 'CommodityGaugeCard', componentL: 'CommodityDashboardArtifact' },
+  { type: 'top_movers_list', sizes: ['S', 'M'], defaultSize: 'M', component: 'TopMoversCard' },
+  { type: 'driver_breakdown_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'DriverBreakdownCard', componentL: 'DriverAnalysisArtifact' },
+  { type: 'factor_contribution_chart', sizes: ['M', 'L'], defaultSize: 'M', component: 'FactorContributionChart' },
+  { type: 'market_context_card', sizes: ['M'], defaultSize: 'M', component: 'MarketContextCard' },
+  { type: 'spend_impact_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'SpendImpactCard', componentL: 'ImpactAnalysisArtifact' },
+  { type: 'exposure_heatmap', sizes: ['M', 'L'], defaultSize: 'M', component: 'ExposureHeatmap' },
+  { type: 'budget_variance_card', sizes: ['M'], defaultSize: 'M', component: 'BudgetVarianceCard' },
+  { type: 'justification_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'JustificationCard', componentL: 'JustificationReportArtifact' },
+  { type: 'market_fairness_gauge', sizes: ['M'], defaultSize: 'M', component: 'MarketFairnessGauge' },
+  { type: 'negotiation_ammo_card', sizes: ['M'], defaultSize: 'M', component: 'NegotiationAmmoCard' },
+  { type: 'scenario_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'ScenarioCard', componentL: 'ScenarioPlannerArtifact' },
+  { type: 'forecast_chart', sizes: ['M', 'L'], defaultSize: 'M', component: 'ForecastChart' },
+  { type: 'sensitivity_table', sizes: ['M', 'L'], defaultSize: 'M', component: 'SensitivityTable' },
+  { type: 'executive_brief_card', sizes: ['M', 'L'], defaultSize: 'M', component: 'ExecutiveBriefCard', componentL: 'ExecutivePresentationArtifact' },
+  { type: 'talking_points_card', sizes: ['M'], defaultSize: 'M', component: 'TalkingPointsCard' },
 
   // None
   { type: 'none', sizes: [], defaultSize: 'M', component: '' },
@@ -636,6 +676,317 @@ export interface ConcentrationWarningData {
   severity: 'high' | 'medium' | 'low';
 }
 
+// ============================================
+// INFLATION WATCH WIDGET DATA SCHEMAS
+// ============================================
+
+export interface PriceChangeData {
+  absolute: number;
+  percent: number;
+  direction: 'up' | 'down' | 'stable';
+}
+
+export interface InflationSummaryCardData {
+  period: string;                    // "March 2024", "Q1 2024"
+  headline: string;                  // AI-generated headline
+  overallChange: PriceChangeData;    // Weighted average change
+  topIncreases: Array<{
+    commodity: string;
+    change: number;
+    impact: string;                  // "$2.5M impact"
+  }>;
+  topDecreases: Array<{
+    commodity: string;
+    change: number;
+    benefit: string;                 // "$500K savings"
+  }>;
+  portfolioImpact: {
+    amount: string;
+    percent: number;
+    direction: 'increase' | 'decrease';
+  };
+  keyDrivers: string[];              // Top 3 drivers
+  lastUpdated: string;
+}
+
+export interface PriceMovementTableData {
+  period: string;
+  commodities: Array<{
+    id: string;
+    name: string;
+    category: string;
+    currentPrice: number;
+    unit: string;
+    change: PriceChangeData;
+    exposure: string;
+    trend: 'up' | 'down' | 'stable';
+  }>;
+  sortBy: 'change' | 'exposure' | 'name';
+  totalCommodities: number;
+}
+
+export interface CommodityGaugeData {
+  commodity: string;
+  category: string;
+  currentPrice: number;
+  unit: string;
+  currency: string;
+  market: string;
+  lastUpdated: string;
+  gauge: {
+    min: number;
+    max: number;
+    position: number;                // 0-100 percentage
+    zones: Array<{
+      start: number;
+      end: number;
+      color: string;
+      label: string;
+    }>;
+  };
+  changes: {
+    daily: PriceChangeData;
+    monthly: PriceChangeData;
+    yearly: PriceChangeData;
+  };
+  portfolioExposure?: {
+    amount: string;
+    supplierCount: number;
+  };
+  trend: 'bullish' | 'bearish' | 'stable';
+}
+
+export interface TopMoversListData {
+  period: string;
+  movers: Array<{
+    commodity: string;
+    change: PriceChangeData;
+    impact: string;
+    direction: 'up' | 'down';
+  }>;
+}
+
+export interface DriverBreakdownCardData {
+  commodity: string;
+  priceChange: PriceChangeData;
+  period: string;
+  drivers: Array<{
+    name: string;
+    category: string;
+    contribution: number;            // % contribution to change
+    direction: 'up' | 'down';
+    description: string;
+  }>;
+  marketContext?: string;            // Brief market context
+  sources?: Array<{
+    title: string;
+    source: string;
+    url?: string;
+  }>;
+}
+
+export interface FactorContributionChartData {
+  commodity: string;
+  totalChange: PriceChangeData;
+  contributions: Array<{
+    factor: string;
+    contribution: number;
+    color: string;
+  }>;
+}
+
+export interface MarketContextCardData {
+  commodity: string;
+  context: string;
+  sentiment: 'bullish' | 'bearish' | 'neutral';
+  keyFactors: string[];
+  sources: Array<{
+    title: string;
+    source: string;
+    date: string;
+    url?: string;
+  }>;
+}
+
+export interface SpendImpactCardData {
+  totalImpact: string;               // "$5.2M"
+  totalImpactDirection: 'increase' | 'decrease';
+  impactPercent: number;
+  timeframe: string;                 // "vs. last quarter"
+  breakdown: Array<{
+    category: string;
+    amount: string;
+    percent: number;
+    direction: 'up' | 'down';
+  }>;
+  mostAffected: {
+    type: 'category' | 'supplier' | 'commodity';
+    name: string;
+    impact: string;
+  };
+  recommendation?: string;
+}
+
+export interface ExposureHeatmapData {
+  rows: Array<{
+    category: string;
+    cells: Array<{
+      riskLevel: string;
+      exposure: number;
+      exposureFormatted: string;
+      color: string;
+    }>;
+  }>;
+  columns: string[];                 // Risk levels
+  totalExposure: string;
+}
+
+export interface BudgetVarianceCardData {
+  period: string;
+  budgeted: string;
+  actual: string;
+  variance: string;
+  variancePercent: number;
+  direction: 'over' | 'under';
+  breakdown: Array<{
+    category: string;
+    budgeted: string;
+    actual: string;
+    variance: string;
+  }>;
+}
+
+export type JustificationVerdict =
+  | 'justified'              // Increase aligns with market
+  | 'partially_justified'    // Some justification but room to negotiate
+  | 'questionable'           // Increase exceeds market significantly
+  | 'insufficient_data';     // Not enough data to determine
+
+export interface JustificationCardData {
+  supplierName: string;
+  commodity: string;
+  requestedIncrease: number;         // Percentage
+  marketBenchmark: number;           // Market average increase
+  verdict: JustificationVerdict;
+  verdictLabel: string;              // Human-readable verdict
+  keyPoints: Array<{
+    point: string;
+    supports: boolean;               // Supports supplier or buyer
+  }>;
+  recommendation: string;
+  negotiationLeverage: 'strong' | 'moderate' | 'weak';
+}
+
+export interface MarketFairnessGaugeData {
+  supplierPrice: number;
+  marketAvg: number;
+  marketLow: number;
+  marketHigh: number;
+  percentile: number;                // Where supplier falls (0-100)
+  verdict: 'below_market' | 'at_market' | 'above_market';
+  unit: string;
+  commodity: string;
+}
+
+export interface NegotiationAmmoCardData {
+  supplierName: string;
+  commodity: string;
+  dataPoints: Array<{
+    label: string;
+    yourValue: string;
+    marketValue: string;
+    advantage: 'buyer' | 'supplier' | 'neutral';
+  }>;
+  suggestedTalkingPoints: string[];
+  targetPrice?: string;
+}
+
+export interface ScenarioCardData {
+  scenarioName: string;
+  description: string;
+  assumption: string;                // "Steel prices increase 15%"
+  currentState: {
+    label: string;
+    value: string;
+  };
+  projectedState: {
+    label: string;
+    value: string;
+  };
+  delta: {
+    amount: string;
+    percent: number;
+    direction: 'up' | 'down';
+  };
+  confidence: 'high' | 'medium' | 'low';
+  topImpacts: string[];              // Top 3 impact areas
+  recommendation?: string;
+}
+
+export interface ForecastChartData {
+  commodity: string;
+  currentPrice: number;
+  unit: string;
+  forecast: {
+    period: string;
+    low: number;
+    mid: number;
+    high: number;
+    confidence: number;
+  };
+  history: Array<{
+    date: string;
+    price: number;
+  }>;
+  projectedRange: Array<{
+    date: string;
+    low: number;
+    mid: number;
+    high: number;
+  }>;
+}
+
+export interface SensitivityTableData {
+  commodity: string;
+  basePrice: number;
+  scenarios: Array<{
+    changePercent: number;
+    newPrice: number;
+    spendImpact: string;
+    annualizedImpact: string;
+  }>;
+  currentExposure: string;
+}
+
+export interface ExecutiveBriefCardData {
+  title: string;
+  period: string;
+  summary: string;                   // 2-3 sentence AI summary
+  keyMetrics: Array<{
+    label: string;
+    value: string;
+    change?: PriceChangeData;
+    status: 'positive' | 'negative' | 'neutral';
+  }>;
+  highlights: Array<{
+    type: 'concern' | 'opportunity' | 'action';
+    text: string;
+  }>;
+  outlook: string;                   // Forward-looking statement
+  shareableUrl?: string;
+}
+
+export interface TalkingPointsCardData {
+  context: string;
+  audience: 'executive' | 'board' | 'procurement' | 'supplier';
+  points: Array<{
+    headline: string;
+    detail: string;
+    data?: string;
+  }>;
+  recommendations: string[];
+}
+
 // Union type for all widget data
 export type WidgetData =
   // Portfolio & Overview
@@ -691,6 +1042,26 @@ export type WidgetData =
   | { type: 'news_events'; data: NewsEventsData }
   | { type: 'alternatives_preview'; data: AlternativesPreviewData }
   | { type: 'concentration_warning'; data: ConcentrationWarningData }
+
+  // Inflation Watch
+  | { type: 'inflation_summary_card'; data: InflationSummaryCardData }
+  | { type: 'price_movement_table'; data: PriceMovementTableData }
+  | { type: 'commodity_gauge'; data: CommodityGaugeData }
+  | { type: 'top_movers_list'; data: TopMoversListData }
+  | { type: 'driver_breakdown_card'; data: DriverBreakdownCardData }
+  | { type: 'factor_contribution_chart'; data: FactorContributionChartData }
+  | { type: 'market_context_card'; data: MarketContextCardData }
+  | { type: 'spend_impact_card'; data: SpendImpactCardData }
+  | { type: 'exposure_heatmap'; data: ExposureHeatmapData }
+  | { type: 'budget_variance_card'; data: BudgetVarianceCardData }
+  | { type: 'justification_card'; data: JustificationCardData }
+  | { type: 'market_fairness_gauge'; data: MarketFairnessGaugeData }
+  | { type: 'negotiation_ammo_card'; data: NegotiationAmmoCardData }
+  | { type: 'scenario_card'; data: ScenarioCardData }
+  | { type: 'forecast_chart'; data: ForecastChartData }
+  | { type: 'sensitivity_table'; data: SensitivityTableData }
+  | { type: 'executive_brief_card'; data: ExecutiveBriefCardData }
+  | { type: 'talking_points_card'; data: TalkingPointsCardData }
 
   // Text Only
   | { type: 'none'; data: null };
@@ -959,6 +1330,134 @@ export const WIDGET_SELECTION_RULES: WidgetSelectionRule[] = [
     requiredData: ['list_items'],
     priority: 4,
     description: 'Generic list display with values and status indicators',
+  },
+
+  // Inflation Watch
+  {
+    widget: 'inflation_summary_card',
+    useWhen: ['inflation_summary'],
+    requiredData: ['inflation_summary'],
+    priority: 10,
+    description: 'Monthly inflation overview with key metrics, top movers, and portfolio impact',
+  },
+  {
+    widget: 'price_movement_table',
+    useWhen: ['inflation_summary'],
+    requiredData: ['commodity_prices'],
+    priority: 8,
+    description: 'Table of commodity price changes with exposure amounts',
+  },
+  {
+    widget: 'commodity_gauge',
+    useWhen: ['inflation_summary', 'inflation_drivers'],
+    requiredData: ['single_commodity'],
+    priority: 9,
+    description: 'Single commodity price gauge with historical range and portfolio exposure',
+  },
+  {
+    widget: 'top_movers_list',
+    useWhen: ['inflation_summary'],
+    requiredData: ['commodity_prices'],
+    priority: 7,
+    description: 'Top 5 biggest price movers (up and down) for quick visibility',
+  },
+  {
+    widget: 'driver_breakdown_card',
+    useWhen: ['inflation_drivers'],
+    requiredData: ['commodity_drivers'],
+    priority: 10,
+    description: 'Root cause analysis showing factors driving price changes with contribution percentages',
+  },
+  {
+    widget: 'factor_contribution_chart',
+    useWhen: ['inflation_drivers'],
+    requiredData: ['commodity_drivers'],
+    priority: 8,
+    description: 'Visual breakdown of contributing factors as pie/bar chart',
+  },
+  {
+    widget: 'market_context_card',
+    useWhen: ['inflation_drivers', 'inflation_benchmark'],
+    requiredData: ['market_context'],
+    priority: 7,
+    description: 'Macro context with news and sentiment analysis',
+  },
+  {
+    widget: 'spend_impact_card',
+    useWhen: ['inflation_impact'],
+    requiredData: ['portfolio_exposure'],
+    priority: 10,
+    description: 'Portfolio spend impact from inflation with breakdown by category',
+  },
+  {
+    widget: 'exposure_heatmap',
+    useWhen: ['inflation_impact'],
+    requiredData: ['portfolio_exposure'],
+    priority: 8,
+    description: 'Category vs risk level heatmap showing exposure concentration',
+  },
+  {
+    widget: 'budget_variance_card',
+    useWhen: ['inflation_impact'],
+    requiredData: ['budget_data'],
+    priority: 7,
+    description: 'Actual vs budgeted spend variance due to inflation',
+  },
+  {
+    widget: 'justification_card',
+    useWhen: ['inflation_justification'],
+    requiredData: ['price_justification'],
+    priority: 10,
+    description: 'Price increase validation with market comparison and negotiation leverage',
+  },
+  {
+    widget: 'market_fairness_gauge',
+    useWhen: ['inflation_justification', 'inflation_benchmark'],
+    requiredData: ['market_benchmark'],
+    priority: 8,
+    description: 'Market fairness gauge showing price position vs market range',
+  },
+  {
+    widget: 'negotiation_ammo_card',
+    useWhen: ['inflation_justification'],
+    requiredData: ['negotiation_data'],
+    priority: 7,
+    description: 'Data points and talking points for supplier negotiation',
+  },
+  {
+    widget: 'scenario_card',
+    useWhen: ['inflation_scenarios'],
+    requiredData: ['scenario'],
+    priority: 10,
+    description: 'What-if scenario result showing projected impact and recommendations',
+  },
+  {
+    widget: 'forecast_chart',
+    useWhen: ['inflation_scenarios'],
+    requiredData: ['price_forecast'],
+    priority: 8,
+    description: 'Price forecast visualization with confidence bands',
+  },
+  {
+    widget: 'sensitivity_table',
+    useWhen: ['inflation_scenarios'],
+    requiredData: ['sensitivity_data'],
+    priority: 7,
+    description: 'Impact at different price levels for scenario planning',
+  },
+  {
+    widget: 'executive_brief_card',
+    useWhen: ['inflation_communication'],
+    requiredData: ['inflation_summary'],
+    priority: 10,
+    description: 'Shareable executive summary with key metrics and highlights',
+  },
+  {
+    widget: 'talking_points_card',
+    useWhen: ['inflation_communication'],
+    requiredData: ['talking_points'],
+    priority: 8,
+    description: 'Key points for stakeholder meetings organized by audience',
   },
 
   // Text Only

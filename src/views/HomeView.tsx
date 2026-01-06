@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChatInput } from '../components/chat/ChatInput';
+import { ChatInput, type BuilderMetadata } from '../components/chat/ChatInput';
 
 interface HomeViewProps {
     onOpenArtifact: () => void;
-    onStartChat?: (question: string) => void;
+    onStartChat?: (question: string, builderMeta?: BuilderMetadata) => void;
     isTransitioning?: boolean;
     selectedQuestion?: string;
 }
@@ -41,11 +41,11 @@ export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false,
 
     const isTyping = inputMessage.length > 0;
 
-    const handleSend = (message: string, files: File[], inputMode?: 'ask' | 'find') => {
-        console.log('Send:', message, files, 'mode:', inputMode);
+    const handleSend = (message: string, files: File[], inputMode?: 'ask' | 'find', builderMeta?: BuilderMetadata) => {
+        console.log('Send:', message, files, 'mode:', inputMode, 'builderMeta:', builderMeta);
         if (message.trim()) {
             // TODO: Handle 'find' mode differently - show search results view
-            onStartChat?.(message);
+            onStartChat?.(message, builderMeta);
         }
     };
 
