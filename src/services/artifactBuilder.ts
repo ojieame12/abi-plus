@@ -635,19 +635,22 @@ export function buildArtifactPayload(
       } else {
         // PriceGaugeData format (from price_gauge widget)
         const priceData = widgetData as PriceGaugeData;
+        // Defensive guards for required fields
+        const commodityName = priceData.commodity || 'Unknown Commodity';
+        const currentPrice = priceData.currentPrice || 0;
         const change30d = priceData.change30d?.percent || 0;
         return {
           type: 'commodity_dashboard',
           commodity: {
-            commodityId: priceData.commodity.toLowerCase().replace(/\s+/g, '-'),
-            name: priceData.commodity,
+            commodityId: commodityName.toLowerCase().replace(/\s+/g, '-'),
+            name: commodityName,
             category: 'metals', // Default category for price gauge
-            currentPrice: priceData.currentPrice,
-            previousPrice: priceData.currentPrice * (1 - change30d / 100),
-            unit: priceData.unit,
+            currentPrice: currentPrice,
+            previousPrice: currentPrice * (1 - change30d / 100),
+            unit: priceData.unit || 'mt',
             currency: priceData.currency || 'USD',
-            market: priceData.market,
-            lastUpdated: priceData.lastUpdated,
+            market: priceData.market || 'Global',
+            lastUpdated: priceData.lastUpdated || 'Unknown',
             changes: {
               daily: { percent: priceData.change24h?.percent || 0, direction: (priceData.change24h?.percent || 0) > 0 ? 'up' : (priceData.change24h?.percent || 0) < 0 ? 'down' : 'stable', absolute: priceData.change24h?.value || 0 },
               weekly: { percent: change30d / 4, direction: change30d > 0 ? 'up' : change30d < 0 ? 'down' : 'stable', absolute: (priceData.change30d?.value || 0) / 4 },
