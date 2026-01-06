@@ -425,33 +425,34 @@ const SELECTION_RULES: SelectionRule[] = [
       ctx.intent === 'action_trigger' &&
       renderCtx === 'chat' &&
       ctx.widget?.type === 'alternatives_preview' &&
-      ctx.supplier && // Need a current supplier
-      (ctx.suppliers?.length || 0) > 0,
+      ctx.widget?.data, // Widget data has the correct values from buildWidgetData
     priority: 115, // Higher than supplier table fallback
-    getConfig: (ctx) => ({
-      componentType: 'AlternativesPreviewCard',
-      size: 'md',
-      props: {
-        currentSupplier: ctx.supplier!.name,
-        currentScore: ctx.supplier!.srs?.score ?? 50,
-        alternatives: ctx.suppliers!
-          .filter(s => s.id !== ctx.supplier?.id)
-          .slice(0, 3)
-          .map(s => ({
-            id: s.id,
-            name: s.name,
-            score: s.srs?.score ?? 50,
-            level: s.srs?.level || 'unrated',
-            category: s.category,
-            matchScore: Math.min(70 +
-              (s.category === ctx.supplier?.category ? 15 : 0) +
-              (s.location === ctx.supplier?.location ? 10 : 0) +
-              ((s.srs?.score ?? 100) < (ctx.supplier?.srs?.score ?? 0) ? 5 : 0),
-            98),
-          })),
-      },
-      expandsTo: 'AlternativesArtifact',
-    }),
+    getConfig: (ctx) => {
+      // Use widget.data which has correct currentSupplier/currentScore/alternatives
+      const widgetData = ctx.widget!.data as {
+        currentSupplier: string;
+        currentScore: number;
+        alternatives: Array<{
+          id: string;
+          name: string;
+          score: number;
+          level: string;
+          category: string;
+          matchScore: number;
+        }>;
+      };
+
+      return {
+        componentType: 'AlternativesPreviewCard',
+        size: 'md',
+        props: {
+          currentSupplier: widgetData.currentSupplier,
+          currentScore: widgetData.currentScore,
+          alternatives: widgetData.alternatives,
+        },
+        expandsTo: 'AlternativesArtifact',
+      };
+    },
   },
   {
     id: 'action_alternatives_table_chat',

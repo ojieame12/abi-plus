@@ -14,6 +14,7 @@ const artifactTypeMap: Record<string, ArtifactType> = {
   SupplierTableArtifact: 'supplier_table',
   SupplierDetailArtifact: 'supplier_detail',
   ComparisonArtifact: 'supplier_comparison',
+  AlternativesArtifact: 'supplier_alternatives',
 };
 
 export const resolveArtifactType = (
@@ -276,7 +277,52 @@ export function buildArtifactPayload(
       } as ArtifactPayload;
     }
 
+    case 'supplier_alternatives': {
+      if (suppliers.length < 2) return null;
+      // First supplier is the "current" one we're finding alternatives for
+      const currentSupplier = suppliers[0];
+      const alternatives = suppliers.slice(1);
+
+      return {
+        type: 'supplier_alternatives',
+        currentSupplier: {
+          id: currentSupplier.id,
+          name: currentSupplier.name,
+          score: currentSupplier.srs?.score ?? 50,
+          category: currentSupplier.category,
+        },
+        alternatives: alternatives.map(s => ({
+          id: s.id,
+          name: s.name,
+          score: s.srs?.score ?? 50,
+          level: s.srs?.level || 'unrated',
+          category: s.category,
+          region: s.location?.region || 'Unknown',
+          country: s.location?.country || 'Unknown',
+          matchScore: calculateSupplierMatchScore(currentSupplier, s),
+          spend: s.spendFormatted,
+        })),
+      } as ArtifactPayload;
+    }
+
     default:
       return null;
   }
+}
+
+// Helper to calculate match score between suppliers
+function calculateSupplierMatchScore(current: Supplier, alternative: Supplier): number {
+  let score = 70; // Base score
+
+  // Same category = +15
+  if (current.category === alternative.category) score += 15;
+
+  // Same region = +10
+  if (current.location?.region === alternative.location?.region) score += 5;
+  if (current.location?.country === alternative.location?.country) score += 5;
+
+  // Better risk score = +5
+  if ((alternative.srs?.score ?? 100) < (current.srs?.score ?? 0)) score += 5;
+
+  return Math.min(score, 98); // Cap at 98%
 }

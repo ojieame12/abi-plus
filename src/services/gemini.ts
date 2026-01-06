@@ -704,8 +704,9 @@ function calculateMatchScore(current: Supplier, alternative: Supplier): number {
   // Same category = +15
   if (current.category === alternative.category) score += 15;
 
-  // Similar location = +10
-  if (current.location === alternative.location) score += 10;
+  // Similar location = +10 (compare by value, not identity)
+  if (current.location?.region === alternative.location?.region) score += 5;
+  if (current.location?.country === alternative.location?.country) score += 5;
 
   // Better risk score = +5
   if ((alternative.srs?.score ?? 100) < (current.srs?.score ?? 0)) score += 5;
