@@ -15,10 +15,14 @@ import type { Supplier, Portfolio, RiskChange } from '../../types/data';
 import type { RiskPortfolio } from '../../types/supplier';
 import type { ResponseInsight, ResponseSources } from '../../types/aiResponse';
 import type { RenderContext } from '../../services/componentSelector';
+import type { Milestone } from '../../services/ai';
 
 interface ThoughtProcessData {
     duration?: string;
     content?: ThoughtContent;
+    // New: Real milestones from AI processing
+    milestones?: Milestone[];
+    liveMilestones?: Milestone[];
 }
 
 // Legacy insight format (string or simple object)
@@ -446,7 +450,8 @@ export const AIResponse = ({
                 <div className="mb-6">
                     <ThoughtProcess
                         duration={thoughtProcess.duration}
-                        content={thoughtProcess.content}
+                        milestones={thoughtProcess.milestones}
+                        liveMilestones={thoughtProcess.liveMilestones}
                         isThinking={phase === 'thinking'}
                     />
                 </div>

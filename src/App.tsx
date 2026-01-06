@@ -16,7 +16,7 @@ import { AIResponse } from './components/chat/AIResponse';
 import { ChatInput, type BuilderMetadata } from './components/chat/ChatInput';
 import { ThoughtProcess, buildThoughtContent } from './components/chat/ThoughtProcess';
 import { PortfolioOverviewCard } from './components/risk';
-import type { AIResponse as AIResponseType } from './services/ai';
+import type { AIResponse as AIResponseType, Milestone } from './services/ai';
 import { sendMessage } from './services/ai';
 import { buildResponseSources } from './utils/sources';
 import { buildArtifactPayload, resolveArtifactType } from './services/artifactBuilder';
@@ -123,6 +123,7 @@ function App() {
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [liveMilestones, setLiveMilestones] = useState<Milestone[]>([]);
   const [mode, setMode] = useState<'fast' | 'reasoning'>('fast');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [currentArtifact, setCurrentArtifact] = useState<AIResponseType['artifact'] | null>(null);
@@ -283,6 +284,7 @@ function App() {
   const fetchAIResponse = async (question: string, history: Message[], convId?: string | null, builderMeta?: BuilderMetadata) => {
     console.log('[App] fetchAIResponse called with:', question, 'builderMeta:', builderMeta);
     setIsThinking(true);
+    setLiveMilestones([]); // Clear previous milestones
 
     // Use provided convId or fall back to state
     const conversationId = convId ?? currentConversationId;
@@ -300,6 +302,10 @@ function App() {
         })),
         // Pass builder metadata for deterministic intent routing
         builderMeta,
+        // Stream milestones in real-time
+        onMilestone: (milestone) => {
+          setLiveMilestones(prev => [...prev, milestone]);
+        },
       });
 
       console.log('[App] Got response:', response.id, response.content.slice(0, 100));
@@ -718,14 +724,9 @@ function App() {
                         <AIResponse
                           // 1. Thought Process - only on NEW messages (first render)
                           thoughtProcess={msg.isNew && hasResponse ? {
-                            duration: msg.response!.thinkingDuration || '2s',
-                            content: buildThoughtContent({
-                              intent: msg.response!.intent,
-                              widget: msg.response!.widget,
-                              portfolio: msg.response!.portfolio,
-                              suppliers: msg.response!.suppliers,
-                              sources: msg.response!.sources,
-                            }),
+                            duration: msg.response!.thinkingDuration || '...',
+                            milestones: msg.response!.milestones || [],
+                            liveMilestones: liveMilestones,
                           } : undefined}
                           // 2. Acknowledgement - show on all responses
                           acknowledgement={hasResponse ? (msg.response?.acknowledgement || undefined) : undefined}

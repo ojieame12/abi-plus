@@ -18,6 +18,20 @@ import { generateSuggestions, suggestionEngine } from './suggestionEngine';
 
 export type ThinkingMode = 'fast' | 'reasoning';
 
+// ============================================
+// REAL-TIME MILESTONES
+// ============================================
+
+export interface Milestone {
+  id: string;
+  event: 'intent_classified' | 'provider_selected' | 'data_retrieved' | 'sources_found' | 'widget_selected' | 'response_ready';
+  label: string;
+  value?: string | number;
+  timestamp: number; // ms since start
+}
+
+export type MilestoneCallback = (milestone: Milestone) => void;
+
 // AI-generated artifact content for expanded panel
 export interface ArtifactContent {
   title: string;
@@ -75,6 +89,8 @@ export interface AIResponse {
     content: string;
     status: 'complete' | 'in_progress';
   }>;
+  // Real milestones captured during processing
+  milestones?: Milestone[];
 }
 
 // Response escalation thresholds
@@ -152,6 +168,8 @@ export interface SendMessageOptions {
   conversationHistory?: ChatMessage[];
   // Pre-classified intent from builder - bypasses regex classification
   builderMeta?: BuilderMeta;
+  // Callback for real-time milestone updates
+  onMilestone?: MilestoneCallback;
 }
 
 // Simulate thinking duration for UX
@@ -215,7 +233,27 @@ export const sendMessage = async (
   message: string,
   options: SendMessageOptions
 ): Promise<AIResponse> => {
-  const { mode, webSearchEnabled, conversationHistory = [], builderMeta } = options;
+  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone } = options;
+
+  // Track milestones with real timestamps
+  const startTime = Date.now();
+  const milestones: Milestone[] = [];
+
+  const emitMilestone = (
+    event: Milestone['event'],
+    label: string,
+    value?: string | number
+  ) => {
+    const milestone: Milestone = {
+      id: `${event}-${Date.now()}`,
+      event,
+      label,
+      value,
+      timestamp: Date.now() - startTime,
+    };
+    milestones.push(milestone);
+    onMilestone?.(milestone);
+  };
 
   // Use builder's deterministic intent if provided, otherwise classify from message
   let intent: DetectedIntent;
@@ -234,9 +272,11 @@ export const sendMessage = async (
       requiresResearch: builderMeta.requiresResearch || false,
       requiresDiscovery: false,
     };
+    emitMilestone('intent_classified', `Intent: ${formatIntentName(intent.category)}`, intent.category);
   } else {
     // Classify intent from message text
     intent = classifyIntent(message);
+    emitMilestone('intent_classified', `Intent: ${formatIntentName(intent.category)}`, intent.category);
   }
 
   // Determine which provider to use:
@@ -246,9 +286,13 @@ export const sendMessage = async (
   const usePerplexity = mode === 'reasoning' || webSearchEnabled || intent.requiresResearch;
   const effectiveMode = intent.requiresResearch ? 'reasoning' : mode;
 
-  // Generate thinking metadata
-  const thinkingDuration = simulateThinkingDuration(effectiveMode);
-  const thinkingSteps = generateThinkingSteps(intent, effectiveMode);
+  // Emit provider selection milestone
+  const providerName = usePerplexity && isPerplexityConfigured()
+    ? 'Perplexity (web research)'
+    : isGeminiConfigured()
+      ? 'Gemini'
+      : 'Local data';
+  emitMilestone('provider_selected', providerName, providerName);
 
   try {
     let response: AIResponse;
@@ -258,47 +302,107 @@ export const sendMessage = async (
     console.log('[AI] Mode:', mode, '| WebSearch:', webSearchEnabled);
     console.log('[AI] Auto-research triggered:', intent.requiresResearch);
     console.log('[AI] Using provider:', usePerplexity ? 'perplexity' : 'gemini');
-    console.log('[AI] Gemini configured:', isGeminiConfigured());
-    console.log('[AI] Perplexity configured:', isPerplexityConfigured());
 
     if (usePerplexity && isPerplexityConfigured()) {
       console.log('[AI] Calling Perplexity for deep research...');
       const perplexityResponse = await callPerplexity(message, conversationHistory);
       response = transformPerplexityResponse(perplexityResponse, intent);
       provider = 'perplexity';
+
+      // Emit sources milestone for research
+      const sourceCount = perplexityResponse.sources?.length || 0;
+      if (sourceCount > 0) {
+        emitMilestone('sources_found', `Found ${sourceCount} sources`, sourceCount);
+      }
     } else if (isGeminiConfigured()) {
-      // Use new V2 architecture: widget type determined by intent, AI generates content only
-      console.log('[AI] Calling GeminiV2 (new architecture)...');
+      console.log('[AI] Calling GeminiV2...');
       const geminiResponse = await callGeminiV2(message, conversationHistory);
-      console.log('[AI] GeminiV2 response received');
       response = transformGeminiResponse(geminiResponse, intent);
       provider = 'gemini';
     } else {
-      // Both APIs unavailable - use local fallback
-      console.log('[AI] No API configured, using local fallback');
+      console.log('[AI] Using local fallback');
       response = generateLocalResponse(message, intent);
       provider = 'local';
     }
 
-    console.log('[AI] Response ready, content length:', response.content.length);
+    // Emit data retrieved milestone
+    const dataCount = response.suppliers?.length || response.portfolio?.totalSuppliers || 0;
+    if (dataCount > 0) {
+      const dataLabel = response.portfolio
+        ? `${response.portfolio.totalSuppliers} suppliers, ${response.portfolio.totalSpendFormatted}`
+        : `${dataCount} supplier${dataCount > 1 ? 's' : ''} found`;
+      emitMilestone('data_retrieved', dataLabel, dataCount);
+    }
+
+    // Emit widget selection milestone
+    if (response.widget?.type) {
+      emitMilestone('widget_selected', `Widget: ${formatWidgetName(response.widget.type)}`, response.widget.type);
+    }
+
+    // Final milestone
+    const totalTime = Date.now() - startTime;
+    emitMilestone('response_ready', 'Response ready', totalTime);
+
+    // Format actual duration
+    const actualDuration = totalTime < 1000
+      ? `${totalTime}ms`
+      : `${(totalTime / 1000).toFixed(1)}s`;
 
     return {
       ...response,
       id: generateId(),
       provider,
-      thinkingDuration,
-      thinkingSteps: mode === 'reasoning' ? thinkingSteps : response.thinkingSteps,
+      thinkingDuration: actualDuration, // Real duration!
+      milestones,
     };
   } catch (error) {
     console.error('[AI] Orchestration error:', error);
+    emitMilestone('response_ready', 'Fallback response', Date.now() - startTime);
+
     return {
       ...generateLocalResponse(message, intent),
       id: generateId(),
       provider: 'local',
-      thinkingDuration,
-      thinkingSteps,
+      thinkingDuration: `${Date.now() - startTime}ms`,
+      milestones,
     };
   }
+};
+
+// Helper to format intent names for display
+const formatIntentName = (intent: string): string => {
+  const names: Record<string, string> = {
+    portfolio_overview: 'Portfolio Overview',
+    filtered_discovery: 'Supplier Search',
+    supplier_deep_dive: 'Supplier Analysis',
+    trend_detection: 'Risk Changes',
+    comparison: 'Comparison',
+    market_context: 'Market Intelligence',
+    explanation_why: 'Explanation',
+    action_trigger: 'Action Request',
+    setup_config: 'Configuration',
+    reporting_export: 'Export/Report',
+    restricted_query: 'Restricted',
+    general: 'General Query',
+  };
+  return names[intent] || intent;
+};
+
+// Helper to format widget names for display
+const formatWidgetName = (widget: string): string => {
+  const names: Record<string, string> = {
+    risk_distribution: 'Risk Distribution',
+    supplier_table: 'Supplier Table',
+    supplier_risk_card: 'Supplier Card',
+    alert_card: 'Alert Card',
+    comparison_table: 'Comparison',
+    trend_chart: 'Trend Chart',
+    price_gauge: 'Price Gauge',
+    events_feed: 'Events Feed',
+    stat_card: 'Stats',
+    info_card: 'Info Card',
+  };
+  return names[widget] || widget;
 };
 
 // Transform Gemini response to unified format
