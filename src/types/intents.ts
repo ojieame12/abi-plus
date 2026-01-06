@@ -276,6 +276,12 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /monthly.*(inflation|price).*report/i,
     /what.*(price|cost).*(changed|moved)/i,
     /show.*(price|inflation).*(changes|movement)/i,
+    // Added for Home suggestions
+    /highest.*(inflation|price.*increase)/i,
+    /price.*spikes?/i,
+    /spikes?.*(above|over|more than)/i,
+    /significant.*price.*(movement|change)/i,
+    /which.*(commodity|categories).*(highest|most).*(inflation|increase)/i,
   ],
   inflation_drivers: [
     /why.*(price|cost|inflation).*(up|down|increase|decrease|change)/i,
