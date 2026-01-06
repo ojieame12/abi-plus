@@ -669,9 +669,48 @@ function buildWidgetData(
         },
       };
 
+    case 'alternatives_preview':
+      // Need a target supplier and alternatives
+      if (!data.targetSupplier || !data.suppliers?.length) return undefined;
+      return {
+        type: 'alternatives_preview',
+        title: aiContent?.widgetContent?.headline || `Alternatives to ${data.targetSupplier.name}`,
+        data: {
+          currentSupplier: data.targetSupplier.name,
+          currentScore: data.targetSupplier.srs?.score ?? 50,
+          alternatives: data.suppliers
+            .filter(s => s.id !== data.targetSupplier?.id) // Exclude the current supplier
+            .slice(0, 3) // Show top 3 alternatives
+            .map(s => ({
+              id: s.id,
+              name: s.name,
+              score: s.srs?.score ?? 50,
+              level: s.srs?.level || 'unrated',
+              category: s.category,
+              matchScore: calculateMatchScore(data.targetSupplier!, s),
+            })),
+        },
+      };
+
     default:
       return undefined;
   }
+}
+
+// Helper to calculate match score between suppliers
+function calculateMatchScore(current: Supplier, alternative: Supplier): number {
+  let score = 70; // Base score
+
+  // Same category = +15
+  if (current.category === alternative.category) score += 15;
+
+  // Similar location = +10
+  if (current.location === alternative.location) score += 10;
+
+  // Better risk score = +5
+  if ((alternative.srs?.score ?? 100) < (current.srs?.score ?? 0)) score += 5;
+
+  return Math.min(score, 98); // Cap at 98%
 }
 
 // Step 5: Assemble final response

@@ -136,48 +136,72 @@ export const ArtifactRenderer = ({
       return <ArtifactPlaceholder type={type} />;
 
     case 'factor_breakdown':
-      return (
-        <FactorBreakdownArtifact
-          supplierName={(payload as any).supplierName}
-          supplierId={(payload as any).supplierId}
-          overallScore={(payload as any).overallScore}
-          previousScore={(payload as any).previousScore}
-          level={(payload as any).level}
-          trend={(payload as any).trend}
-          lastUpdated={(payload as any).lastUpdated}
-          factors={(payload as any).factors || []}
-          scoreHistory={(payload as any).scoreHistory}
-          contributingEvents={(payload as any).contributingEvents}
-          onViewDashboard={() => onAction?.('view_dashboard')}
-          onExport={() => onAction?.('export')}
-          onClose={onClose}
-        />
-      );
+      {
+        const factorAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={factorAiContent} />
+            <div className="flex-1 min-h-0">
+              <FactorBreakdownArtifact
+                supplierName={(payload as any).supplierName}
+                supplierId={(payload as any).supplierId}
+                overallScore={(payload as any).overallScore}
+                previousScore={(payload as any).previousScore}
+                level={(payload as any).level}
+                trend={(payload as any).trend}
+                lastUpdated={(payload as any).lastUpdated}
+                factors={(payload as any).factors || []}
+                scoreHistory={(payload as any).scoreHistory}
+                contributingEvents={(payload as any).contributingEvents}
+                onViewDashboard={() => onAction?.('view_dashboard')}
+                onExport={() => onAction?.('export')}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
 
     case 'news_events':
-      return (
-        <NewsEventsArtifact
-          title={(payload as any).title}
-          context={(payload as any).context}
-          events={(payload as any).events || []}
-          onSetAlert={() => onAction?.('set_alert')}
-          onExport={() => onAction?.('export')}
-          onEventClick={(event) => onAction?.('event_click', event)}
-          onClose={onClose}
-        />
-      );
+      {
+        const newsAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={newsAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <NewsEventsArtifact
+                title={(payload as any).title}
+                context={(payload as any).context}
+                events={(payload as any).events || []}
+                onSetAlert={() => onAction?.('set_alert')}
+                onExport={() => onAction?.('export')}
+                onEventClick={(event) => onAction?.('event_click', event)}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
 
     // Supplier Views
     case 'supplier_detail':
-      return (
-        <SupplierDetailArtifact
-          supplier={(payload as any).supplier}
-          onClose={onClose}
-          onFindAlternatives={() => onAction?.('find_alternatives', (payload as any).supplier)}
-          onAddToShortlist={() => onAction?.('add_to_shortlist', (payload as any).supplier)}
-          onViewDashboard={() => onAction?.('view_dashboard')}
-        />
-      );
+      {
+        const detailAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={detailAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <SupplierDetailArtifact
+                supplier={(payload as any).supplier}
+                onClose={onClose}
+                onFindAlternatives={() => onAction?.('find_alternatives', (payload as any).supplier)}
+                onAddToShortlist={() => onAction?.('add_to_shortlist', (payload as any).supplier)}
+                onViewDashboard={() => onAction?.('view_dashboard')}
+              />
+            </div>
+          </div>
+        );
+      }
 
     case 'supplier_table':
       {
@@ -317,20 +341,28 @@ export const ArtifactRenderer = ({
       return <ArtifactPlaceholder type={type} />;
 
     case 'spend_analysis':
-      return (
-        <SpendAnalysisArtifact
-          totalSpend={(payload as any).totalSpend}
-          totalSpendFormatted={(payload as any).totalSpendFormatted}
-          byRiskLevel={(payload as any).byRiskLevel || []}
-          byCategory={(payload as any).byCategory || []}
-          byRegion={(payload as any).byRegion || []}
-          concentrationWarnings={(payload as any).concentrationWarnings}
-          trend={(payload as any).trend}
-          onExport={() => onAction?.('export')}
-          onDrillDown={(dimension, value) => onAction?.('drill_down', { dimension, value })}
-          onClose={onClose}
-        />
-      );
+      {
+        const spendAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={spendAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <SpendAnalysisArtifact
+                totalSpend={(payload as any).totalSpend}
+                totalSpendFormatted={(payload as any).totalSpendFormatted}
+                byRiskLevel={(payload as any).byRiskLevel || []}
+                byCategory={(payload as any).byCategory || []}
+                byRegion={(payload as any).byRegion || []}
+                concentrationWarnings={(payload as any).concentrationWarnings}
+                trend={(payload as any).trend}
+                onExport={() => onAction?.('export')}
+                onDrillDown={(dimension, value) => onAction?.('drill_down', { dimension, value })}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
 
     default:
       return <ArtifactPlaceholder type={type} />;
