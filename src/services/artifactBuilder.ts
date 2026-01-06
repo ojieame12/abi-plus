@@ -11,6 +11,7 @@ import type {
   ExecutiveBriefCardData,
   CommodityGaugeData,
 } from '../types/inflation';
+import type { PriceGaugeData } from '../types/widgets';
 
 interface ArtifactContext {
   suppliers?: Supplier[];
@@ -333,6 +334,24 @@ export function buildArtifactPayload(
       const widgetData = context.widgetData as InflationSummaryCardData | undefined;
       if (!widgetData) return null;
 
+      // Build priceMovements array from topIncreases and topDecreases
+      const priceMovements = [
+        ...(widgetData.topIncreases || []).map((item, i) => ({
+          id: `increase-${i}`,
+          name: item.commodity,
+          category: 'commodity',
+          change: { percent: item.change, direction: 'up' as const, absolute: 0 },
+          exposure: item.impact,
+        })),
+        ...(widgetData.topDecreases || []).map((item, i) => ({
+          id: `decrease-${i}`,
+          name: item.commodity,
+          category: 'commodity',
+          change: { percent: Math.abs(item.change), direction: 'down' as const, absolute: 0 },
+          exposure: item.benefit || '$0',
+        })),
+      ];
+
       return {
         type: 'inflation_dashboard',
         period: widgetData.period,
@@ -342,24 +361,8 @@ export function buildArtifactPayload(
           overallChange: widgetData.overallChange,
           portfolioImpact: widgetData.portfolioImpact,
         },
-        priceMovements: {
-          commodities: [
-            ...(widgetData.topIncreases || []).map((item, i) => ({
-              id: `increase-${i}`,
-              name: item.commodity,
-              category: 'commodity',
-              change: { percent: item.change, direction: 'up' as const, absolute: 0 },
-              exposure: item.impact,
-            })),
-            ...(widgetData.topDecreases || []).map((item, i) => ({
-              id: `decrease-${i}`,
-              name: item.commodity,
-              category: 'commodity',
-              change: { percent: Math.abs(item.change), direction: 'down' as const, absolute: 0 },
-              exposure: item.benefit,
-            })),
-          ],
-        },
+        // priceMovements is a flat array, not nested in an object
+        priceMovements,
         drivers: (widgetData.keyDrivers || []).map((driver, i) => ({
           id: `driver-${i}`,
           name: driver,
@@ -407,11 +410,12 @@ export function buildArtifactPayload(
       const widgetData = context.widgetData as SpendImpactCardData | undefined;
       if (!widgetData) return null;
 
-      // Parse total impact amount (e.g., "$5.2M" -> 5200000)
+      // Parse total impact amount (e.g., "$5.2M" -> 5200000, "$10.2B" -> 10200000000)
       const parseAmount = (str: string): number => {
         const match = str.match(/[\d.]+/);
         if (!match) return 0;
         const num = parseFloat(match[0]);
+        if (str.includes('B')) return num * 1000000000;
         if (str.includes('M')) return num * 1000000;
         if (str.includes('K')) return num * 1000;
         return num;
@@ -444,7 +448,8 @@ export function buildArtifactPayload(
         riskCorrelation: {
           highRiskHighExposure: 0,
           concentrationRisk: widgetData.mostAffected ? [{
-            type: widgetData.mostAffected.type as 'commodity' | 'supplier' | 'region',
+            // Map 'category' to 'commodity' since categories are often commodity-based
+            type: (widgetData.mostAffected.type === 'category' ? 'commodity' : widgetData.mostAffected.type) as 'commodity' | 'supplier' | 'region',
             name: widgetData.mostAffected.name,
             concentration: 30, // Default since we don't have exact data
           }] : [],
@@ -580,40 +585,79 @@ export function buildArtifactPayload(
     }
 
     case 'commodity_dashboard': {
-      const widgetData = context.widgetData as CommodityGaugeData | undefined;
+      // Handle both CommodityGaugeData and PriceGaugeData formats
+      const widgetData = context.widgetData as (CommodityGaugeData | PriceGaugeData) | undefined;
       if (!widgetData) return null;
 
-      return {
-        type: 'commodity_dashboard',
-        commodity: {
-          commodityId: widgetData.commodity,
-          name: widgetData.commodity,
-          category: widgetData.category,
-          currentPrice: widgetData.currentPrice,
-          previousPrice: widgetData.currentPrice * (1 - (widgetData.changes?.monthly?.percent || 0) / 100),
-          unit: widgetData.unit,
-          currency: widgetData.currency,
-          market: widgetData.market,
-          lastUpdated: widgetData.lastUpdated,
-          changes: widgetData.changes,
-          history: [],
-        },
-        drivers: [],
-        exposure: widgetData.portfolioExposure ? {
-          commodityId: widgetData.commodity,
-          commodityName: widgetData.commodity,
-          category: widgetData.category,
-          exposure: 0,
-          exposureFormatted: widgetData.portfolioExposure.amount,
-          priceChange: widgetData.changes?.monthly || { percent: 0, direction: 'stable', absolute: 0 },
-          supplierCount: widgetData.portfolioExposure.supplierCount,
-          topSuppliers: [],
-        } : undefined,
-        affectedSuppliers: [],
-        historicalComparison: [],
-        forecast: undefined,
-        relatedCommodities: [],
-      } as ArtifactPayload;
+      // Type guard to check if it's CommodityGaugeData (has .changes.monthly)
+      const isCommodityGauge = (data: CommodityGaugeData | PriceGaugeData): data is CommodityGaugeData => {
+        return 'changes' in data && typeof data.changes === 'object' && 'monthly' in (data.changes || {});
+      };
+
+      if (isCommodityGauge(widgetData)) {
+        // CommodityGaugeData format
+        return {
+          type: 'commodity_dashboard',
+          commodity: {
+            commodityId: widgetData.commodity,
+            name: widgetData.commodity,
+            category: widgetData.category,
+            currentPrice: widgetData.currentPrice,
+            previousPrice: widgetData.currentPrice * (1 - (widgetData.changes?.monthly?.percent || 0) / 100),
+            unit: widgetData.unit,
+            currency: widgetData.currency,
+            market: widgetData.market,
+            lastUpdated: widgetData.lastUpdated,
+            changes: widgetData.changes,
+            history: [],
+          },
+          drivers: [],
+          exposure: widgetData.portfolioExposure ? {
+            commodityId: widgetData.commodity,
+            commodityName: widgetData.commodity,
+            category: widgetData.category,
+            exposure: 0,
+            exposureFormatted: widgetData.portfolioExposure.amount,
+            priceChange: widgetData.changes?.monthly || { percent: 0, direction: 'stable', absolute: 0 },
+            supplierCount: widgetData.portfolioExposure.supplierCount,
+            topSuppliers: [],
+          } : undefined,
+          affectedSuppliers: [],
+          historicalComparison: [],
+          forecast: undefined,
+          relatedCommodities: [],
+        } as ArtifactPayload;
+      } else {
+        // PriceGaugeData format (from price_gauge widget)
+        const priceData = widgetData as PriceGaugeData;
+        const change30d = priceData.change30d?.percent || 0;
+        return {
+          type: 'commodity_dashboard',
+          commodity: {
+            commodityId: priceData.commodity.toLowerCase().replace(/\s+/g, '-'),
+            name: priceData.commodity,
+            category: 'metals', // Default category for price gauge
+            currentPrice: priceData.currentPrice,
+            previousPrice: priceData.currentPrice * (1 - change30d / 100),
+            unit: priceData.unit,
+            currency: priceData.currency || 'USD',
+            market: priceData.market,
+            lastUpdated: priceData.lastUpdated,
+            changes: {
+              daily: { percent: priceData.change24h?.percent || 0, direction: (priceData.change24h?.percent || 0) > 0 ? 'up' : (priceData.change24h?.percent || 0) < 0 ? 'down' : 'stable', absolute: priceData.change24h?.value || 0 },
+              weekly: { percent: change30d / 4, direction: change30d > 0 ? 'up' : change30d < 0 ? 'down' : 'stable', absolute: (priceData.change30d?.value || 0) / 4 },
+              monthly: { percent: change30d, direction: change30d > 0 ? 'up' : change30d < 0 ? 'down' : 'stable', absolute: priceData.change30d?.value || 0 },
+            },
+            history: [],
+          },
+          drivers: [],
+          exposure: undefined,
+          affectedSuppliers: [],
+          historicalComparison: [],
+          forecast: undefined,
+          relatedCommodities: [],
+        } as ArtifactPayload;
+      }
     }
 
     default:

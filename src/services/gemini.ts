@@ -936,29 +936,44 @@ function buildWidgetData(
         data: data.scenarioData,
       };
 
-    case 'price_gauge':
+    case 'price_gauge': {
       if (!data.commodityData) return undefined;
+      const currentPrice = data.commodityData.currentPrice || 8245;
+      const percent30d = data.commodityData.priceChange?.percent || 0;
+      const percent24h = percent30d / 30; // Approximate daily change
+      const priceChange24h = currentPrice * (percent24h / 100);
+      const priceChange30d = currentPrice * (percent30d / 100);
+
+      // Return PriceGaugeData format (not legacy format)
       return {
         type: 'price_gauge',
         title: data.commodityData.name,
         data: {
-          title: data.commodityData.name,
-          price: data.commodityData.currentPrice ? `$${data.commodityData.currentPrice.toLocaleString()}` : '$8,245',
-          unit: data.commodityData.unit || 'per metric ton',
-          lastChecked: '2h ago',
+          commodity: data.commodityData.name,
+          currentPrice: currentPrice,
+          unit: data.commodityData.unit || 'mt',
+          currency: 'USD',
+          lastUpdated: 'Beroe today',
+          gaugeMin: currentPrice * 0.7,
+          gaugeMax: currentPrice * 1.3,
+          gaugePosition: 50 + (percent30d * 2), // Scale percent to 0-100 gauge position
           change24h: {
-            value: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${(data.commodityData.priceChange.percent / 30).toFixed(1)}%` : '-1.5%',
-            percent: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${(data.commodityData.priceChange.percent / 30).toFixed(1)}%` : '-1.5%',
-            direction: data.commodityData.priceChange?.direction || 'stable',
+            value: priceChange24h,
+            percent: percent24h,
           },
           change30d: {
-            value: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${data.commodityData.priceChange.percent.toFixed(1)}%` : '-3.7%',
-            percent: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${data.commodityData.priceChange.percent.toFixed(1)}%` : '-3.7%',
-            direction: data.commodityData.priceChange?.direction || 'stable',
+            value: priceChange30d,
+            percent: percent30d,
           },
           market: data.commodityData.region === 'global' ? 'LME' : data.commodityData.region?.toUpperCase() || 'Global',
+          tags: data.commodityData.priceChange?.direction === 'up'
+            ? ['Rising Trend', 'Supply Pressure']
+            : data.commodityData.priceChange?.direction === 'down'
+              ? ['Softening', 'Demand Weak']
+              : ['Stable'],
         },
       };
+    }
 
     case 'category_breakdown':
       if (!data.categoryBreakdown?.length) return undefined;
