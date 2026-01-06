@@ -325,8 +325,8 @@ export const ChatInput = ({
 
     // Default variant
     return (
-        <div className="w-full">
-            <div className={`bg-white rounded-2xl border shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] transition-colors ${
+        <div className="w-full overflow-visible">
+            <div className={`bg-white rounded-2xl border shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] transition-colors overflow-visible ${
                 isFocused ? 'border-violet-500' : 'border-slate-200/60'
             }`}>
                 {/* File Attachments */}
@@ -339,7 +339,7 @@ export const ChatInput = ({
                 )}
 
                 {/* Text Input / Builder Area */}
-                <div className={`px-5 pt-4 pb-3 relative overflow-hidden transition-all duration-200 ${builderMode ? 'min-h-[140px]' : ''}`} style={{ minHeight: builderMode ? '140px' : '100px' }}>
+                <div className={`px-5 pt-4 pb-3 relative transition-all duration-200 ${builderMode ? 'min-h-[140px]' : ''}`} style={{ minHeight: builderMode ? '140px' : '100px' }}>
                     <AnimatePresence mode="wait">
                         {builderMode ? (
                             <motion.div
