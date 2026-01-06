@@ -122,51 +122,76 @@ export interface GeminiResponse {
   riskChanges?: RiskChange[]; // Risk changes for trend detection
 }
 
-// Generate contextual acknowledgement based on intent
+// Generate contextual acknowledgement based on intent and extracted entities
 const generateAcknowledgement = (intent: DetectedIntent, query: string): string => {
-  const acks: Record<string, string[]> = {
-    portfolio_overview: [
-      "Here's your portfolio overview.",
-      "Let me show you your risk landscape.",
-      "Here's what I found in your portfolio.",
-    ],
-    filtered_discovery: [
-      "Found what you're looking for.",
-      "Here are the matching suppliers.",
-      "I've filtered your suppliers.",
-    ],
-    supplier_deep_dive: [
-      "Here's the detailed profile.",
-      "Let me break that down for you.",
-      "I've pulled up the full analysis.",
-    ],
-    trend_detection: [
-      "Spotted some changes.",
-      "Here's what's shifted recently.",
-      "Let me highlight the trends.",
-    ],
-    comparison: [
-      "Ready for comparison.",
-      "Here's how they stack up.",
-      "I've lined them up for you.",
-    ],
-    explanation_why: [
-      "Great question.",
-      "Let me explain that.",
-      "Here's why.",
-    ],
-    restricted_query: [
-      "I found some relevant data.",
-      "Let me help with that.",
-    ],
-    general: [
-      "Here's what I found.",
-      "Let me help with that.",
-    ],
-  };
+  // Extract entity names for personalization
+  const supplierName = intent.extractedEntities.supplierName;
+  const commodity = intent.extractedEntities.commodity;
+  const riskLevel = intent.extractedEntities.riskLevel;
 
-  const options = acks[intent.category] || acks.general;
-  return options[Math.floor(Math.random() * options.length)];
+  // Context-aware greetings based on intent category
+  switch (intent.category) {
+    case 'portfolio_overview':
+      return "Here's your portfolio at a glance.";
+
+    case 'filtered_discovery':
+      if (riskLevel) {
+        const levelLabel = Array.isArray(riskLevel) ? riskLevel.join('/') : riskLevel;
+        return `Showing ${levelLabel} risk suppliers.`;
+      }
+      return "Found matching suppliers.";
+
+    case 'supplier_deep_dive':
+      return supplierName
+        ? `Analyzing ${supplierName}.`
+        : "Here's the supplier analysis.";
+
+    case 'trend_detection':
+      return "Here are the recent changes.";
+
+    case 'comparison':
+      return "Comparing suppliers for you.";
+
+    case 'explanation_why':
+      return "Let me explain that.";
+
+    // Inflation/Market intents
+    case 'inflation_summary':
+      return "Here's the inflation overview.";
+
+    case 'inflation_drivers':
+      return commodity
+        ? `Analyzing ${commodity} price trends.`
+        : "Analyzing price drivers.";
+
+    case 'inflation_impact':
+      return "Here's the spend impact analysis.";
+
+    case 'inflation_justification':
+      return "Validating the price increase.";
+
+    case 'inflation_scenarios':
+      return "Running the scenario analysis.";
+
+    case 'market_context':
+      return commodity
+        ? `Here's the ${commodity} market context.`
+        : "Here's the market overview.";
+
+    case 'restricted_query':
+      return "I found relevant data.";
+
+    case 'action_trigger':
+      if (intent.subIntent === 'find_alternatives') {
+        return supplierName
+          ? `Finding alternatives to ${supplierName}.`
+          : "Finding alternative suppliers.";
+      }
+      return "Processing your request.";
+
+    default:
+      return "Here's what I found.";
+  }
 };
 
 // Build context about user's portfolio to inject into prompts
