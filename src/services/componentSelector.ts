@@ -1,7 +1,7 @@
 // Unified Component Selection Service
 // Routes intents and data to the correct component configuration
 
-import type { IntentCategory } from '../types/intents';
+import type { IntentCategory, SubIntent } from '../types/intents';
 import type { WidgetType, WidgetData } from '../types/widgets';
 import type { Supplier, Portfolio, RiskChange } from '../types/data';
 import {
@@ -9,6 +9,12 @@ import {
   transformSuppliersToComparisonData,
   mapRiskLevelToMarketContext,
 } from './widgetTransformers';
+import {
+  getWidgetForIntent,
+  getWidgetByType,
+  type RequiredData,
+  type RenderContext as RegistryRenderContext,
+} from './widgetRegistry';
 
 // ============================================
 // RENDER CONTEXT
@@ -833,3 +839,65 @@ export const debugSelection = (
     matches: rule.matches(dataCtx, renderCtx),
   }));
 };
+
+// ============================================
+// REGISTRY-BASED SELECTION (NEW)
+// Uses unified widgetRegistry.ts as source of truth
+// ============================================
+
+/**
+ * Convert DataContext to RequiredData array for registry lookup
+ */
+function getAvailableData(ctx: DataContext): RequiredData[] {
+  const available: RequiredData[] = [];
+
+  if (ctx.portfolio) available.push('portfolio');
+  if (ctx.suppliers && ctx.suppliers.length > 0) available.push('suppliers');
+  if (ctx.supplier) available.push('supplier');
+  if (ctx.riskChanges && ctx.riskChanges.length > 0) available.push('riskChanges');
+  if (ctx.inflationSummary) available.push('inflationSummary');
+  if (ctx.commodityDrivers) available.push('commodityDrivers');
+  if (ctx.portfolioExposure) available.push('portfolioExposure');
+  if (ctx.justificationData) available.push('justificationData');
+  if (ctx.scenarioData) available.push('scenarioData');
+
+  return available;
+}
+
+/**
+ * Convert local RenderContext to registry RenderContext
+ */
+function toRegistryContext(ctx: RenderContext): RegistryRenderContext {
+  return ctx as RegistryRenderContext;
+}
+
+/**
+ * Select widget using the unified registry
+ * Returns the widget component name and metadata
+ */
+export function selectWidgetFromRegistry(
+  intent: IntentCategory,
+  subIntent?: SubIntent,
+  dataCtx: DataContext = { intent },
+  renderCtx: RenderContext = 'chat'
+): { component: string; expandsTo?: string; priority: number } | null {
+  const availableData = getAvailableData(dataCtx);
+  const registryCtx = toRegistryContext(renderCtx);
+
+  const widget = getWidgetForIntent(intent, subIntent, availableData, registryCtx);
+
+  if (!widget) return null;
+
+  return {
+    component: widget.component,
+    expandsTo: widget.expandsTo,
+    priority: widget.priority,
+  };
+}
+
+/**
+ * Get widget metadata from registry by type
+ */
+export function getWidgetMetadata(type: WidgetType) {
+  return getWidgetByType(type);
+}

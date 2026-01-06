@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
-import type { WidgetCatalogEntry } from './catalogData';
+import { Maximize2, Minimize2, Zap } from 'lucide-react';
+import type { WidgetRegistryEntry } from '../../services/widgetRegistry';
 import { PropTable } from './PropTable';
 import { CodeBlock } from './CodeBlock';
 
@@ -37,6 +37,13 @@ import {
   FactorBreakdownCard,
   AlternativesPreviewCard,
   ConcentrationWarningCard,
+  // Inflation Watch
+  InflationSummaryCard,
+  DriverBreakdownCard,
+  SpendImpactCard,
+  JustificationCard,
+  ScenarioCard,
+  ExecutiveBriefCard,
 } from '../../components/widgets';
 
 import {
@@ -79,10 +86,17 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   ConcentrationWarningCard,
   HandoffCard,
   ActionConfirmationCard,
+  // Inflation Watch
+  InflationSummaryCard,
+  DriverBreakdownCard,
+  SpendImpactCard,
+  JustificationCard,
+  ScenarioCard,
+  ExecutiveBriefCard,
 };
 
 interface WidgetCardProps {
-  widget: WidgetCatalogEntry;
+  widget: WidgetRegistryEntry;
 }
 
 export const WidgetCard = ({ widget }: WidgetCardProps) => {
@@ -156,6 +170,47 @@ export const WidgetCard = ({ widget }: WidgetCardProps) => {
       <div className="px-5 py-3 border-b border-slate-100">
         <p className="text-sm text-slate-600">{widget.description}</p>
       </div>
+
+      {/* Intent Mapping - Shows which intents trigger this widget */}
+      {widget.intents && widget.intents.length > 0 && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-violet-50/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap size={14} className="text-violet-500" />
+            <span className="text-xs font-medium text-violet-700 uppercase tracking-wide">
+              Triggered By Intents
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {widget.intents.map(intent => (
+              <span
+                key={intent}
+                className="px-2 py-0.5 text-xs font-medium bg-violet-100 text-violet-700 rounded"
+              >
+                {intent.replace(/_/g, ' ')}
+              </span>
+            ))}
+            {widget.subIntents && widget.subIntents.length > 0 && (
+              <>
+                <span className="text-slate-300 mx-1">|</span>
+                {widget.subIntents.map(sub => (
+                  <span
+                    key={sub}
+                    className="px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded"
+                  >
+                    {sub.replace(/_/g, ' ')}
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
+          {widget.requiredData && widget.requiredData.length > 0 && widget.requiredData[0] !== 'none' && (
+            <div className="mt-2 text-xs text-slate-500">
+              <span className="font-medium">Requires:</span>{' '}
+              {widget.requiredData.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Demo Area */}
       <div className="p-5 bg-gradient-to-br from-slate-50 to-white min-h-[200px]">

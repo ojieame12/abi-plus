@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Search, Layers, ChevronRight } from 'lucide-react';
 import {
-  WIDGET_CATALOG,
+  WIDGET_REGISTRY,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   getCategoryCounts,
   getWidgetsByCategory,
   searchWidgets,
   type WidgetCategory,
-} from './catalog/catalogData';
+} from '../services/widgetRegistry';
 import { WidgetCard } from './catalog/WidgetCard';
 
 export const WidgetCatalog = () => {
@@ -16,11 +16,11 @@ export const WidgetCatalog = () => {
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory | 'all'>('all');
 
   const categoryCounts = useMemo(() => getCategoryCounts(), []);
-  const totalWidgets = WIDGET_CATALOG.length;
+  const totalWidgets = WIDGET_REGISTRY.length;
 
   // Filter widgets based on search and category
   const filteredWidgets = useMemo(() => {
-    let widgets = searchQuery ? searchWidgets(searchQuery) : WIDGET_CATALOG;
+    let widgets = searchQuery ? searchWidgets(searchQuery) : WIDGET_REGISTRY;
 
     if (selectedCategory !== 'all') {
       widgets = widgets.filter(w => w.category === selectedCategory);

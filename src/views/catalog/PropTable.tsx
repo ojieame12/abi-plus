@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { PropDefinition } from './catalogData';
+import type { PropDefinition } from '../../services/widgetRegistry';
 
 interface PropTableProps {
   props: PropDefinition[];

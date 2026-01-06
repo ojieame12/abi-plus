@@ -1,5 +1,8 @@
-// Widget Catalog Data
-// Comprehensive documentation for all widgets
+// Unified Widget Registry
+// Single source of truth for widget definitions, intent mappings, and selection rules
+
+import type { IntentCategory, SubIntent, ArtifactType } from '../types/intents';
+import type { WidgetType, WidgetSize } from '../types/widgets';
 
 // ============================================
 // TYPES
@@ -16,6 +19,27 @@ export type WidgetCategory =
   | 'actions'
   | 'inflation';
 
+export type RenderContext =
+  | 'chat'
+  | 'chat_compact'
+  | 'panel'
+  | 'panel_expanded'
+  | 'standalone';
+
+export type RequiredData =
+  | 'portfolio'
+  | 'suppliers'
+  | 'supplier'
+  | 'riskChanges'
+  | 'events'
+  | 'commodityData'
+  | 'inflationSummary'
+  | 'commodityDrivers'
+  | 'portfolioExposure'
+  | 'justificationData'
+  | 'scenarioData'
+  | 'none';
+
 export interface PropDefinition {
   name: string;
   type: string;
@@ -24,18 +48,43 @@ export interface PropDefinition {
   description: string;
 }
 
-export interface WidgetCatalogEntry {
+export interface WidgetRegistryEntry {
+  // Identity
   id: string;
-  name: string;
+  type: WidgetType;
   component: string;
+  name: string;
+
+  // Categorization
   category: WidgetCategory;
   description: string;
-  sizes: ('S' | 'M' | 'L')[];
-  defaultSize: 'S' | 'M' | 'L';
+
+  // Intent Mapping
+  intents: IntentCategory[];
+  subIntents?: SubIntent[];
+
+  // Selection Rules
+  priority: number;
+  requiredData: RequiredData[];
+  renderContexts: RenderContext[];
+
+  // Sizing
+  sizes: WidgetSize[];
+  defaultSize: WidgetSize;
+
+  // Artifact Escalation
+  artifactType?: ArtifactType;
+  expandsTo?: string;
+
+  // Documentation
   props: PropDefinition[];
-  demoData: Record<string, any>;
+  demoData: Record<string, unknown>;
   usageExample: string;
 }
+
+// ============================================
+// CATEGORY METADATA
+// ============================================
 
 export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
   portfolio: 'Portfolio & Overview',
@@ -65,7 +114,7 @@ export const CATEGORY_ORDER: WidgetCategory[] = [
 // SHARED DEMO DATA
 // ============================================
 
-export const demoDistribution = {
+const demoDistribution = {
   high: 2,
   'medium-high': 1,
   medium: 3,
@@ -73,45 +122,36 @@ export const demoDistribution = {
   unrated: 10,
 };
 
-export const demoSupplier = {
-  id: '1',
-  name: 'Apple Inc.',
-  duns: '372280056',
-  category: 'Electronics',
-  location: { city: 'Cupertino', country: 'USA', region: 'North America' },
-  spend: 10000000,
-  spendFormatted: '$10.0M',
-  criticality: 'high' as const,
-  srs: {
-    score: 85,
-    level: 'high' as const,
-    trend: 'worsening' as const,
-    lastUpdated: 'May 3, 2024',
-  },
-};
-
-export const demoSuppliers = [
+const demoSuppliers = [
   { id: '1', name: 'Apple Inc.', category: 'Electronics', location: 'USA', srs: { score: 85, level: 'high' as const, trend: 'worsening' as const }, spend: '$10.0M', spendFormatted: '$10.0M' },
   { id: '2', name: 'Flash Cleaning', category: 'Services', location: 'Germany', srs: { score: 52, level: 'medium' as const, trend: 'stable' as const }, spend: '$2.1M', spendFormatted: '$2.1M' },
   { id: '3', name: 'Widget Co', category: 'Components', location: 'China', srs: { score: 38, level: 'low' as const, trend: 'improving' as const }, spend: '$850K', spendFormatted: '$850K' },
 ];
 
 // ============================================
-// WIDGET CATALOG ENTRIES
+// WIDGET REGISTRY
 // ============================================
 
-export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
+export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
   // ============================================
   // PORTFOLIO & OVERVIEW
   // ============================================
   {
     id: 'risk-distribution-widget',
-    name: 'RiskDistributionWidget',
+    type: 'risk_distribution',
     component: 'RiskDistributionWidget',
+    name: 'RiskDistributionWidget',
     category: 'portfolio',
     description: 'Donut chart showing risk distribution across the portfolio with interactive segments.',
+    intents: ['portfolio_overview'],
+    subIntents: ['overall_summary'],
+    priority: 110,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'portfolio_dashboard',
+    expandsTo: 'PortfolioDashboardArtifact',
     props: [
       { name: 'distribution', type: 'RiskDistribution', required: true, description: 'Object with counts for each risk level (high, medium-high, medium, low, unrated)' },
       { name: 'totalSuppliers', type: 'number', required: true, description: 'Total number of suppliers in portfolio' },
@@ -130,10 +170,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'metric-row-widget',
-    name: 'MetricRowWidget',
+    type: 'metric_row',
     component: 'MetricRowWidget',
+    name: 'MetricRowWidget',
     category: 'portfolio',
     description: 'Horizontal row of 3-4 key metrics with optional trends.',
+    intents: ['portfolio_overview', 'filtered_discovery'],
+    priority: 80,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat', 'chat_compact'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -156,12 +201,19 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'spend-exposure-widget',
-    name: 'SpendExposureWidget',
+    type: 'spend_exposure',
     component: 'SpendExposureWidget',
+    name: 'SpendExposureWidget',
     category: 'portfolio',
     description: 'Spend-at-risk breakdown showing dollar amounts by risk level.',
+    intents: ['portfolio_overview'],
+    subIntents: ['spend_weighted'],
+    priority: 105,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'portfolio_dashboard',
     props: [
       { name: 'totalSpendFormatted', type: 'string', required: true, description: 'Formatted total spend (e.g., "$10.0B")' },
       { name: 'breakdown', type: 'SpendBreakdown[]', required: true, description: 'Array of spend by risk level' },
@@ -186,12 +238,18 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'health-scorecard-widget',
-    name: 'HealthScorecardWidget',
+    type: 'health_scorecard',
     component: 'HealthScorecardWidget',
+    name: 'HealthScorecardWidget',
     category: 'portfolio',
     description: 'Portfolio health overview with score circle and key metrics grid.',
+    intents: ['portfolio_overview'],
+    priority: 95,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'portfolio_dashboard',
     props: [
       { name: 'overallScore', type: 'number', required: true, description: 'Overall health score (0-100)' },
       { name: 'scoreLabel', type: 'string', required: true, description: 'Label for the score (e.g., "Moderate Health")' },
@@ -222,12 +280,20 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'supplier-risk-card-widget',
-    name: 'SupplierRiskCardWidget',
+    type: 'supplier_risk_card',
     component: 'SupplierRiskCardWidget',
+    name: 'SupplierRiskCardWidget',
     category: 'supplier',
     description: 'Detailed supplier risk profile card with score, trend, and key factors.',
+    intents: ['supplier_deep_dive'],
+    subIntents: ['supplier_overview', 'score_inquiry'],
+    priority: 100,
+    requiredData: ['supplier'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'supplier_detail',
+    expandsTo: 'SupplierDetailArtifact',
     props: [
       { name: 'data', type: 'SupplierRiskCardData', required: true, description: 'Supplier data object' },
       { name: 'onViewDetails', type: '() => void', required: false, description: 'Callback to view full details' },
@@ -262,12 +328,20 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'supplier-table-widget',
-    name: 'SupplierTableWidget',
+    type: 'supplier_table',
     component: 'SupplierTableWidget',
+    name: 'SupplierTableWidget',
     category: 'supplier',
     description: 'Sortable table of suppliers with risk scores and key metrics.',
+    intents: ['filtered_discovery', 'action_trigger', 'explanation_why'],
+    subIntents: ['by_risk_level', 'by_risk_factor', 'by_attribute', 'compound_filter'],
+    priority: 100,
+    requiredData: ['suppliers'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'supplier_table',
+    expandsTo: 'SupplierTableArtifact',
     props: [
       { name: 'data', type: 'SupplierTableData', required: true, description: 'Table data with suppliers array' },
       { name: 'onRowClick', type: '(supplier) => void', required: false, description: 'Callback when row is clicked' },
@@ -290,10 +364,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'supplier-mini-card',
-    name: 'SupplierMiniCard',
+    type: 'supplier_mini',
     component: 'SupplierMiniCard',
+    name: 'SupplierMiniCard',
     category: 'supplier',
     description: 'Compact inline supplier badge with risk score.',
+    intents: ['supplier_deep_dive', 'filtered_discovery'],
+    priority: 60,
+    requiredData: ['supplier'],
+    renderContexts: ['chat_compact'],
     sizes: ['S'],
     defaultSize: 'S',
     props: [
@@ -321,12 +400,19 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'comparison-table-widget',
-    name: 'ComparisonTableWidget',
+    type: 'comparison_table',
     component: 'ComparisonTableWidget',
+    name: 'ComparisonTableWidget',
     category: 'supplier',
     description: 'Side-by-side comparison of 2-4 suppliers with metrics.',
+    intents: ['comparison'],
+    priority: 100,
+    requiredData: ['suppliers'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'L',
+    artifactType: 'comparison',
+    expandsTo: 'ComparisonArtifact',
     props: [
       { name: 'data', type: 'ComparisonTableData', required: true, description: 'Comparison data with suppliers array' },
       { name: 'onSelectSupplier', type: '(supplier) => void', required: false, description: 'Callback when supplier selected' },
@@ -354,12 +440,19 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'alert-card-widget',
-    name: 'AlertCardWidget',
+    type: 'alert_card',
     component: 'AlertCardWidget',
+    name: 'AlertCardWidget',
     category: 'trends',
     description: 'Risk alert notification with severity and affected suppliers.',
+    intents: ['trend_detection'],
+    subIntents: ['recent_changes', 'change_direction'],
+    priority: 100,
+    requiredData: ['riskChanges'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
+    artifactType: 'supplier_table',
     props: [
       { name: 'data', type: 'AlertCardData', required: true, description: 'Alert data object' },
       { name: 'onViewDetails', type: '() => void', required: false, description: 'View details callback' },
@@ -390,10 +483,16 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'trend-chart-widget',
-    name: 'TrendChartWidget',
+    type: 'trend_chart',
     component: 'TrendChartWidget',
+    name: 'TrendChartWidget',
     category: 'trends',
     description: 'Time series chart showing trends over time.',
+    intents: ['trend_detection', 'supplier_deep_dive'],
+    subIntents: ['historical'],
+    priority: 90,
+    requiredData: ['riskChanges'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
     props: [
@@ -425,10 +524,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'trend-change-indicator',
-    name: 'TrendChangeIndicator',
+    type: 'trend_indicator',
     component: 'TrendChangeIndicator',
+    name: 'TrendChangeIndicator',
     category: 'trends',
     description: 'Simple trend indicator showing score change.',
+    intents: ['trend_detection'],
+    priority: 70,
+    requiredData: ['riskChanges'],
+    renderContexts: ['chat_compact'],
     sizes: ['S', 'M'],
     defaultSize: 'S',
     props: [
@@ -453,10 +557,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'event-timeline-widget',
-    name: 'EventTimelineWidget',
+    type: 'event_timeline',
     component: 'EventTimelineWidget',
+    name: 'EventTimelineWidget',
     category: 'trends',
     description: 'Timeline of events and changes with icons and dates.',
+    intents: ['trend_detection', 'supplier_deep_dive'],
+    priority: 85,
+    requiredData: ['events'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
     props: [
@@ -481,10 +590,16 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'events-feed-widget',
-    name: 'EventsFeedWidget',
+    type: 'events_feed',
     component: 'EventsFeedWidget',
+    name: 'EventsFeedWidget',
     category: 'trends',
     description: 'Feed of recent events and alerts.',
+    intents: ['trend_detection', 'market_context'],
+    subIntents: ['news_events'],
+    priority: 95,
+    requiredData: ['events'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
     props: [
@@ -510,10 +625,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'price-gauge-widget',
-    name: 'PriceGaugeWidget',
+    type: 'price_gauge',
     component: 'PriceGaugeWidget',
+    name: 'PriceGaugeWidget',
     category: 'market',
     description: 'Commodity price indicator with gauge visualization.',
+    intents: ['market_context'],
+    priority: 100,
+    requiredData: ['commodityData'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -542,10 +662,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'news-item-card',
-    name: 'NewsItemCard',
+    type: 'news_item',
     component: 'NewsItemCard',
+    name: 'NewsItemCard',
     category: 'market',
     description: 'News article card with source and sentiment.',
+    intents: ['market_context'],
+    priority: 85,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['S', 'M'],
     defaultSize: 'M',
     props: [
@@ -577,12 +702,19 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'category-breakdown-widget',
-    name: 'CategoryBreakdownWidget',
+    type: 'category_breakdown',
     component: 'CategoryBreakdownWidget',
+    name: 'CategoryBreakdownWidget',
     category: 'categories',
     description: 'Breakdown of spend and risk by category.',
+    intents: ['portfolio_overview', 'filtered_discovery'],
+    subIntents: ['by_dimension'],
+    priority: 105,
+    requiredData: ['portfolio', 'suppliers'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'portfolio_dashboard',
     props: [
       { name: 'data', type: 'CategoryBreakdownData', required: true, description: 'Category breakdown data' },
       { name: 'onCategoryClick', type: '(name: string) => void', required: false, description: 'Category click handler' },
@@ -605,10 +737,16 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'region-list-widget',
-    name: 'RegionListWidget',
+    type: 'region_list',
     component: 'RegionListWidget',
+    name: 'RegionListWidget',
     category: 'categories',
     description: 'List of regions with supplier counts and flags.',
+    intents: ['portfolio_overview', 'filtered_discovery'],
+    subIntents: ['by_dimension'],
+    priority: 90,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat'],
     sizes: ['S', 'M'],
     defaultSize: 'M',
     props: [
@@ -635,10 +773,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'category-badge',
-    name: 'CategoryBadge',
+    type: 'category_badge',
     component: 'CategoryBadge',
+    name: 'CategoryBadge',
     category: 'categories',
     description: 'Compact category indicator badge.',
+    intents: ['filtered_discovery'],
+    priority: 50,
+    requiredData: ['none'],
+    renderContexts: ['chat_compact'],
     sizes: ['S'],
     defaultSize: 'S',
     props: [
@@ -659,10 +802,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'status-badge',
-    name: 'StatusBadge',
+    type: 'status_badge',
     component: 'StatusBadge',
+    name: 'StatusBadge',
     category: 'categories',
     description: 'Simple status indicator badge.',
+    intents: ['setup_config', 'action_trigger'],
+    priority: 50,
+    requiredData: ['none'],
+    renderContexts: ['chat_compact'],
     sizes: ['S', 'M'],
     defaultSize: 'S',
     props: [
@@ -686,12 +834,18 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'score-breakdown-widget',
-    name: 'ScoreBreakdownWidget',
+    type: 'score_breakdown',
     component: 'ScoreBreakdownWidget',
+    name: 'ScoreBreakdownWidget',
     category: 'score',
     description: 'Detailed breakdown of risk score factors.',
+    intents: ['supplier_deep_dive', 'explanation_why'],
+    priority: 95,
+    requiredData: ['supplier'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'supplier_detail',
     props: [
       { name: 'data', type: 'ScoreBreakdownData', required: true, description: 'Score breakdown data' },
       { name: 'onExpand', type: '() => void', required: false, description: 'Expand callback' },
@@ -718,12 +872,19 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'factor-breakdown-card',
-    name: 'FactorBreakdownCard',
+    type: 'factor_breakdown',
     component: 'FactorBreakdownCard',
+    name: 'FactorBreakdownCard',
     category: 'score',
     description: 'Risk factors breakdown by tier with scores.',
+    intents: ['supplier_deep_dive', 'explanation_why'],
+    subIntents: ['score_inquiry'],
+    priority: 90,
+    requiredData: ['supplier'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
+    artifactType: 'supplier_detail',
     props: [
       { name: 'supplierName', type: 'string', required: true, description: 'Supplier name' },
       { name: 'overallScore', type: 'number', required: true, description: 'Overall risk score' },
@@ -752,10 +913,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'stat-card',
-    name: 'StatCard',
+    type: 'stat_card',
     component: 'StatCard',
+    name: 'StatCard',
     category: 'general',
     description: 'Single statistic display with optional trend indicator.',
+    intents: ['portfolio_overview', 'market_context', 'general'],
+    priority: 70,
+    requiredData: ['none'],
+    renderContexts: ['chat', 'chat_compact'],
     sizes: ['S', 'M'],
     defaultSize: 'M',
     props: [
@@ -780,10 +946,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'info-card',
-    name: 'InfoCard',
+    type: 'info_card',
     component: 'InfoCard',
+    name: 'InfoCard',
     category: 'general',
     description: 'Informational card with optional bullets and actions.',
+    intents: ['explanation_why', 'general', 'setup_config'],
+    priority: 75,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -808,10 +979,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'quote-card',
-    name: 'QuoteCard',
+    type: 'quote_card',
     component: 'QuoteCard',
+    name: 'QuoteCard',
     category: 'general',
     description: 'Highlighted quote or insight with source attribution.',
+    intents: ['explanation_why', 'market_context'],
+    priority: 75,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['S', 'M'],
     defaultSize: 'M',
     props: [
@@ -834,10 +1010,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'recommendation-card',
-    name: 'RecommendationCard',
+    type: 'recommendation_card',
     component: 'RecommendationCard',
+    name: 'RecommendationCard',
     category: 'general',
     description: 'AI recommendation with confidence level and reasoning.',
+    intents: ['portfolio_overview', 'supplier_deep_dive', 'action_trigger'],
+    priority: 85,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
     props: [
@@ -863,10 +1044,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'checklist-card',
-    name: 'ChecklistCard',
+    type: 'checklist_card',
     component: 'ChecklistCard',
+    name: 'ChecklistCard',
     category: 'general',
     description: 'Interactive checklist with progress indicator.',
+    intents: ['action_trigger', 'setup_config'],
+    priority: 80,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -895,10 +1081,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'progress-card',
-    name: 'ProgressCard',
+    type: 'progress_card',
     component: 'ProgressCard',
+    name: 'ProgressCard',
     category: 'general',
     description: 'Step-by-step progress indicator.',
+    intents: ['setup_config'],
+    priority: 85,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -925,10 +1116,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'executive-summary-card',
-    name: 'ExecutiveSummaryCard',
+    type: 'executive_summary',
     component: 'ExecutiveSummaryCard',
+    name: 'ExecutiveSummaryCard',
     category: 'general',
     description: 'Executive summary with key points and metrics.',
+    intents: ['portfolio_overview', 'reporting_export'],
+    priority: 80,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'M',
     props: [
@@ -955,10 +1151,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'data-list-card',
-    name: 'DataListCard',
+    type: 'data_list',
     component: 'DataListCard',
+    name: 'DataListCard',
     category: 'general',
     description: 'Generic list display with status indicators.',
+    intents: ['filtered_discovery', 'general'],
+    priority: 70,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -988,10 +1189,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // ============================================
   {
     id: 'handoff-card',
-    name: 'HandoffCard',
+    type: 'handoff_card',
     component: 'HandoffCard',
+    name: 'HandoffCard',
     category: 'actions',
     description: 'Card for redirecting to dashboard or external view.',
+    intents: ['restricted_query'],
+    priority: 100,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -1017,10 +1223,15 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'action-confirmation-card',
-    name: 'ActionConfirmationCard',
+    type: 'action_card',
     component: 'ActionConfirmationCard',
+    name: 'ActionConfirmationCard',
     category: 'actions',
     description: 'Confirmation card for completed actions.',
+    intents: ['action_trigger'],
+    priority: 100,
+    requiredData: ['none'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -1045,35 +1256,51 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   },
   {
     id: 'alternatives-preview-card',
-    name: 'AlternativesPreviewCard',
+    type: 'alternatives_preview',
     component: 'AlternativesPreviewCard',
+    name: 'AlternativesPreviewCard',
     category: 'actions',
     description: 'Preview of alternative suppliers.',
+    intents: ['action_trigger'],
+    subIntents: ['find_alternatives'],
+    priority: 115,
+    requiredData: ['suppliers'],
+    renderContexts: ['chat', 'panel'],
     sizes: ['M'],
     defaultSize: 'M',
+    artifactType: 'supplier_table',
+    expandsTo: 'AlternativesArtifact',
     props: [
       { name: 'currentSupplier', type: 'string', required: true, description: 'Current supplier name' },
+      { name: 'currentScore', type: 'number', required: true, description: 'Current supplier risk score' },
       { name: 'alternatives', type: 'Alternative[]', required: true, description: 'Alternative suppliers' },
       { name: 'onViewAll', type: '() => void', required: false, description: 'View all callback' },
     ],
     demoData: {
       currentSupplier: 'Apple Inc.',
+      currentScore: 85,
       alternatives: [
-        { id: '1', name: 'Flash Cleaning', riskScore: 52, match: 85 },
-        { id: '2', name: 'Widget Co', riskScore: 38, match: 72 },
+        { id: '1', name: 'Flash Cleaning', score: 52, level: 'medium', category: 'Services', matchScore: 85 },
+        { id: '2', name: 'Widget Co', score: 38, level: 'low', category: 'Components', matchScore: 72 },
       ],
     },
     usageExample: `<AlternativesPreviewCard
   currentSupplier="Apple Inc."
+  currentScore={85}
   alternatives={[...]}
 />`,
   },
   {
     id: 'concentration-warning-card',
-    name: 'ConcentrationWarningCard',
+    type: 'concentration_warning',
     component: 'ConcentrationWarningCard',
+    name: 'ConcentrationWarningCard',
     category: 'actions',
     description: 'Warning card for portfolio concentration risks.',
+    intents: ['portfolio_overview', 'filtered_discovery'],
+    priority: 85,
+    requiredData: ['portfolio'],
+    renderContexts: ['chat'],
     sizes: ['M'],
     defaultSize: 'M',
     props: [
@@ -1098,33 +1325,480 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   threshold={30}
 />`,
   },
+
+  // ============================================
+  // INFLATION WATCH
+  // ============================================
+  {
+    id: 'inflation-summary-card',
+    type: 'inflation_summary_card',
+    component: 'InflationSummaryCard',
+    name: 'InflationSummaryCard',
+    category: 'inflation',
+    description: 'Monthly inflation overview with key price changes, portfolio impact, and top drivers.',
+    intents: ['inflation_summary'],
+    subIntents: ['monthly_changes', 'top_movers'],
+    priority: 100,
+    requiredData: ['inflationSummary'],
+    renderContexts: ['chat', 'panel'],
+    sizes: ['M', 'L'],
+    defaultSize: 'M',
+    artifactType: 'inflation_dashboard',
+    expandsTo: 'InflationDashboardArtifact',
+    props: [
+      { name: 'period', type: 'string', required: true, description: 'Time period (e.g., "March 2024")' },
+      { name: 'headline', type: 'string', required: true, description: 'AI-generated headline summary' },
+      { name: 'overallChange', type: 'PriceChangeData', required: true, description: 'Weighted average change with absolute, percent, direction' },
+      { name: 'topIncreases', type: 'Array<{ commodity, change, impact }>', required: true, description: 'Top commodities with price increases' },
+      { name: 'topDecreases', type: 'Array<{ commodity, change, benefit }>', required: true, description: 'Top commodities with price decreases' },
+      { name: 'portfolioImpact', type: '{ amount, percent, direction }', required: true, description: 'Total portfolio spend impact' },
+      { name: 'keyDrivers', type: 'string[]', required: true, description: 'Top 3 drivers of price changes' },
+      { name: 'lastUpdated', type: 'string', required: true, description: 'Last data update timestamp' },
+      { name: 'onViewDetails', type: '() => void', required: false, description: 'Callback to view full dashboard' },
+      { name: 'delay', type: 'number', required: false, default: '0', description: 'Animation delay in seconds' },
+    ],
+    demoData: {
+      period: 'March 2024',
+      headline: 'Steel and aluminum prices surge amid supply constraints',
+      overallChange: { absolute: 125000000, percent: 4.2, direction: 'up' },
+      topIncreases: [
+        { commodity: 'Steel', change: 8.5, impact: '$2.5M impact' },
+        { commodity: 'Aluminum', change: 6.2, impact: '$1.8M impact' },
+      ],
+      topDecreases: [
+        { commodity: 'Copper', change: -2.3, benefit: '$500K savings' },
+      ],
+      portfolioImpact: { amount: '$5.2M', percent: 4.2, direction: 'increase' },
+      keyDrivers: ['China production cuts', 'EV demand surge', 'Energy costs'],
+      lastUpdated: '2 hours ago',
+    },
+    usageExample: `<InflationSummaryCard
+  period="March 2024"
+  headline="Steel and aluminum prices surge..."
+  overallChange={{ absolute: 125000000, percent: 4.2, direction: 'up' }}
+  topIncreases={[{ commodity: 'Steel', change: 8.5, impact: '$2.5M' }]}
+  topDecreases={[{ commodity: 'Copper', change: -2.3, benefit: '$500K' }]}
+  portfolioImpact={{ amount: '$5.2M', percent: 4.2, direction: 'increase' }}
+  keyDrivers={['China production cuts', 'EV demand surge']}
+  lastUpdated="2 hours ago"
+/>`,
+  },
+  {
+    id: 'driver-breakdown-card',
+    type: 'driver_breakdown_card',
+    component: 'DriverBreakdownCard',
+    name: 'DriverBreakdownCard',
+    category: 'inflation',
+    description: 'Root cause analysis showing factors driving commodity price changes with contribution percentages.',
+    intents: ['inflation_drivers'],
+    subIntents: ['commodity_drivers', 'market_drivers'],
+    priority: 100,
+    requiredData: ['commodityDrivers'],
+    renderContexts: ['chat', 'panel'],
+    sizes: ['M', 'L'],
+    defaultSize: 'M',
+    artifactType: 'driver_analysis',
+    expandsTo: 'DriverAnalysisArtifact',
+    props: [
+      { name: 'commodity', type: 'string', required: true, description: 'Commodity name being analyzed' },
+      { name: 'priceChange', type: 'PriceChangeData', required: true, description: 'Overall price change data' },
+      { name: 'period', type: 'string', required: true, description: 'Analysis period' },
+      { name: 'drivers', type: 'Array<{ name, category, contribution, direction, description }>', required: true, description: 'Contributing factors with impact' },
+      { name: 'marketContext', type: 'string', required: false, description: 'Brief market context summary' },
+      { name: 'sources', type: 'Array<{ title, source, url? }>', required: false, description: 'Data sources' },
+      { name: 'onViewDetails', type: '() => void', required: false, description: 'Callback to view full analysis' },
+      { name: 'delay', type: 'number', required: false, default: '0', description: 'Animation delay' },
+    ],
+    demoData: {
+      commodity: 'Steel',
+      priceChange: { absolute: 85, percent: 8.5, direction: 'up' },
+      period: 'March 2024',
+      drivers: [
+        { name: 'China Production Cuts', category: 'Supply', contribution: 45, direction: 'up', description: 'Major mills reducing output amid environmental regulations' },
+        { name: 'EV Manufacturing Demand', category: 'Demand', contribution: 30, direction: 'up', description: 'Auto sector increasing steel procurement' },
+        { name: 'Energy Costs', category: 'Cost', contribution: 25, direction: 'up', description: 'Natural gas prices affecting production costs' },
+      ],
+      marketContext: 'Global steel markets remain tight as supply constraints persist.',
+      sources: [
+        { title: 'Steel Market Report', source: 'Beroe' },
+        { title: 'Commodity Outlook', source: 'Reuters' },
+      ],
+    },
+    usageExample: `<DriverBreakdownCard
+  commodity="Steel"
+  priceChange={{ absolute: 85, percent: 8.5, direction: 'up' }}
+  period="March 2024"
+  drivers={[
+    { name: 'China Production Cuts', category: 'Supply', contribution: 45, direction: 'up', description: '...' },
+  ]}
+  marketContext="Global steel markets remain tight..."
+/>`,
+  },
+  {
+    id: 'spend-impact-card',
+    type: 'spend_impact_card',
+    component: 'SpendImpactCard',
+    name: 'SpendImpactCard',
+    category: 'inflation',
+    description: 'Portfolio spend impact from inflation with breakdown by category and most affected areas.',
+    intents: ['inflation_impact'],
+    subIntents: ['spend_impact', 'category_exposure'],
+    priority: 100,
+    requiredData: ['portfolioExposure'],
+    renderContexts: ['chat', 'panel'],
+    sizes: ['M', 'L'],
+    defaultSize: 'M',
+    artifactType: 'impact_analysis',
+    expandsTo: 'ImpactAnalysisArtifact',
+    props: [
+      { name: 'totalImpact', type: 'string', required: true, description: 'Total impact amount (e.g., "$5.2M")' },
+      { name: 'totalImpactDirection', type: "'increase' | 'decrease'", required: true, description: 'Impact direction' },
+      { name: 'impactPercent', type: 'number', required: true, description: 'Impact as percentage of total spend' },
+      { name: 'timeframe', type: 'string', required: true, description: 'Comparison timeframe (e.g., "vs. last quarter")' },
+      { name: 'breakdown', type: 'Array<{ category, amount, percent, direction }>', required: true, description: 'Impact by category' },
+      { name: 'mostAffected', type: '{ type, name, impact }', required: true, description: 'Most affected area' },
+      { name: 'recommendation', type: 'string', required: false, description: 'AI recommendation' },
+      { name: 'onViewDetails', type: '() => void', required: false, description: 'Callback to view details' },
+      { name: 'delay', type: 'number', required: false, default: '0', description: 'Animation delay' },
+    ],
+    demoData: {
+      totalImpact: '$5.2M',
+      totalImpactDirection: 'increase',
+      impactPercent: 4.2,
+      timeframe: 'vs. last quarter',
+      breakdown: [
+        { category: 'Raw Materials', amount: '$3.1M', percent: 60, direction: 'up' },
+        { category: 'Components', amount: '$1.5M', percent: 29, direction: 'up' },
+        { category: 'Services', amount: '$0.6M', percent: 11, direction: 'up' },
+      ],
+      mostAffected: { type: 'category', name: 'Raw Materials', impact: '$3.1M' },
+      recommendation: 'Consider hedging steel exposure through forward contracts.',
+    },
+    usageExample: `<SpendImpactCard
+  totalImpact="$5.2M"
+  totalImpactDirection="increase"
+  impactPercent={4.2}
+  timeframe="vs. last quarter"
+  breakdown={[
+    { category: 'Raw Materials', amount: '$3.1M', percent: 60, direction: 'up' },
+  ]}
+  mostAffected={{ type: 'category', name: 'Raw Materials', impact: '$3.1M' }}
+/>`,
+  },
+  {
+    id: 'justification-card',
+    type: 'justification_card',
+    component: 'JustificationCard',
+    name: 'JustificationCard',
+    category: 'inflation',
+    description: 'Price increase validation with market comparison, verdict, and negotiation leverage assessment.',
+    intents: ['inflation_justification'],
+    subIntents: ['validate_increase', 'negotiate_support', 'market_fairness'],
+    priority: 100,
+    requiredData: ['justificationData'],
+    renderContexts: ['chat', 'panel'],
+    sizes: ['M', 'L'],
+    defaultSize: 'M',
+    artifactType: 'justification_report',
+    expandsTo: 'JustificationReportArtifact',
+    props: [
+      { name: 'supplierName', type: 'string', required: true, description: 'Supplier requesting increase' },
+      { name: 'commodity', type: 'string', required: true, description: 'Commodity name' },
+      { name: 'requestedIncrease', type: 'number', required: true, description: 'Requested increase percentage' },
+      { name: 'marketBenchmark', type: 'number', required: true, description: 'Market average increase' },
+      { name: 'verdict', type: 'JustificationVerdict', required: true, description: 'justified | partially_justified | questionable | insufficient_data' },
+      { name: 'verdictLabel', type: 'string', required: true, description: 'Human-readable verdict' },
+      { name: 'keyPoints', type: 'Array<{ point, supports }>', required: true, description: 'Key findings (supports: true = supplier, false = buyer)' },
+      { name: 'recommendation', type: 'string', required: true, description: 'Negotiation recommendation' },
+      { name: 'negotiationLeverage', type: "'strong' | 'moderate' | 'weak'", required: true, description: 'Buyer leverage assessment' },
+      { name: 'onViewDetails', type: '() => void', required: false, description: 'Callback to view full report' },
+      { name: 'delay', type: 'number', required: false, default: '0', description: 'Animation delay' },
+    ],
+    demoData: {
+      supplierName: 'Acme Steel',
+      commodity: 'Cold Rolled Steel',
+      requestedIncrease: 12,
+      marketBenchmark: 8.5,
+      verdict: 'partially_justified',
+      verdictLabel: 'Partially Justified',
+      keyPoints: [
+        { point: 'Market prices increased 8.5% average', supports: true },
+        { point: 'Supplier margin already above industry average', supports: false },
+        { point: 'Alternative suppliers available at lower rates', supports: false },
+      ],
+      recommendation: 'Counter-offer at 9% increase with volume commitment for additional discount.',
+      negotiationLeverage: 'moderate',
+    },
+    usageExample: `<JustificationCard
+  supplierName="Acme Steel"
+  commodity="Cold Rolled Steel"
+  requestedIncrease={12}
+  marketBenchmark={8.5}
+  verdict="partially_justified"
+  verdictLabel="Partially Justified"
+  keyPoints={[{ point: 'Market prices increased 8.5%', supports: true }]}
+  recommendation="Counter-offer at 9%..."
+  negotiationLeverage="moderate"
+/>`,
+  },
+  {
+    id: 'scenario-card',
+    type: 'scenario_card',
+    component: 'ScenarioCard',
+    name: 'ScenarioCard',
+    category: 'inflation',
+    description: 'What-if scenario result showing projected impact, confidence level, and recommendations.',
+    intents: ['inflation_scenarios'],
+    subIntents: ['what_if_increase', 'budget_impact', 'price_forecast'],
+    priority: 100,
+    requiredData: ['scenarioData'],
+    renderContexts: ['chat', 'panel'],
+    sizes: ['M', 'L'],
+    defaultSize: 'M',
+    artifactType: 'scenario_planner',
+    expandsTo: 'ScenarioPlannerArtifact',
+    props: [
+      { name: 'scenarioName', type: 'string', required: true, description: 'Scenario name' },
+      { name: 'description', type: 'string', required: true, description: 'Scenario description' },
+      { name: 'assumption', type: 'string', required: true, description: 'Key assumption (e.g., "Steel prices increase 15%")' },
+      { name: 'currentState', type: '{ label, value }', required: true, description: 'Current state' },
+      { name: 'projectedState', type: '{ label, value }', required: true, description: 'Projected state' },
+      { name: 'delta', type: '{ amount, percent, direction }', required: true, description: 'Change amount' },
+      { name: 'confidence', type: "'high' | 'medium' | 'low'", required: true, description: 'Projection confidence' },
+      { name: 'topImpacts', type: 'string[]', required: true, description: 'Top 3 impact areas' },
+      { name: 'recommendation', type: 'string', required: false, description: 'Suggested action' },
+      { name: 'onViewDetails', type: '() => void', required: false, description: 'View full scenario' },
+      { name: 'onRunScenario', type: '() => void', required: false, description: 'Modify scenario' },
+      { name: 'delay', type: 'number', required: false, default: '0', description: 'Animation delay' },
+    ],
+    demoData: {
+      scenarioName: 'Steel Price Surge',
+      description: 'Impact analysis if steel prices continue upward trend',
+      assumption: 'Steel prices increase 15% over next quarter',
+      currentState: { label: 'Current Q2 Spend', value: '$45.2M' },
+      projectedState: { label: 'Projected Q3 Spend', value: '$52.0M' },
+      delta: { amount: '$6.8M', percent: 15, direction: 'up' },
+      confidence: 'medium',
+      topImpacts: [
+        'Raw materials budget +$4.2M',
+        'Component costs +$1.8M',
+        'Margin compression 2.1%',
+      ],
+      recommendation: 'Consider forward contracts to lock in current rates.',
+    },
+    usageExample: `<ScenarioCard
+  scenarioName="Steel Price Surge"
+  description="Impact if steel prices continue upward..."
+  assumption="Steel prices increase 15%"
+  currentState={{ label: 'Current Q2 Spend', value: '$45.2M' }}
+  projectedState={{ label: 'Projected Q3 Spend', value: '$52.0M' }}
+  delta={{ amount: '$6.8M', percent: 15, direction: 'up' }}
+  confidence="medium"
+  topImpacts={['Raw materials budget +$4.2M']}
+/>`,
+  },
+  {
+    id: 'executive-brief-card',
+    type: 'executive_brief_card',
+    component: 'ExecutiveBriefCard',
+    name: 'ExecutiveBriefCard',
+    category: 'inflation',
+    description: 'Shareable executive summary with key metrics, highlights, and outlook for stakeholder communication.',
+    intents: ['inflation_communication'],
+    subIntents: ['executive_brief', 'stakeholder_deck'],
+    priority: 100,
+    requiredData: ['inflationSummary'],
+    renderContexts: ['chat', 'panel'],
+    sizes: ['M', 'L'],
+    defaultSize: 'M',
+    artifactType: 'executive_presentation',
+    expandsTo: 'ExecutivePresentationArtifact',
+    props: [
+      { name: 'title', type: 'string', required: true, description: 'Brief title' },
+      { name: 'period', type: 'string', required: true, description: 'Reporting period' },
+      { name: 'summary', type: 'string', required: true, description: '2-3 sentence AI summary' },
+      { name: 'keyMetrics', type: 'Array<{ label, value, change?, status }>', required: true, description: 'Key metrics with status' },
+      { name: 'highlights', type: 'Array<{ type, text }>', required: true, description: 'Highlights (type: concern | opportunity | action)' },
+      { name: 'outlook', type: 'string', required: true, description: 'Forward-looking statement' },
+      { name: 'onShare', type: '() => void', required: false, description: 'Share callback' },
+      { name: 'onCopy', type: '() => void', required: false, description: 'Copy callback' },
+      { name: 'onViewDetails', type: '() => void', required: false, description: 'View full presentation' },
+      { name: 'delay', type: 'number', required: false, default: '0', description: 'Animation delay' },
+    ],
+    demoData: {
+      title: 'Inflation Impact Brief',
+      period: 'Q1 2024',
+      summary: 'Commodity prices increased 4.2% on average this quarter, driven primarily by steel and aluminum. Total portfolio impact is $5.2M, with raw materials accounting for 60% of the increase.',
+      keyMetrics: [
+        { label: 'Avg Price Change', value: '+4.2%', status: 'negative' },
+        { label: 'Portfolio Impact', value: '$5.2M', status: 'negative' },
+        { label: 'Hedged Exposure', value: '35%', status: 'neutral' },
+        { label: 'Suppliers Affected', value: '28', status: 'negative' },
+      ],
+      highlights: [
+        { type: 'concern', text: 'Steel prices up 8.5%, highest increase in 18 months' },
+        { type: 'opportunity', text: 'Copper prices declining, potential for renegotiation' },
+        { type: 'action', text: 'Review forward contracts for Q2 steel purchases' },
+      ],
+      outlook: 'Prices expected to stabilize in Q2 as supply constraints ease. Recommend maintaining hedging positions.',
+    },
+    usageExample: `<ExecutiveBriefCard
+  title="Inflation Impact Brief"
+  period="Q1 2024"
+  summary="Commodity prices increased 4.2%..."
+  keyMetrics={[
+    { label: 'Avg Price Change', value: '+4.2%', status: 'negative' },
+  ]}
+  highlights={[
+    { type: 'concern', text: 'Steel prices up 8.5%' },
+  ]}
+  outlook="Prices expected to stabilize..."
+/>`,
+  },
 ];
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
 
-export const getWidgetsByCategory = (category: WidgetCategory): WidgetCatalogEntry[] => {
-  return WIDGET_CATALOG.filter(w => w.category === category);
-};
+/**
+ * Get widget for a specific intent and data context
+ */
+export function getWidgetForIntent(
+  intent: IntentCategory,
+  subIntent?: SubIntent,
+  availableData: RequiredData[] = [],
+  renderContext: RenderContext = 'chat'
+): WidgetRegistryEntry | null {
+  const matches = WIDGET_REGISTRY.filter(w => {
+    // Must match intent
+    if (!w.intents.includes(intent)) return false;
 
-export const getWidgetById = (id: string): WidgetCatalogEntry | undefined => {
-  return WIDGET_CATALOG.find(w => w.id === id);
-};
+    // If sub-intent specified, prefer widgets that handle it
+    if (subIntent && w.subIntents && w.subIntents.length > 0) {
+      // If widget has sub-intents and none match, deprioritize but don't exclude
+      // This allows fallback to general intent widgets
+    }
 
-export const searchWidgets = (query: string): WidgetCatalogEntry[] => {
+    // Must match render context
+    if (!w.renderContexts.includes(renderContext)) return false;
+
+    // Must have required data (or require 'none')
+    const hasAllData = w.requiredData.every(
+      req => req === 'none' || availableData.includes(req)
+    );
+    if (!hasAllData) return false;
+
+    return true;
+  });
+
+  if (matches.length === 0) return null;
+
+  // Sort by priority (and sub-intent match as secondary)
+  matches.sort((a, b) => {
+    // Boost priority if sub-intent matches
+    const aSubMatch = subIntent && a.subIntents?.includes(subIntent) ? 10 : 0;
+    const bSubMatch = subIntent && b.subIntents?.includes(subIntent) ? 10 : 0;
+
+    return (b.priority + bSubMatch) - (a.priority + aSubMatch);
+  });
+
+  return matches[0];
+}
+
+/**
+ * Get widget by ID
+ */
+export function getWidgetById(id: string): WidgetRegistryEntry | undefined {
+  return WIDGET_REGISTRY.find(w => w.id === id);
+}
+
+/**
+ * Get widget by type
+ */
+export function getWidgetByType(type: WidgetType): WidgetRegistryEntry | undefined {
+  return WIDGET_REGISTRY.find(w => w.type === type);
+}
+
+/**
+ * Get widget by component name
+ */
+export function getWidgetByComponent(component: string): WidgetRegistryEntry | undefined {
+  return WIDGET_REGISTRY.find(w => w.component === component);
+}
+
+/**
+ * Get widgets by category
+ */
+export function getWidgetsByCategory(category: WidgetCategory): WidgetRegistryEntry[] {
+  return WIDGET_REGISTRY.filter(w => w.category === category);
+}
+
+/**
+ * Search widgets by query
+ */
+export function searchWidgets(query: string): WidgetRegistryEntry[] {
   const lower = query.toLowerCase();
-  return WIDGET_CATALOG.filter(w =>
+  return WIDGET_REGISTRY.filter(w =>
     w.name.toLowerCase().includes(lower) ||
     w.description.toLowerCase().includes(lower) ||
-    w.component.toLowerCase().includes(lower)
+    w.component.toLowerCase().includes(lower) ||
+    w.intents.some(i => i.toLowerCase().includes(lower))
   );
-};
+}
 
-export const getCategoryCounts = (): Record<WidgetCategory, number> => {
+/**
+ * Get category counts
+ */
+export function getCategoryCounts(): Record<WidgetCategory, number> {
   const counts = {} as Record<WidgetCategory, number>;
   CATEGORY_ORDER.forEach(cat => {
-    counts[cat] = WIDGET_CATALOG.filter(w => w.category === cat).length;
+    counts[cat] = WIDGET_REGISTRY.filter(w => w.category === cat).length;
   });
   return counts;
-};
+}
+
+/**
+ * Get all widgets that handle a specific intent
+ */
+export function getWidgetsForIntent(intent: IntentCategory): WidgetRegistryEntry[] {
+  return WIDGET_REGISTRY.filter(w => w.intents.includes(intent));
+}
+
+/**
+ * Validate that all intents have at least one widget mapping
+ */
+export function validateIntentCoverage(allIntents: IntentCategory[]): {
+  covered: IntentCategory[];
+  uncovered: IntentCategory[];
+} {
+  const covered: IntentCategory[] = [];
+  const uncovered: IntentCategory[] = [];
+
+  allIntents.forEach(intent => {
+    const widgets = getWidgetsForIntent(intent);
+    if (widgets.length > 0) {
+      covered.push(intent);
+    } else {
+      uncovered.push(intent);
+    }
+  });
+
+  return { covered, uncovered };
+}
+
+/**
+ * Get component name for a widget type (for dynamic rendering)
+ */
+export function getComponentForType(type: WidgetType): string | null {
+  const widget = getWidgetByType(type);
+  return widget?.component || null;
+}
+
+/**
+ * Get artifact expansion component for a widget
+ */
+export function getArtifactComponent(type: WidgetType): string | null {
+  const widget = getWidgetByType(type);
+  return widget?.expandsTo || null;
+}

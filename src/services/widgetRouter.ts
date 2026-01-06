@@ -1,8 +1,10 @@
 // Widget Router - Deterministic mapping from Intent to Widget Type
 // The widget type is determined by intent, AI only generates content
+// NOTE: This now uses widgetRegistry.ts as the source of truth for mappings
 
-import type { IntentCategory, SubIntent } from '../types/intents';
+import type { IntentCategory, SubIntent, ArtifactType } from '../types/intents';
 import type { WidgetType } from '../types/widgets';
+import { getWidgetForIntent, getWidgetsForIntent, type WidgetRegistryEntry } from './widgetRegistry';
 
 // ============================================
 // INTENT TO WIDGET TYPE MAPPING
@@ -236,4 +238,59 @@ ${dataContext}
 - followUps: 3 relevant next questions
 
 Respond with ONLY the JSON, no other text.`;
+}
+
+// ============================================
+// REGISTRY-BASED ROUTING (NEW)
+// Uses unified widgetRegistry.ts as source of truth
+// ============================================
+
+/**
+ * Get widget route from registry
+ * Returns widget type and metadata based on intent
+ */
+export function getWidgetRouteFromRegistry(
+  intent: IntentCategory,
+  subIntent?: SubIntent
+): WidgetRoute {
+  // Get all widgets that handle this intent
+  const widgets = getWidgetsForIntent(intent);
+
+  if (widgets.length === 0) {
+    // Fallback to general/none
+    return {
+      widgetType: 'none',
+      artifactType: 'portfolio_dashboard',
+      requiresSuppliers: false,
+      requiresPortfolio: false,
+      requiresRiskChanges: false,
+    };
+  }
+
+  // If subIntent specified, find matching widget
+  let selectedWidget: WidgetRegistryEntry | undefined;
+  if (subIntent) {
+    selectedWidget = widgets.find(w => w.subIntents?.includes(subIntent));
+  }
+
+  // Fall back to highest priority widget for this intent
+  if (!selectedWidget) {
+    selectedWidget = widgets.sort((a, b) => b.priority - a.priority)[0];
+  }
+
+  return {
+    widgetType: selectedWidget.type,
+    artifactType: (selectedWidget.artifactType || 'none') as ArtifactType,
+    requiresSuppliers: selectedWidget.requiredData.includes('suppliers'),
+    requiresPortfolio: selectedWidget.requiredData.includes('portfolio'),
+    requiresRiskChanges: selectedWidget.requiredData.includes('riskChanges'),
+    requiresHandoff: intent === 'restricted_query',
+  };
+}
+
+/**
+ * Get all widgets available for an intent (for debugging/documentation)
+ */
+export function getAvailableWidgetsForIntent(intent: IntentCategory): WidgetRegistryEntry[] {
+  return getWidgetsForIntent(intent);
 }
