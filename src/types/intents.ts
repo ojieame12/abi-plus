@@ -121,6 +121,8 @@ export interface DetectedIntent {
     category?: string;
     timeframe?: string;
     action?: string;
+    commodity?: string;  // For inflation queries
+    supplier?: string;   // Alternative to supplierName
   };
   // Routing flags
   requiresHandoff: boolean;
@@ -625,6 +627,23 @@ const extractEntities = (query: string): DetectedIntent['extractedEntities'] => 
     const match = query.match(pattern);
     if (match) {
       entities.supplierName = match[1].trim();
+      break;
+    }
+  }
+
+  // Extract commodity name
+  const commodityPatterns = [
+    // "price trend for X" patterns
+    /(?:price|trend|prices?)\s+(?:for|of|on)\s+([A-Za-z][A-Za-z\s&]+?)(?:\s+in\s+|\s*$|\s*[.,?!])/i,
+    // Direct commodity mentions
+    /\b(corrugated\s*boxes?|steel|aluminum|copper|plastics?|rubber|paper|pulp|resins?|silicones?|natural\s+gas|packaging|freight)\b/i,
+    // "X prices" or "X price trend"
+    /\b([A-Za-z][A-Za-z\s&]+?)\s+(?:price|prices|cost|costs)\b/i,
+  ];
+  for (const pattern of commodityPatterns) {
+    const match = query.match(pattern);
+    if (match) {
+      entities.commodity = match[1].trim();
       break;
     }
   }

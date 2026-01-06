@@ -833,50 +833,55 @@ function calculateMatchScore(current: Supplier, alternative: Supplier): number {
   return Math.min(score, 98); // Cap at 98%
 }
 
-// Build source attribution array based on data used in response
+// Build source attribution in ResponseSources format for UI rendering
 function buildDataSources(
   intent: DetectedIntent,
   data: FetchedData
-): Array<{ type: 'beroe' | 'dnd' | 'ecovadis'; name: string }> {
-  const sources: Array<{ type: 'beroe' | 'dnd' | 'ecovadis'; name: string }> = [];
+): { web: never[]; internal: Array<{ name: string; type: 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' }>; totalWebCount: number; totalInternalCount: number } {
+  const internal: Array<{ name: string; type: 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' }> = [];
 
   // Risk Watch data sources
   if (data.portfolio) {
-    sources.push({ type: 'beroe', name: 'Portfolio Risk Analytics' });
+    internal.push({ type: 'beroe', name: 'Portfolio Risk Analytics' });
   }
   if (data.suppliers && data.suppliers.length > 0) {
-    sources.push({ type: 'beroe', name: 'Supplier Risk Database' });
+    internal.push({ type: 'beroe', name: 'Supplier Risk Database' });
   }
   if (data.riskChanges && data.riskChanges.length > 0) {
-    sources.push({ type: 'beroe', name: 'Risk Monitoring System' });
+    internal.push({ type: 'beroe', name: 'Risk Monitoring System' });
   }
   if (data.targetSupplier) {
-    sources.push({ type: 'beroe', name: 'Supplier Profile Data' });
+    internal.push({ type: 'beroe', name: 'Supplier Profile Data' });
   }
 
   // Inflation Watch data sources
   const isInflationIntent = intent.category.startsWith('inflation_');
   if (isInflationIntent) {
     if (data.inflationSummary) {
-      sources.push({ type: 'beroe', name: 'Commodity Price Indices' });
+      internal.push({ type: 'beroe', name: 'Commodity Price Indices' });
     }
     if (data.commodityDrivers) {
-      sources.push({ type: 'beroe', name: 'Market Intelligence Reports' });
+      internal.push({ type: 'beroe', name: 'Market Intelligence Reports' });
     }
     if (data.spendImpact) {
-      sources.push({ type: 'beroe', name: 'Spend Analytics Platform' });
+      internal.push({ type: 'beroe', name: 'Spend Analytics Platform' });
     }
     if (data.justificationData) {
-      sources.push({ type: 'beroe', name: 'Price Benchmarking Data' });
+      internal.push({ type: 'beroe', name: 'Price Benchmarking Data' });
     }
   }
 
   // Ensure at least 1 data source for non-general queries
-  if (sources.length === 0 && intent.category !== 'general') {
-    sources.push({ type: 'beroe', name: 'Beroe Risk Intelligence' });
+  if (internal.length === 0 && intent.category !== 'general') {
+    internal.push({ type: 'beroe', name: 'Beroe Risk Intelligence' });
   }
 
-  return sources;
+  return {
+    web: [],
+    internal,
+    totalWebCount: 0,
+    totalInternalCount: internal.length,
+  };
 }
 
 // Step 5: Assemble final response

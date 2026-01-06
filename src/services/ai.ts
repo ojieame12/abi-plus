@@ -8,7 +8,17 @@ import { generateId } from '../types/chat';
 import type { DetectedIntent, IntentCategory } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import type { Supplier, RiskChange } from '../types/supplier';
-import { getPortfolioSummary, filterSuppliers, MOCK_SUPPLIERS, MOCK_RISK_CHANGES } from './mockData';
+import {
+  getPortfolioSummary,
+  filterSuppliers,
+  MOCK_SUPPLIERS,
+  MOCK_RISK_CHANGES,
+  getInflationSummary,
+  getCommodityDrivers,
+  getSpendImpact,
+  getJustificationData,
+  getScenarioData,
+} from './mockData';
 import {
   transformSuppliersToTableData,
   transformRiskChangesToAlertData,
@@ -689,6 +699,97 @@ const generateLocalResponse = (
         responseType: 'summary',
         suggestions: generateSuggestions(intent, {}),
         escalation: determineEscalation(0, 'market_context'),
+        intent,
+      };
+    }
+
+    // ==========================================
+    // INFLATION WATCH INTENTS
+    // ==========================================
+    case 'inflation_summary': {
+      const summary = getInflationSummary();
+      return {
+        content: `**${summary.period} Inflation Update**\n\n${summary.headline}\n\nOverall portfolio impact: ${summary.overallChange.direction === 'up' ? '+' : '-'}${summary.overallChange.percent}%`,
+        responseType: 'widget',
+        suggestions: generateSuggestions(intent, {}),
+        widget: {
+          type: 'inflation_summary_card',
+          title: 'Monthly Inflation Summary',
+          data: summary,
+        },
+        acknowledgement: "Here's the inflation overview.",
+        artifact: { type: 'inflation_dashboard', title: 'Inflation Dashboard' },
+        intent,
+      };
+    }
+
+    case 'inflation_drivers': {
+      const commodity = intent.extractedEntities.commodity || 'Steel';
+      const drivers = getCommodityDrivers(commodity);
+      return {
+        content: `**${drivers.commodity} Price Analysis**\n\n${drivers.commodity} prices are ${drivers.priceChange.direction === 'up' ? 'up' : 'down'} ${drivers.priceChange.percent}% this period.\n\n${drivers.marketContext}`,
+        responseType: 'widget',
+        suggestions: generateSuggestions(intent, {}),
+        widget: {
+          type: 'driver_breakdown_card',
+          title: `${drivers.commodity} Price Drivers`,
+          data: drivers,
+        },
+        acknowledgement: `Analyzing ${drivers.commodity} price trends.`,
+        artifact: { type: 'driver_analysis', title: `${drivers.commodity} Analysis` },
+        intent,
+      };
+    }
+
+    case 'inflation_impact': {
+      const impact = getSpendImpact();
+      return {
+        content: `**Portfolio Spend Impact**\n\nTotal inflation impact: ${impact.totalImpact} (${impact.totalImpactDirection === 'increase' ? '+' : '-'}${impact.impactPercent}% ${impact.timeframe})\n\n${impact.recommendation}`,
+        responseType: 'widget',
+        suggestions: generateSuggestions(intent, {}),
+        widget: {
+          type: 'spend_impact_card',
+          title: 'Spend Impact Analysis',
+          data: impact,
+        },
+        acknowledgement: "Here's how inflation affects your spend.",
+        artifact: { type: 'impact_analysis', title: 'Impact Analysis' },
+        intent,
+      };
+    }
+
+    case 'inflation_justification': {
+      const supplier = intent.extractedEntities.supplier || 'Acme Steel';
+      const commodity = intent.extractedEntities.commodity;
+      const justification = getJustificationData(supplier, commodity);
+      return {
+        content: `**Price Increase Validation**\n\n${justification.supplierName} is requesting a ${justification.requestedIncrease}% increase on ${justification.commodity}.\n\n**Verdict: ${justification.verdictLabel}**\n\nMarket benchmark: ${justification.marketBenchmark}%`,
+        responseType: 'widget',
+        suggestions: generateSuggestions(intent, {}),
+        widget: {
+          type: 'justification_card',
+          title: 'Price Increase Validation',
+          data: justification,
+        },
+        acknowledgement: "Validating the price increase request.",
+        artifact: { type: 'justification_report', title: 'Justification Report' },
+        intent,
+      };
+    }
+
+    case 'inflation_scenarios': {
+      const scenario = getScenarioData();
+      return {
+        content: `**Scenario: ${scenario.scenarioName}**\n\n${scenario.description}\n\nProjected impact: ${scenario.delta.label}`,
+        responseType: 'widget',
+        suggestions: generateSuggestions(intent, {}),
+        widget: {
+          type: 'scenario_card',
+          title: 'What-If Scenario',
+          data: scenario,
+        },
+        acknowledgement: "Here's the scenario analysis.",
+        artifact: { type: 'scenario_planner', title: 'Scenario Planner' },
         intent,
       };
     }
