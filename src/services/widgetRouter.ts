@@ -274,8 +274,19 @@ export function getWidgetRouteFromRegistry(
   }
 
   // Fall back to highest priority widget for this intent
+  // But only consider widgets that either:
+  // 1. Have no subIntents defined (applies to all sub-intents)
+  // 2. Or have subIntents that include the current subIntent
   if (!selectedWidget) {
-    selectedWidget = widgets.sort((a, b) => b.priority - a.priority)[0];
+    const compatibleWidgets = widgets.filter(w =>
+      !w.subIntents || w.subIntents.length === 0 || (subIntent && w.subIntents.includes(subIntent))
+    );
+    selectedWidget = compatibleWidgets.sort((a, b) => b.priority - a.priority)[0];
+
+    // If still no match, fall back to any widget (shouldn't happen with good registry)
+    if (!selectedWidget) {
+      selectedWidget = widgets.sort((a, b) => b.priority - a.priority)[0];
+    }
   }
 
   return {

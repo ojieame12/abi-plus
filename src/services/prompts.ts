@@ -69,7 +69,7 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
 
 ## Required Output (JSON only, no markdown fences)
 {
-  "narrative": "1-2 sentences introducing the insight. DO NOT repeat data the widget shows - add context instead.",
+  "narrative": "2-4 sentences providing context and analysis. Add insight beyond the widget data - explain implications, trends, or recommended focus areas.",
   "widgetContent": {
     "headline": "Key insight in 5-10 words (e.g., '8 Suppliers Need Risk Assessment')",
     "summary": "2-3 sentence explanation of what this means and recommended action",
@@ -89,8 +89,8 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
 }
 
 ## Content Guidelines
-- **narrative**: Brief intro that adds context, NOT a summary of widget data
-  - GOOD: "Your portfolio has significant visibility gaps that may impact risk oversight."
+- **narrative**: Provide substantive context (2-4 sentences), NOT a summary of widget data
+  - GOOD: "Your portfolio has significant visibility gaps that may impact risk oversight. The packaging sector accounts for most unrated suppliers, likely due to recent onboarding. Prioritizing risk assessments for high-spend vendors would improve coverage most efficiently."
   - BAD: "You have 8 unrated suppliers out of 60 total suppliers."
 - **headline**: The single most important takeaway
 - **summary**: What it means for the user and what they should consider doing
