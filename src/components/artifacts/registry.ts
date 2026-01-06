@@ -162,7 +162,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Portfolio Dashboard',
     category: 'discovery',
     description: 'Full portfolio risk overview',
-    defaultWidth: '100%',
+    defaultWidth: '50%',
     allowExpand: true,
   },
   regional_analysis: {
@@ -213,6 +213,9 @@ export interface SupplierTablePayload extends BaseArtifactPayload {
     riskLevel?: string[];
     category?: string[];
   };
+  totalCount?: number;
+  categories?: string[];
+  locations?: string[];
 }
 
 export interface SupplierComparisonPayload extends BaseArtifactPayload {
@@ -222,7 +225,36 @@ export interface SupplierComparisonPayload extends BaseArtifactPayload {
 
 export interface PortfolioDashboardPayload extends BaseArtifactPayload {
   type: 'portfolio_dashboard';
-  portfolio: unknown; // Portfolio data object
+  portfolio?: unknown; // Portfolio data object
+  totalSuppliers?: number;
+  distribution?: {
+    high: number;
+    mediumHigh: number;
+    medium: number;
+    low: number;
+    unrated: number;
+  };
+  trends?: {
+    period: string;
+    newHighRisk: number;
+    improved: number;
+    deteriorated: number;
+  };
+  alerts?: Array<{
+    id: string;
+    headline: string;
+    type: 'critical' | 'warning' | 'info';
+    affectedCount: number;
+    timestamp: string;
+  }>;
+  topMovers?: Array<{
+    id: string;
+    name: string;
+    previousScore: number;
+    currentScore: number;
+    direction: 'up' | 'down';
+  }>;
+  lastUpdated?: string;
 }
 
 export interface AlertConfigPayload extends BaseArtifactPayload {

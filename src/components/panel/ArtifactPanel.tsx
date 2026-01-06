@@ -71,7 +71,9 @@ export const ArtifactPanel = ({
 
                         {/* Content */}
                         <div className="flex-1 overflow-auto relative bg-slate-50/30">
-                            {children}
+                            <div className={`h-full ${isExpanded ? 'max-w-5xl mx-auto' : ''}`}>
+                                {children}
+                            </div>
                         </div>
                     </div>
                 </motion.aside>

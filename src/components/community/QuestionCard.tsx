@@ -37,24 +37,16 @@ export function QuestionCard({ question, onClick, delay = 0 }: QuestionCardProps
         ))}
       </div>
 
-      {/* Meta row - author/time left, stats right */}
-      <div className="flex items-center justify-between mt-4">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <AuthorBadge author={question.author} timestamp={question.createdAt} showAvatar={false} />
-          <span className="text-slate-300">·</span>
-          <span>{question.viewCount} views</span>
-          {question.hasAcceptedAnswer && (
-            <>
-              <span className="text-slate-300">·</span>
-              <span className="flex items-center" title="Solved">
-                <Check size={12} className="text-slate-400" aria-hidden="true" />
-                <span className="sr-only">Solved</span>
-              </span>
-            </>
-          )}
-        </div>
+      {/* Meta row - author left, stats right */}
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100/60">
+        <AuthorBadge
+          author={question.author}
+          timestamp={question.createdAt}
+          showAvatar={true}
+          size="sm"
+        />
 
-        {/* Stats - right aligned, numbers only */}
+        {/* Stats - right aligned */}
         <div className="flex items-center gap-4 text-xs">
           <div className="text-right">
             <span className={`tabular-nums ${question.score > 0 ? 'text-slate-900 font-medium' : 'text-slate-400'}`}>
@@ -68,6 +60,11 @@ export function QuestionCard({ question, onClick, delay = 0 }: QuestionCardProps
             </span>
             <span className="text-slate-400 ml-1">answers</span>
           </div>
+          {question.hasAcceptedAnswer && (
+            <div className="flex items-center text-emerald-600" title="Solved">
+              <Check size={14} />
+            </div>
+          )}
         </div>
       </div>
     </motion.button>

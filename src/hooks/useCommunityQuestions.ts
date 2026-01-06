@@ -18,6 +18,7 @@ interface UseCommunityQuestionsReturn {
   tags: Tag[];
   isLoading: boolean;
   error: string | null;
+  notice: string | null;
   totalCount: number;
   page: number;
   hasMore: boolean;
@@ -41,14 +42,17 @@ export function useCommunityQuestions(
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(useMockData ? 'Showing sample questions.' : null);
+  const [useFallback, setUseFallback] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const useMock = useMockData || useFallback;
 
   // Memoize filtered results for mock mode
   const allFilteredQuestions = useMemo(() => {
-    if (!useMockData) return [];
+    if (!useMock) return [];
     return filterQuestions({ sortBy, filter, tag, search });
-  }, [sortBy, filter, tag, search, useMockData]);
+  }, [sortBy, filter, tag, search, useMock]);
 
   const hasMore = questions.length < totalCount;
 
@@ -58,7 +62,7 @@ export function useCommunityQuestions(
     setError(null);
 
     try {
-      if (useMockData) {
+      if (useMock) {
         // Use mock data
         await new Promise(resolve => setTimeout(resolve, 300));
         const startPage = reset ? 1 : page;
@@ -66,6 +70,7 @@ export function useCommunityQuestions(
         setQuestions(paginatedQuestions);
         setTotalCount(allFilteredQuestions.length);
         if (reset) setPage(1);
+        setNotice(useMockData ? 'Showing sample questions.' : 'API unavailable. Showing sample questions.');
       } else {
         // Use API
         const currentPage = reset ? 1 : page;
@@ -93,19 +98,28 @@ export function useCommunityQuestions(
           setQuestions(prev => [...prev, ...data.questions]);
         }
         setTotalCount(data.totalCount);
+        setUseFallback(false);
+        setNotice(null);
       }
     } catch (err) {
-      setError('Failed to load questions');
       console.error('Error fetching questions:', err);
+      const fallbackQuestions = filterQuestions({ sortBy, filter, tag, search });
+      const startPage = reset ? 1 : page;
+      const paginatedQuestions = fallbackQuestions.slice(0, startPage * pageSize);
+      setQuestions(paginatedQuestions);
+      setTotalCount(fallbackQuestions.length);
+      if (reset) setPage(1);
+      setUseFallback(true);
+      setNotice('API unavailable. Showing sample questions.');
     } finally {
       setIsLoading(false);
     }
-  }, [useMockData, allFilteredQuestions, page, pageSize, sortBy, filter, tag, search]);
+  }, [useMock, useMockData, allFilteredQuestions, page, pageSize, sortBy, filter, tag, search]);
 
   // Fetch tags from API or mock
   const fetchTags = useCallback(async () => {
     try {
-      if (useMockData) {
+      if (useMock) {
         await new Promise(resolve => setTimeout(resolve, 100));
         setTags(getPopularTags(8));
       } else {
@@ -114,8 +128,11 @@ export function useCommunityQuestions(
       }
     } catch (err) {
       console.error('Error fetching tags:', err);
+      setTags(getPopularTags(8));
+      setUseFallback(true);
+      setNotice('API unavailable. Showing sample questions.');
     }
-  }, [useMockData]);
+  }, [useMock]);
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
@@ -152,6 +169,7 @@ export function useCommunityQuestions(
     tags,
     isLoading,
     error,
+    notice,
     totalCount,
     page,
     hasMore,

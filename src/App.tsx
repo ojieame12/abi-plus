@@ -19,6 +19,7 @@ import { PortfolioOverviewCard } from './components/risk';
 import type { AIResponse as AIResponseType } from './services/ai';
 import { sendMessage } from './services/ai';
 import { buildResponseSources } from './utils/sources';
+import { buildArtifactPayload, resolveArtifactType } from './services/artifactBuilder';
 // Artifact system imports
 import { ArtifactRenderer } from './components/artifacts/ArtifactRenderer';
 import type { ArtifactType, ArtifactPayload } from './components/artifacts/registry';
@@ -168,6 +169,25 @@ function App() {
     setIsPanelOpen(true);
   };
 
+  const handleWidgetExpand = (artifactComponent: string, response: AIResponseType) => {
+    const artifactType = resolveArtifactType(artifactComponent, response.artifact?.type);
+    if (!artifactType) return;
+
+    const payload = buildArtifactPayload(artifactType, {
+      suppliers: response.suppliers,
+      portfolio: response.portfolio,
+      riskChanges: response.riskChanges,
+    });
+
+    if (!payload) return;
+
+    openArtifact(artifactType, {
+      ...payload,
+      sourceSuppliers: response.suppliers,
+      sourceRiskChanges: response.riskChanges,
+    });
+  };
+
   // Handle artifact actions (from ArtifactRenderer callbacks)
   const handleArtifactAction = (action: string, data?: unknown) => {
     console.log('[App] Artifact action:', action, data);
@@ -179,8 +199,35 @@ function App() {
       case 'export_complete':
         console.log('Export complete:', data);
         break;
+      case 'export':
+        if (data && typeof data === 'object') {
+          openArtifact('export_builder', data as Partial<ArtifactPayload>);
+        } else {
+          openArtifact('export_builder');
+        }
+        break;
       case 'select_supplier':
         // Open supplier detail
+        if (data && typeof data === 'object' && 'id' in data) {
+          const supplierId = (data as { id: string }).id;
+          const sourceSuppliers = (artifactPayload as any)?.sourceSuppliers;
+          const sourceRiskChanges = (artifactPayload as any)?.sourceRiskChanges;
+          const matchedSupplier = Array.isArray(sourceSuppliers)
+            ? sourceSuppliers.find((supplier) => supplier.id === supplierId)
+            : null;
+
+          if (matchedSupplier) {
+            const detailPayload = buildArtifactPayload('supplier_detail', {
+              suppliers: [matchedSupplier],
+              riskChanges: sourceRiskChanges,
+            });
+            if (detailPayload) {
+              openArtifact('supplier_detail', detailPayload);
+              break;
+            }
+          }
+        }
+
         if (data) {
           openArtifact('supplier_detail', { supplier: data });
         }
@@ -629,11 +676,19 @@ function App() {
             <div className="flex-1 overflow-auto scroll-smooth">
               <div className="max-w-3xl mx-auto px-6 py-6">
                 {messages.map((msg, index) => {
-                  // Only show follow-ups, insight, sources for the LAST assistant message
-                  const isLastAssistantMessage = msg.role === 'assistant' &&
+                  // Determine what to show based on message position
+                  const isAssistant = msg.role === 'assistant';
+                  const isLastAssistantMessage = isAssistant && (
                     index === messages.length - 1 ||
-                    (index === messages.length - 2 && messages[messages.length - 1]?.role === 'user');
-                  const showExtras = isLastAssistantMessage && !isThinking;
+                    (index === messages.length - 2 && messages[messages.length - 1]?.role === 'user')
+                  );
+
+                  // Widgets, insights, sources persist on ALL assistant messages
+                  const hasResponse = isAssistant && !!msg.response;
+
+                  // Follow-ups and thought process only on the LATEST assistant message
+                  const showInteractive = isLastAssistantMessage && !isThinking;
+
                   const responseSources = msg.response?.sources
                     ? buildResponseSources(msg.response.sources)
                     : null;
@@ -653,42 +708,43 @@ function App() {
                         <UserMessage message={msg.content} initial="S" />
                       ) : (
                         <AIResponse
-                          // 1. Thought Process - animated with widget selection reasoning
-                          thoughtProcess={showExtras && msg.response ? {
-                            duration: msg.response.thinkingDuration || '2s',
+                          // 1. Thought Process - only on NEW messages (first render)
+                          thoughtProcess={msg.isNew && hasResponse ? {
+                            duration: msg.response!.thinkingDuration || '2s',
                             content: buildThoughtContent({
-                              intent: msg.response.intent,
-                              widget: msg.response.widget,
-                              portfolio: msg.response.portfolio,
-                              suppliers: msg.response.suppliers,
-                              sources: msg.response.sources,
+                              intent: msg.response!.intent,
+                              widget: msg.response!.widget,
+                              portfolio: msg.response!.portfolio,
+                              suppliers: msg.response!.suppliers,
+                              sources: msg.response!.sources,
                             }),
                           } : undefined}
-                          // 2. Acknowledgement header
-                          acknowledgement={showExtras ? (msg.response?.acknowledgement || undefined) : undefined}
-                          // 3. Widget - use context-based rendering with WidgetRenderer
-                          widgetContext={showExtras && msg.response ? {
-                            intent: msg.response.intent?.category || 'general',
-                            portfolio: msg.response.portfolio,
-                            suppliers: msg.response.suppliers,
-                            supplier: msg.response.suppliers?.[0],
-                            riskChanges: msg.response.riskChanges,
-                            widgetData: msg.response.widget,
+                          // 2. Acknowledgement - show on all responses
+                          acknowledgement={hasResponse ? (msg.response?.acknowledgement || undefined) : undefined}
+                          // 3. Widget - PERSIST on all assistant messages with data
+                          widgetContext={hasResponse ? {
+                            intent: msg.response!.intent?.category || 'general',
+                            portfolio: msg.response!.portfolio,
+                            suppliers: msg.response!.suppliers,
+                            supplier: msg.response!.suppliers?.[0],
+                            riskChanges: msg.response!.riskChanges,
+                            widgetData: msg.response!.widget,
+                            artifactContent: msg.response!.artifactContent,
                             renderContext: 'chat',
                             onOpenArtifact: (type, payload) => openArtifact(type as ArtifactType, payload as Partial<ArtifactPayload>),
                           } : undefined}
-                          // 4. Insight bar
-                          insight={showExtras && msg.response?.insight ? {
+                          // 4. Insight bar - PERSIST on all responses
+                          insight={hasResponse && msg.response?.insight ? {
                             text: typeof msg.response.insight === 'string'
                               ? msg.response.insight
                               : msg.response.insight.text || msg.response.insight.headline,
                             detail: typeof msg.response.insight === 'object' ? msg.response.insight.detail : undefined,
                             trend: typeof msg.response.insight === 'object' ? msg.response.insight.trend : undefined,
                           } : undefined}
-                          // 5. Sources - proper format
-                          sources={showExtras && hasSources ? responseSources : undefined}
-                          // 6. Follow-ups
-                          followUps={showExtras ? msg.response?.suggestions?.map(s => ({
+                          // 5. Sources - PERSIST on all responses
+                          sources={hasResponse && hasSources ? responseSources : undefined}
+                          // 6. Follow-ups - ONLY on latest message (avoid duplicate buttons)
+                          followUps={showInteractive ? msg.response?.suggestions?.map(s => ({
                             id: s.id,
                             text: s.text,
                             icon: s.icon === 'chart' ? 'chart' as const :
@@ -698,8 +754,13 @@ function App() {
                                   'chat' as const,
                           })) : undefined}
                           onFollowUpClick={handleSuggestionClick}
-                          // 7. Animation - trigger staggered entrance for new messages
-                          isAnimating={msg.isNew && showExtras}
+                          onWidgetExpand={(artifactComponent) => {
+                            if (msg.response) {
+                              handleWidgetExpand(artifactComponent, msg.response);
+                            }
+                          }}
+                          // 7. Animation - only on NEW messages
+                          isAnimating={msg.isNew}
                           // 8. Insight click - open in artifact panel
                           onInsightClick={openInsightPanel}
                         >

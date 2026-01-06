@@ -111,7 +111,7 @@ export const ENTRY_POINT_SUGGESTIONS: ContextualSuggestion[] = [
 
 export const POST_OVERVIEW_SUGGESTIONS: ContextualSuggestion[] = [
   { id: '1', text: 'Show high-risk suppliers', icon: 'search', intent: 'filtered_discovery', priority: 1 },
-  { id: '2', text: 'Why are 10 suppliers unrated?', icon: 'lightbulb', intent: 'general', priority: 2 },
+  { id: '2', text: 'Why are 10 suppliers unrated?', icon: 'lightbulb', intent: 'explanation_why', priority: 2 },
   { id: '3', text: 'Set up risk alerts', icon: 'alert', intent: 'action_trigger', priority: 3 },
 ];
 
@@ -173,9 +173,10 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /any.*alert/i,
   ],
   explanation_why: [
-    /why.*(high|low|medium|risk|score)/i,
+    /why.*(high|low|medium|risk|score|unrated)/i,
+    /why are.*(supplier|vendors?).*unrated/i,
     /what('?s| is) (driving|causing)/i,
-    /explain.*(score|risk)/i,
+    /explain.*(score|risk|unrated)/i,
     /how.*(calculated|computed)/i,
     /what.*factors/i,
   ],
@@ -408,6 +409,19 @@ const extractEntities = (query: string): DetectedIntent['extractedEntities'] => 
   // Extract action
   const actionMatch = query.match(/(find|create|export|download|compare|follow|unfollow|set.?up)/i);
   if (actionMatch) entities.action = actionMatch[1].toLowerCase();
+
+  // Extract supplier name from "find alternatives for [supplier]" queries
+  const alternativesPatterns = [
+    /find\s+(?:alternative(?:s)?(?:\s+suppliers?)?)\s+(?:for|to|instead of)\s+(.+?)(?:\s*$|\s*[.,?!])/i,
+    /alternatives?\s+(?:for|to|instead of)\s+(.+?)(?:\s*$|\s*[.,?!])/i,
+  ];
+  for (const pattern of alternativesPatterns) {
+    const match = query.match(pattern);
+    if (match) {
+      entities.supplierName = match[1].trim();
+      break;
+    }
+  }
 
   return entities;
 };

@@ -119,27 +119,42 @@ export const ArtifactRenderer = ({
         <SupplierDetailArtifact
           supplier={(payload as any).supplier}
           onClose={onClose}
-          onFindAlternatives={() => onAction?.('find_alternatives')}
-          onAddToShortlist={() => onAction?.('add_to_shortlist')}
+          onFindAlternatives={() => onAction?.('find_alternatives', (payload as any).supplier)}
+          onAddToShortlist={() => onAction?.('add_to_shortlist', (payload as any).supplier)}
           onViewDashboard={() => onAction?.('view_dashboard')}
         />
       );
 
     case 'supplier_table':
-      return (
-        <SupplierTableArtifact
-          suppliers={(payload as any).suppliers || []}
-          filter={(payload as any).filter}
-          onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
-          onExport={() => onAction?.('export')}
-        />
-      );
+      {
+        const suppliers = (payload as any).suppliers || [];
+        const totalCount = (payload as any).totalCount ?? suppliers.length;
+        const categories = (payload as any).categories || [];
+        const locations = (payload as any).locations || [];
+        const supplierIds = suppliers.map((supplier: any) => supplier.id).filter(Boolean);
+
+        return (
+          <SupplierTableArtifact
+            suppliers={suppliers}
+            totalCount={totalCount}
+            categories={categories}
+            locations={locations}
+            onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
+            onExport={() => onAction?.('export', { context: 'supplier', entityIds: supplierIds })}
+          />
+        );
+      }
 
     case 'supplier_comparison':
       return (
         <ComparisonArtifact
           suppliers={(payload as any).suppliers || []}
           onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
+          onExport={() => onAction?.('export', {
+            context: 'comparison',
+            entityIds: ((payload as any).suppliers || []).map((supplier: any) => supplier.id).filter(Boolean),
+          })}
+          onViewDashboard={() => onAction?.('view_dashboard')}
         />
       );
 
@@ -184,13 +199,33 @@ export const ArtifactRenderer = ({
 
     // Discovery
     case 'portfolio_dashboard':
-      return (
-        <PortfolioDashboardArtifact
-          portfolio={(payload as any).portfolio}
-          onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
-          onViewAllSuppliers={() => onAction?.('view_all_suppliers')}
-        />
-      );
+      {
+        const totalSuppliers = (payload as any).totalSuppliers ?? 0;
+        const distribution = (payload as any).distribution || {
+          high: 0,
+          mediumHigh: 0,
+          medium: 0,
+          low: 0,
+          unrated: 0,
+        };
+        const trends = (payload as any).trends || { period: '30d', newHighRisk: 0, improved: 0, deteriorated: 0 };
+        const alerts = (payload as any).alerts || [];
+        const topMovers = (payload as any).topMovers || [];
+        const lastUpdated = (payload as any).lastUpdated || new Date().toISOString();
+
+        return (
+          <PortfolioDashboardArtifact
+            totalSuppliers={totalSuppliers}
+            distribution={distribution}
+            trends={trends}
+            alerts={alerts}
+            topMovers={topMovers}
+            lastUpdated={lastUpdated}
+            onExport={() => onAction?.('export', { context: 'portfolio' })}
+            onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
+          />
+        );
+      }
 
     case 'category_overview':
     case 'regional_analysis':

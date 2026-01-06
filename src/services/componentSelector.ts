@@ -416,13 +416,44 @@ const SELECTION_RULES: SelectionRule[] = [
   },
 
   // ==========================================
-  // ACTION TRIGGER
+  // ACTION TRIGGER - Supplier table for alternatives
   // ==========================================
+  {
+    id: 'action_alternatives_table_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'action_trigger' &&
+      renderCtx === 'chat' &&
+      (ctx.suppliers?.length || 0) > 0,
+    priority: 110, // Higher priority than the confirmation
+    getConfig: (ctx) => ({
+      componentType: 'SupplierTableWidget',
+      size: 'md',
+      props: {
+        data: {
+          suppliers: ctx.suppliers!.slice(0, 5).map(s => ({
+            id: s.id,
+            name: s.name,
+            riskScore: s.srs?.score ?? 0,
+            riskLevel: s.srs?.level ?? 'unrated',
+            trend: s.srs?.trend ?? 'stable',
+            spend: s.spendFormatted || `$${(s.spend / 1000000).toFixed(1)}M`,
+            category: s.category,
+            country: s.location?.country || '',
+          })),
+          totalCount: ctx.suppliers!.length,
+          filters: {},
+        },
+      },
+      expandsTo: 'SupplierTableArtifact',
+    }),
+  },
+  // Action confirmation only when action is actually completed (widget explicitly set)
   {
     id: 'action_confirmation_chat',
     matches: (ctx, renderCtx) =>
       ctx.intent === 'action_trigger' &&
-      renderCtx === 'chat',
+      renderCtx === 'chat' &&
+      ctx.widget?.type === 'action_card',
     priority: 100,
     getConfig: () => ({
       componentType: 'ActionConfirmationCard',
@@ -437,13 +468,46 @@ const SELECTION_RULES: SelectionRule[] = [
   },
 
   // ==========================================
+  // EXPLANATION - Show supplier table when we have data
+  // ==========================================
+  {
+    id: 'explanation_supplier_table_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'explanation_why' &&
+      renderCtx === 'chat' &&
+      (ctx.suppliers?.length || 0) > 0,
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'SupplierTableWidget',
+      size: 'md',
+      props: {
+        data: {
+          suppliers: ctx.suppliers!.slice(0, 5).map(s => ({
+            id: s.id,
+            name: s.name,
+            riskScore: s.srs?.score ?? 0,
+            riskLevel: s.srs?.level ?? 'unrated',
+            trend: s.srs?.trend ?? 'stable',
+            spend: s.spendFormatted || `$${(s.spend / 1000000).toFixed(1)}M`,
+            category: s.category,
+            country: s.location?.country || '',
+          })),
+          totalCount: ctx.suppliers!.length,
+          filters: {},
+        },
+      },
+      expandsTo: 'SupplierTableArtifact',
+    }),
+  },
+
+  // ==========================================
   // NO WIDGET NEEDED
   // ==========================================
   {
     id: 'no_widget',
     // Only suppress widgets when no widget data is provided
     matches: (ctx) =>
-      !ctx.widget && (
+      !ctx.widget && !ctx.suppliers?.length && (
         ctx.intent === 'explanation_why' ||
         ctx.intent === 'setup_config' ||
         ctx.intent === 'reporting_export' ||

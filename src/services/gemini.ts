@@ -1,5 +1,5 @@
 // Gemini API Service for fast conversational responses
-import { composeSystemPrompt, parseAIResponse } from './prompts';
+import { composeSystemPrompt, parseAIResponse, buildContentGenerationPrompt } from './prompts';
 import type { ChatMessage, Suggestion } from '../types/chat';
 import { generateId } from '../types/chat';
 import {
@@ -16,8 +16,9 @@ import {
 } from './supplierDataClient';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
-import type { WidgetData } from '../types/widgets';
+import type { WidgetData, WidgetType } from '../types/widgets';
 import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from './widgetTransformers';
+import { getWidgetRoute, type AIContentSlots } from './widgetRouter';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.0-flash-exp'; // Gemini 2.0 Flash (free tier, stable)
@@ -61,6 +62,14 @@ export interface RichInsight {
   generatedAt?: string;
 }
 
+// AI-generated artifact content for expanded panel
+export interface ArtifactContent {
+  title: string;
+  overview: string;
+  keyPoints: string[];
+  recommendations?: string[];
+}
+
 export interface GeminiResponse {
   content: string;
   responseType: 'widget' | 'table' | 'summary' | 'alert' | 'handoff';
@@ -72,6 +81,8 @@ export interface GeminiResponse {
     filters?: Record<string, unknown>;
     supplierId?: string;
   };
+  // AI-generated content for the artifact panel
+  artifactContent?: ArtifactContent;
   // Full widget specification from AI
   widget?: {
     type: string;
@@ -340,6 +351,501 @@ export const callGemini = async (
     return await generateFallbackResponse(intent, userMessage);
   }
 };
+
+// ============================================
+// NEW ARCHITECTURE: callGeminiV2
+// Widget type determined by intent, AI generates content only
+// ============================================
+
+interface FetchedData {
+  portfolio?: RiskPortfolio;
+  suppliers?: Supplier[];
+  riskChanges?: RiskChange[];
+  targetSupplier?: Supplier;
+}
+
+// Step 1: Fetch data based on intent requirements
+async function fetchDataForIntent(
+  intent: DetectedIntent,
+  query: string
+): Promise<FetchedData> {
+  const route = getWidgetRoute(intent.category, intent.subIntent);
+  const data: FetchedData = {};
+
+  // Fetch portfolio if needed
+  if (route.requiresPortfolio) {
+    data.portfolio = await getPortfolioSummary();
+  }
+
+  // Fetch suppliers based on intent
+  if (route.requiresSuppliers) {
+    const allSuppliers = await getAllSuppliers();
+
+    switch (intent.category) {
+      case 'filtered_discovery': {
+        const filters: Record<string, string | string[]> = {};
+        if (intent.extractedEntities.riskLevel) {
+          filters.riskLevel = intent.extractedEntities.riskLevel;
+        }
+        if (intent.extractedEntities.region) {
+          filters.region = intent.extractedEntities.region;
+        }
+        data.suppliers = await filterSuppliers(filters);
+        break;
+      }
+
+      case 'supplier_deep_dive': {
+        // Find specific supplier
+        const supplierName = intent.extractedEntities.supplierName;
+        if (supplierName) {
+          const supplier = await getSupplierByName(supplierName);
+          if (supplier) {
+            data.targetSupplier = supplier;
+            data.suppliers = [supplier];
+          }
+        } else {
+          // Try to find supplier name in query
+          const matched = allSuppliers.find(s =>
+            query.toLowerCase().includes(s.name.toLowerCase())
+          );
+          if (matched) {
+            data.targetSupplier = matched;
+            data.suppliers = [matched];
+          }
+        }
+        break;
+      }
+
+      case 'action_trigger': {
+        if (intent.subIntent === 'find_alternatives') {
+          const supplierName = intent.extractedEntities.supplierName;
+          let targetSupplier: Supplier | undefined;
+
+          if (supplierName) {
+            targetSupplier = allSuppliers.find(s =>
+              s.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+              supplierName.toLowerCase().includes(s.name.toLowerCase())
+            );
+          } else {
+            // Try to find supplier name in query
+            targetSupplier = allSuppliers.find(s =>
+              query.toLowerCase().includes(s.name.toLowerCase())
+            );
+          }
+
+          if (targetSupplier) {
+            data.targetSupplier = targetSupplier;
+            // Find alternatives in same category
+            const alternatives = allSuppliers.filter(s =>
+              s.id !== targetSupplier!.id &&
+              s.category === targetSupplier!.category &&
+              (s.srs?.score || 100) < (targetSupplier!.srs?.score || 0)
+            );
+            data.suppliers = alternatives.length > 0 ? alternatives :
+              allSuppliers.filter(s => s.id !== targetSupplier!.id && s.category === targetSupplier!.category);
+          } else {
+            data.suppliers = await getHighRiskSuppliers();
+          }
+        } else {
+          data.suppliers = await getHighRiskSuppliers();
+        }
+        break;
+      }
+
+      case 'explanation_why': {
+        // For "why unrated" queries, get unrated suppliers
+        if (query.toLowerCase().includes('unrated')) {
+          data.portfolio = await getPortfolioSummary();
+          data.suppliers = allSuppliers.filter(s => !s.srs?.score || s.srs.level === 'unrated');
+        } else {
+          data.suppliers = await getHighRiskSuppliers();
+        }
+        break;
+      }
+
+      case 'comparison': {
+        // Get suppliers mentioned in query
+        const mentioned = allSuppliers.filter(s =>
+          query.toLowerCase().includes(s.name.toLowerCase())
+        );
+        data.suppliers = mentioned.length >= 2 ? mentioned : allSuppliers.slice(0, 3);
+        break;
+      }
+
+      default:
+        data.suppliers = allSuppliers.slice(0, 10);
+    }
+  }
+
+  // Fetch risk changes if needed
+  if (route.requiresRiskChanges) {
+    data.riskChanges = await getRecentRiskChanges();
+    if (!data.suppliers) {
+      const allSuppliers = await getAllSuppliers();
+      data.suppliers = data.riskChanges.map(c =>
+        allSuppliers.find(s => s.id === c.supplierId)
+      ).filter(Boolean) as Supplier[];
+    }
+  }
+
+  return data;
+}
+
+// Step 2: Build data context string for AI
+function buildDataContext(
+  intent: DetectedIntent,
+  data: FetchedData,
+  query: string
+): string {
+  const parts: string[] = [];
+
+  parts.push(`User Query: "${query}"`);
+
+  if (data.portfolio) {
+    parts.push(`
+Portfolio Summary:
+- Total Suppliers: ${data.portfolio.totalSuppliers}
+- Total Spend: ${data.portfolio.totalSpendFormatted}
+- High Risk: ${data.portfolio.distribution.high}
+- Medium-High: ${data.portfolio.distribution.mediumHigh}
+- Medium: ${data.portfolio.distribution.medium}
+- Low: ${data.portfolio.distribution.low}
+- Unrated: ${data.portfolio.distribution.unrated}`);
+  }
+
+  if (data.targetSupplier) {
+    const s = data.targetSupplier;
+    parts.push(`
+Target Supplier:
+- Name: ${s.name}
+- Risk Score: ${s.srs?.score ?? 'Unrated'} (${s.srs?.level || 'unrated'})
+- Trend: ${s.srs?.trend || 'stable'}
+- Category: ${s.category}
+- Spend: ${s.spendFormatted}
+- Location: ${s.location?.country || s.location?.region || 'Unknown'}`);
+  }
+
+  if (data.suppliers && data.suppliers.length > 0) {
+    const supplierList = data.suppliers.slice(0, 10).map(s =>
+      `- ${s.name}: Score ${s.srs?.score ?? 'N/A'} (${s.srs?.level || 'unrated'}), ${s.category}, ${s.spendFormatted}`
+    ).join('\n');
+    parts.push(`
+Relevant Suppliers (${data.suppliers.length} total):
+${supplierList}`);
+  }
+
+  if (data.riskChanges && data.riskChanges.length > 0) {
+    const changesList = data.riskChanges.map(c =>
+      `- ${c.supplierName}: ${c.previousScore} → ${c.currentScore} (${c.direction})`
+    ).join('\n');
+    parts.push(`
+Recent Risk Changes:
+${changesList}`);
+  }
+
+  return parts.join('\n');
+}
+
+// Step 3: Call AI for content generation
+async function generateAIContent(
+  widgetType: WidgetType,
+  intentCategory: string,
+  dataContext: string
+): Promise<AIContentSlots | null> {
+  const prompt = buildContentGenerationPrompt(widgetType, intentCategory, dataContext);
+
+  const requestBody = {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 1500,
+    },
+  };
+
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      console.error('[GeminiV2] API error:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    const textContent = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Parse JSON response
+    try {
+      // Remove markdown fences if present
+      const jsonStr = textContent.replace(/```json\s*|\s*```/g, '').trim();
+      return JSON.parse(jsonStr) as AIContentSlots;
+    } catch {
+      console.error('[GeminiV2] Failed to parse JSON:', textContent.slice(0, 200));
+      return null;
+    }
+  } catch (error) {
+    console.error('[GeminiV2] Request failed:', error);
+    return null;
+  }
+}
+
+// Step 4: Build widget data based on type and fetched data
+function buildWidgetData(
+  widgetType: WidgetType,
+  data: FetchedData,
+  aiContent: AIContentSlots | null
+): WidgetData | undefined {
+  if (widgetType === 'none') return undefined;
+
+  switch (widgetType) {
+    case 'risk_distribution':
+      if (!data.portfolio) return undefined;
+      return {
+        type: 'risk_distribution',
+        title: aiContent?.widgetContent?.headline || 'Portfolio Risk Overview',
+        data: {
+          distribution: data.portfolio.distribution,
+          totalSuppliers: data.portfolio.totalSuppliers,
+          totalSpend: data.portfolio.totalSpendFormatted,
+        },
+      };
+
+    case 'supplier_table':
+      if (!data.suppliers?.length) return undefined;
+      return {
+        type: 'supplier_table',
+        title: aiContent?.widgetContent?.headline || 'Suppliers',
+        data: {
+          suppliers: transformSuppliersForWidget(data.suppliers),
+          totalCount: data.suppliers.length,
+          filters: {},
+        },
+      };
+
+    case 'supplier_risk_card':
+      if (!data.targetSupplier) return undefined;
+      return {
+        type: 'supplier_risk_card',
+        title: `${data.targetSupplier.name} Risk Profile`,
+        data: transformSupplierToRiskCardData(data.targetSupplier),
+      };
+
+    case 'alert_card':
+      if (!data.riskChanges?.length) return undefined;
+      return {
+        type: 'alert_card',
+        title: aiContent?.widgetContent?.headline || 'Risk Changes Detected',
+        data: transformRiskChangesToAlertData(data.riskChanges),
+      };
+
+    case 'comparison_table':
+      if (!data.suppliers || data.suppliers.length < 2) return undefined;
+      return {
+        type: 'comparison_table',
+        title: aiContent?.widgetContent?.headline || 'Supplier Comparison',
+        data: {
+          suppliers: data.suppliers.slice(0, 4).map(s => ({
+            id: s.id,
+            name: s.name,
+            riskScore: s.srs?.score ?? 0,
+            riskLevel: s.srs?.level || 'unrated',
+            trend: s.srs?.trend || 'stable',
+            spend: s.spendFormatted,
+            category: s.category,
+          })),
+        },
+      };
+
+    default:
+      return undefined;
+  }
+}
+
+// Step 5: Assemble final response
+export async function callGeminiV2(
+  userMessage: string,
+  _conversationHistory: ChatMessage[] = []
+): Promise<GeminiResponse> {
+  console.log('[GeminiV2] Processing:', userMessage);
+
+  // 1. Classify intent
+  const intent = classifyIntent(userMessage);
+  const route = getWidgetRoute(intent.category, intent.subIntent);
+  console.log('[GeminiV2] Intent:', intent.category, '→ Widget:', route.widgetType);
+
+  // 2. Handle restricted_query with handoff
+  if (route.requiresHandoff) {
+    return {
+      id: generateId(),
+      content: `This supplier's risk score is calculated from multiple weighted factors including financial health, operational metrics, and compliance indicators.\n\nTo see the full breakdown of contributing factors and scores, you'll need to view the detailed risk profile in the dashboard, as some data comes from partners with viewing restrictions.`,
+      responseType: 'handoff',
+      acknowledgement: generateAcknowledgement(intent, userMessage),
+      suggestions: [
+        { id: '1', text: 'Find alternatives', icon: 'search' },
+        { id: '2', text: 'Compare with others', icon: 'compare' },
+        { id: '3', text: 'View risk history', icon: 'chart' },
+      ],
+      handoff: {
+        required: true,
+        reason: 'Detailed factor scores require dashboard access due to partner data restrictions.',
+        linkText: 'View Full Risk Profile in Dashboard',
+      },
+      artifact: { type: route.artifactType, title: 'Supplier Risk Profile' },
+      intent,
+    };
+  }
+
+  // 3. Fetch data based on intent
+  const data = await fetchDataForIntent(intent, userMessage);
+  console.log('[GeminiV2] Data fetched:', {
+    hasPortfolio: !!data.portfolio,
+    supplierCount: data.suppliers?.length || 0,
+    hasTarget: !!data.targetSupplier,
+    riskChanges: data.riskChanges?.length || 0,
+  });
+
+  // 4. Build data context for AI
+  const dataContext = buildDataContext(intent, data, userMessage);
+
+  // 5. Call AI for content generation
+  const aiContent = await generateAIContent(route.widgetType, intent.category, dataContext);
+
+  // 6. Build widget data
+  const widget = buildWidgetData(route.widgetType, data, aiContent);
+
+  // 7. Build insight from AI content
+  const insight: RichInsight | undefined = aiContent?.widgetContent ? {
+    headline: aiContent.widgetContent.headline,
+    summary: aiContent.widgetContent.summary,
+    type: aiContent.widgetContent.type || 'info',
+    sentiment: aiContent.widgetContent.sentiment || 'neutral',
+    factors: aiContent.widgetContent.factors?.map(f => ({
+      title: f.title,
+      detail: f.detail,
+      impact: f.impact as 'positive' | 'negative' | 'neutral',
+      trend: f.impact === 'negative' ? 'down' : f.impact === 'positive' ? 'up' : 'stable',
+    })),
+    entity: data.targetSupplier
+      ? { name: data.targetSupplier.name, type: 'supplier' }
+      : data.portfolio
+        ? { name: 'Supplier Portfolio', type: 'portfolio' }
+        : undefined,
+    actions: [
+      { label: 'View Details', action: 'view_details', icon: 'profile' },
+      { label: 'Export Report', action: 'export', icon: 'export' },
+    ],
+    sources: {
+      internal: [
+        { name: 'Beroe Risk Intelligence', type: 'risk' },
+        { name: 'Portfolio Analytics', type: 'analytics' },
+      ],
+    },
+    confidence: 'high',
+    generatedAt: new Date().toISOString(),
+  } : undefined;
+
+  // 8. Build suggestions from AI follow-ups
+  const suggestions: Suggestion[] = (aiContent?.followUps || []).slice(0, 3).map((text, i) => ({
+    id: String(i + 1),
+    text,
+    icon: i === 0 ? 'search' : i === 1 ? 'lightbulb' : 'chart',
+  }));
+
+  // 9. Fallback content if AI failed
+  const narrative = aiContent?.narrative || generateFallbackNarrative(intent, data);
+
+  // 10. Determine response type
+  const responseType = route.widgetType === 'none' ? 'summary' : 'widget';
+
+  return {
+    id: generateId(),
+    content: narrative,
+    responseType,
+    acknowledgement: generateAcknowledgement(intent, userMessage),
+    suggestions: suggestions.length > 0 ? suggestions : [
+      { id: '1', text: 'Show my risk overview', icon: 'chart' },
+      { id: '2', text: 'Which suppliers are high risk?', icon: 'search' },
+      { id: '3', text: 'Any recent changes?', icon: 'alert' },
+    ],
+    widget,
+    insight,
+    suppliers: data.suppliers,
+    portfolio: data.portfolio,
+    riskChanges: data.riskChanges,
+    artifact: {
+      type: route.artifactType,
+      title: aiContent?.artifactContent?.title || 'Details',
+    },
+    // Pass through AI-generated artifact content
+    artifactContent: aiContent?.artifactContent,
+    intent,
+  };
+}
+
+// Fallback narrative when AI content generation fails
+function generateFallbackNarrative(intent: DetectedIntent, data: FetchedData): string {
+  switch (intent.category) {
+    case 'portfolio_overview':
+      if (data.portfolio) {
+        const unrated = data.portfolio.distribution.unrated;
+        const total = data.portfolio.totalSuppliers;
+        return unrated > 2
+          ? `You're monitoring ${total} suppliers. The ${unrated} unrated suppliers may need risk assessment.`
+          : `You're monitoring ${total} suppliers with ${data.portfolio.totalSpendFormatted} total spend.`;
+      }
+      return 'Here is your portfolio overview.';
+
+    case 'filtered_discovery':
+      return data.suppliers?.length
+        ? `Found ${data.suppliers.length} supplier(s) matching your criteria.`
+        : 'No suppliers found matching your criteria.';
+
+    case 'supplier_deep_dive':
+      if (data.targetSupplier) {
+        return `${data.targetSupplier.name} is currently ${data.targetSupplier.srs?.level || 'unrated'} risk.`;
+      }
+      return 'I could not find that supplier in your portfolio.';
+
+    case 'action_trigger':
+      if (data.targetSupplier && data.suppliers?.length) {
+        return `Found ${data.suppliers.length} potential alternative(s) to ${data.targetSupplier.name}.`;
+      }
+      return data.suppliers?.length
+        ? `Here are ${data.suppliers.length} high-risk suppliers that may need alternatives.`
+        : 'No matching suppliers found.';
+
+    case 'explanation_why':
+      if (data.portfolio && data.suppliers?.length) {
+        return `You have ${data.suppliers.length} unrated suppliers. These typically lack risk assessments from our intelligence partners.`;
+      }
+      return 'Let me explain that for you.';
+
+    case 'trend_detection':
+      return data.riskChanges?.length
+        ? `${data.riskChanges.length} supplier(s) had risk changes recently.`
+        : 'No recent risk changes detected.';
+
+    default:
+      return 'Here is what I found.';
+  }
+}
+
+// ============================================
+// ORIGINAL HELPERS (kept for compatibility)
+// ============================================
 
 // Helper: Transform Supplier to flat format for SupplierTableWidget
 const transformSuppliersForWidget = (suppliers: Supplier[]) => {
@@ -645,35 +1151,149 @@ const enhanceResponseWithData = async (
     }
   }
 
-  // Handle action_trigger (find alternatives, etc.)
-  if (intent.category === 'action_trigger' && !baseResponse.widget) {
-    const category = intent.extractedEntities.category;
-    let suppliers = await getHighRiskSuppliers();
+  // Handle explanation_why for unrated queries
+  if (intent.category === 'explanation_why') {
+    const queryLower = query.toLowerCase();
+    if (queryLower.includes('unrated')) {
+      // Get portfolio to explain unrated suppliers
+      const portfolio = await getPortfolioSummary();
+      const unratedCount = portfolio.distribution.unrated;
 
-    // Filter by category if specified
-    if (category) {
-      const categoryLower = category.toLowerCase();
-      const categoryFiltered = suppliers.filter(s =>
-        s.category?.toLowerCase().includes(categoryLower) ||
-        categoryLower.includes(s.category?.toLowerCase() || '')
-      );
-      if (categoryFiltered.length > 0) {
-        suppliers = categoryFiltered;
-      }
-    }
+      // Get unrated suppliers
+      const allSuppliers = await getAllSuppliers();
+      const unratedSuppliers = allSuppliers.filter(s => !s.srs?.score || s.srs.level === 'unrated');
 
-    if (suppliers.length > 0) {
-      baseResponse.suppliers = suppliers;
+      baseResponse.suppliers = unratedSuppliers;
+      baseResponse.portfolio = portfolio;
       baseResponse.widget = {
         type: 'supplier_table',
-        title: category ? `${category} Suppliers` : 'High-Risk Suppliers',
+        title: 'Unrated Suppliers',
         data: {
-          suppliers: transformSuppliersForWidget(suppliers),
-          totalCount: suppliers.length,
-          filters: category ? { category } : { riskLevel: 'high' },
+          suppliers: transformSuppliersForWidget(unratedSuppliers),
+          totalCount: unratedSuppliers.length,
+          filters: { riskLevel: 'unrated' },
         },
       };
-      baseResponse.artifact = { type: 'supplier_table', title: 'Supplier Alternatives' };
+      baseResponse.artifact = { type: 'supplier_table', title: 'Unrated Suppliers', filters: { riskLevel: 'unrated' } };
+
+      // Provide explanation in content if not already set by LLM
+      if (!baseResponse.content || baseResponse.content.includes("I'd be happy to help")) {
+        baseResponse.content = `You have **${unratedCount} unrated suppliers**. Suppliers are typically unrated when they're newly added to your portfolio, haven't been assessed by our risk intelligence partners, or don't have sufficient public data for scoring. Consider requesting assessments for critical suppliers.`;
+      }
+    }
+  }
+
+  // Handle action_trigger (find alternatives, etc.)
+  if (intent.category === 'action_trigger') {
+    const category = intent.extractedEntities.category;
+    let supplierName = intent.extractedEntities.supplierName;
+    const isFindAlternatives = intent.subIntent === 'find_alternatives';
+
+    // If supplier name is specified (or inferred), find that supplier and similar ones
+    if (isFindAlternatives) {
+      baseResponse.widget = undefined;
+      baseResponse.artifact = undefined;
+      const allSuppliers = await getAllSuppliers();
+      if (!supplierName) {
+        const queryLower = query.toLowerCase();
+        const matchedSupplier = allSuppliers.find(s =>
+          queryLower.includes(s.name.toLowerCase())
+        );
+        if (matchedSupplier) {
+          supplierName = matchedSupplier.name;
+        }
+      }
+
+      const targetSupplier = allSuppliers.find(s =>
+        supplierName
+          ? s.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+            supplierName.toLowerCase().includes(s.name.toLowerCase())
+          : false
+      );
+
+      if (targetSupplier) {
+        // Find alternatives in same category with lower risk
+        const alternatives = allSuppliers.filter(s =>
+          s.id !== targetSupplier.id &&
+          s.category === targetSupplier.category &&
+          (s.srs?.score || 100) < (targetSupplier.srs?.score || 0)
+        );
+
+        // If no lower-risk alternatives, show all in same category
+        const suppliersToShow = alternatives.length > 0
+          ? alternatives
+          : allSuppliers.filter(s => s.id !== targetSupplier.id && s.category === targetSupplier.category);
+
+        baseResponse.suppliers = suppliersToShow.length > 0 ? suppliersToShow : [targetSupplier];
+        baseResponse.widget = {
+          type: 'supplier_table',
+          title: `Alternatives to ${targetSupplier.name}`,
+          data: {
+            suppliers: transformSuppliersForWidget(suppliersToShow.length > 0 ? suppliersToShow : [targetSupplier]),
+            totalCount: suppliersToShow.length || 1,
+            filters: { category: targetSupplier.category },
+          },
+        };
+        baseResponse.artifact = { type: 'supplier_table', title: 'Supplier Alternatives' };
+
+        if (!baseResponse.content || baseResponse.content.includes("I'd be happy to help")) {
+          if (suppliersToShow.length > 0) {
+            baseResponse.content = `Found **${suppliersToShow.length} potential alternative(s)** to ${targetSupplier.name} in the ${targetSupplier.category} category.`;
+          } else {
+            baseResponse.content = `No direct alternatives found for ${targetSupplier.name} in your portfolio. Consider expanding your supplier base in the ${targetSupplier.category} category.`;
+          }
+        }
+      } else {
+        // Supplier not found - show message
+        if (!baseResponse.content || baseResponse.content.includes("I'd be happy to help")) {
+          baseResponse.content = supplierName
+            ? `I couldn't find "${supplierName}" in your portfolio. Would you like me to show high-risk suppliers that may need alternatives?`
+            : 'I could not match a supplier name, so I pulled high-risk suppliers that may need alternatives.';
+        }
+        const highRisk = await getHighRiskSuppliers();
+        baseResponse.suppliers = highRisk;
+        if (highRisk.length > 0) {
+          baseResponse.widget = {
+            type: 'supplier_table',
+            title: 'High-Risk Suppliers',
+            data: {
+              suppliers: transformSuppliersForWidget(highRisk),
+              totalCount: highRisk.length,
+              filters: { riskLevel: 'high' },
+            },
+          };
+          baseResponse.artifact = { type: 'supplier_table', title: 'Supplier Alternatives' };
+        }
+      }
+    } else if (!baseResponse.widget) {
+      // Original logic for category-based or general action triggers
+      let suppliers = await getHighRiskSuppliers();
+
+      // Filter by category if specified
+      if (category) {
+        const categoryLower = category.toLowerCase();
+        const categoryFiltered = suppliers.filter(s =>
+          s.category?.toLowerCase().includes(categoryLower) ||
+          categoryLower.includes(s.category?.toLowerCase() || '')
+        );
+        if (categoryFiltered.length > 0) {
+          suppliers = categoryFiltered;
+        }
+      }
+
+      if (suppliers.length > 0) {
+        baseResponse.suppliers = suppliers;
+        baseResponse.widget = {
+          type: 'supplier_table',
+          title: category ? `${category} Suppliers` : 'High-Risk Suppliers',
+          data: {
+            suppliers: transformSuppliersForWidget(suppliers),
+            totalCount: suppliers.length,
+            filters: category ? { category } : { riskLevel: 'high' },
+          },
+        };
+        baseResponse.artifact = { type: 'supplier_table', title: 'Supplier Alternatives' };
+      }
     }
   }
 
@@ -830,39 +1450,98 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
     }
 
     case 'action_trigger': {
-      // Find high-risk suppliers, optionally filtered by category
       const category = intent.extractedEntities.category;
-      let suppliers = await getHighRiskSuppliers();
+      let supplierName = intent.extractedEntities.supplierName;
+      const isFindAlternatives = intent.subIntent === 'find_alternatives';
+      let suppliers: Supplier[] = [];
+      let title = 'High-Risk Suppliers';
+      let content = '';
 
-      // Filter by category if specified
-      if (category) {
-        const categoryLower = category.toLowerCase();
-        suppliers = suppliers.filter(s =>
-          s.category?.toLowerCase().includes(categoryLower) ||
-          categoryLower.includes(s.category?.toLowerCase() || '')
-        );
-      }
-
-      // If no high-risk in category, show all in category
-      if (suppliers.length === 0 && category) {
+      // If supplier name is specified, find alternatives for that supplier
+      if (isFindAlternatives) {
         const allSuppliers = await getAllSuppliers();
-        suppliers = allSuppliers.filter(s =>
-          s.category?.toLowerCase().includes(category.toLowerCase())
+        if (!supplierName) {
+          const queryLower = query.toLowerCase();
+          const matchedSupplier = allSuppliers.find(s =>
+            queryLower.includes(s.name.toLowerCase())
+          );
+          if (matchedSupplier) {
+            supplierName = matchedSupplier.name;
+          }
+        }
+
+        const targetSupplier = allSuppliers.find(s =>
+          supplierName
+            ? s.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+              supplierName.toLowerCase().includes(s.name.toLowerCase())
+            : false
         );
-      }
 
-      // Fallback to all high-risk
-      if (suppliers.length === 0) {
+        if (targetSupplier) {
+          // Find alternatives in same category with lower risk
+          const alternatives = allSuppliers.filter(s =>
+            s.id !== targetSupplier.id &&
+            s.category === targetSupplier.category &&
+            (s.srs?.score || 100) < (targetSupplier.srs?.score || 0)
+          );
+
+          suppliers = alternatives.length > 0
+            ? alternatives
+            : allSuppliers.filter(s => s.id !== targetSupplier.id && s.category === targetSupplier.category);
+
+          title = `Alternatives to ${targetSupplier.name}`;
+          content = suppliers.length > 0
+            ? `Found **${suppliers.length} potential alternative(s)** to ${targetSupplier.name} in the ${targetSupplier.category} category.`
+            : `No direct alternatives found for ${targetSupplier.name} in your portfolio. Consider expanding your supplier base in the ${targetSupplier.category} category.`;
+
+          if (suppliers.length === 0) {
+            suppliers = [targetSupplier];
+          }
+        } else {
+          // Supplier not found
+          suppliers = await getHighRiskSuppliers();
+          content = supplierName
+            ? `I couldn't find "${supplierName}" in your portfolio. Here are high-risk suppliers that may need alternatives.`
+            : 'I could not match a supplier name, so I pulled high-risk suppliers that may need alternatives.';
+        }
+      } else {
+        // Original logic for category-based or general action triggers
         suppliers = await getHighRiskSuppliers();
-      }
 
-      const subIntent = intent.subIntent;
-      const actionText = subIntent === 'find_alternatives'
-        ? 'Here are the high-risk suppliers you may want to find alternatives for'
-        : 'Here are the suppliers requiring action';
+        if (category) {
+          const categoryLower = category.toLowerCase();
+          const categoryFiltered = suppliers.filter(s =>
+            s.category?.toLowerCase().includes(categoryLower) ||
+            categoryLower.includes(s.category?.toLowerCase() || '')
+          );
+          if (categoryFiltered.length > 0) {
+            suppliers = categoryFiltered;
+          }
+        }
+
+        // If no high-risk in category, show all in category
+        if (suppliers.length === 0 && category) {
+          const allSuppliers = await getAllSuppliers();
+          suppliers = allSuppliers.filter(s =>
+            s.category?.toLowerCase().includes(category.toLowerCase())
+          );
+        }
+
+        // Fallback to all high-risk
+        if (suppliers.length === 0) {
+          suppliers = await getHighRiskSuppliers();
+        }
+
+        title = category ? `${category} Suppliers` : 'High-Risk Suppliers';
+        const subIntent = intent.subIntent;
+        const actionText = subIntent === 'find_alternatives'
+          ? 'Here are the high-risk suppliers you may want to find alternatives for'
+          : 'Here are the suppliers requiring action';
+        content = `${actionText}. ${suppliers.length > 0 ? `I found **${suppliers.length}** supplier(s)${category ? ` in ${category}` : ''} to review.` : 'No matching suppliers found.'}`;
+      }
 
       return {
-        content: `${actionText}. ${suppliers.length > 0 ? `I found **${suppliers.length}** supplier(s)${category ? ` in ${category}` : ''} to review.` : 'No matching suppliers found.'}`,
+        content,
         responseType: 'table',
         acknowledgement: generateAcknowledgement(intent, query),
         suggestions: [
@@ -873,7 +1552,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
         suppliers,
         widget: {
           type: 'supplier_table',
-          title: category ? `${category} Suppliers` : 'High-Risk Suppliers',
+          title,
           data: {
             suppliers: transformSuppliersForWidget(suppliers),
             totalCount: suppliers.length,
@@ -881,6 +1560,54 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
           },
         },
         artifact: { type: 'supplier_table', title: 'Supplier Alternatives' },
+        intent,
+      };
+    }
+
+    case 'explanation_why': {
+      // Handle unrated queries
+      const queryLower = query.toLowerCase();
+      if (queryLower.includes('unrated')) {
+        const portfolio = await getPortfolioSummary();
+        const unratedCount = portfolio.distribution.unrated;
+        const allSuppliers = await getAllSuppliers();
+        const unratedSuppliers = allSuppliers.filter(s => !s.srs?.score || s.srs.level === 'unrated');
+
+        return {
+          content: `You have **${unratedCount} unrated suppliers**. Suppliers are typically unrated when they're newly added to your portfolio, haven't been assessed by our risk intelligence partners, or don't have sufficient public data for scoring. Consider requesting assessments for critical suppliers.`,
+          responseType: 'table',
+          acknowledgement: generateAcknowledgement(intent, query),
+          suggestions: [
+            { id: '1', text: 'Request risk assessment', icon: 'alert' },
+            { id: '2', text: 'Show high-risk suppliers', icon: 'search' },
+            { id: '3', text: 'View portfolio overview', icon: 'chart' },
+          ],
+          suppliers: unratedSuppliers,
+          portfolio,
+          widget: {
+            type: 'supplier_table',
+            title: 'Unrated Suppliers',
+            data: {
+              suppliers: transformSuppliersForWidget(unratedSuppliers),
+              totalCount: unratedSuppliers.length,
+              filters: { riskLevel: 'unrated' },
+            },
+          },
+          artifact: { type: 'supplier_table', title: 'Unrated Suppliers', filters: { riskLevel: 'unrated' } },
+          intent,
+        };
+      }
+
+      // Generic explanation fallback
+      return {
+        content: "I can help explain risk scores, supplier ratings, and portfolio metrics. Could you be more specific about what you'd like me to explain?",
+        responseType: 'summary',
+        acknowledgement: generateAcknowledgement(intent, query),
+        suggestions: [
+          { id: '1', text: 'Show portfolio overview', icon: 'chart' },
+          { id: '2', text: 'How are scores calculated?', icon: 'lightbulb' },
+          { id: '3', text: 'Which factors matter most?', icon: 'search' },
+        ],
         intent,
       };
     }

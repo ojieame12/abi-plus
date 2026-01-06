@@ -45,6 +45,14 @@ interface FollowUpItem {
 // WIDGET CONTEXT (for context-based rendering)
 // ============================================
 
+// AI-generated artifact content
+interface ArtifactContent {
+    title: string;
+    overview: string;
+    keyPoints: string[];
+    recommendations?: string[];
+}
+
 interface WidgetContext {
     intent: IntentCategory;
     portfolio?: Portfolio | RiskPortfolio; // Accept both types
@@ -52,6 +60,7 @@ interface WidgetContext {
     supplier?: Supplier;
     riskChanges?: RiskChange[];
     widgetData?: WidgetData;
+    artifactContent?: ArtifactContent; // AI-generated content for artifact panel
     renderContext?: RenderContext;
     onOpenArtifact?: (type: string, payload: Record<string, unknown>) => void;
 }
@@ -218,6 +227,7 @@ export const AIResponse = ({
                     supplier={widgetContext.supplier}
                     riskChanges={widgetContext.riskChanges}
                     widget={widgetContext.widgetData}
+                    artifactContent={widgetContext.artifactContent}
                     onExpand={onWidgetExpand}
                     onOpenArtifact={widgetContext.onOpenArtifact}
                 />

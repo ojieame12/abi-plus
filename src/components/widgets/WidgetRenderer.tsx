@@ -132,6 +132,14 @@ interface DirectWidgetProps {
   className?: string;
 }
 
+// AI-generated artifact content
+interface ArtifactContent {
+  title: string;
+  overview: string;
+  keyPoints: string[];
+  recommendations?: string[];
+}
+
 // Context-based rendering (new interface)
 interface ContextWidgetProps {
   intent: IntentCategory;
@@ -141,6 +149,7 @@ interface ContextWidgetProps {
   supplier?: Supplier;
   riskChanges?: RiskChange[];
   widget?: WidgetData;
+  artifactContent?: ArtifactContent; // AI-generated content for artifact panel
   title?: string;
   className?: string;
   onExpand?: (artifactComponent: string) => void;
@@ -206,7 +215,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   const artifactHandlers: Record<string, () => void> = {};
 
   if (isContextProps(props) && props.onOpenArtifact) {
-    const { onOpenArtifact, supplier, portfolio } = props;
+    const { onOpenArtifact, supplier, portfolio, artifactContent } = props;
 
     // FactorBreakdownCard → factor_breakdown artifact
     if (config.componentType === 'FactorBreakdownCard') {
@@ -227,6 +236,8 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
           lastUpdated: supplier?.srs?.lastUpdated || new Date().toISOString(),
           factors: config.props.factors,
           scoreHistory,
+          // AI-generated content
+          aiContent: artifactContent,
         });
       };
     }
@@ -238,6 +249,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
           title: config.props.title || 'News & Events',
           context: supplier ? { type: 'supplier', name: supplier.name, id: supplier.id } : undefined,
           events: config.props.events,
+          aiContent: artifactContent,
         });
       };
     }
@@ -253,6 +265,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
             category: supplier?.category || config.props.alternatives?.[0]?.category || 'General',
           },
           alternatives: config.props.alternatives,
+          aiContent: artifactContent,
         });
       };
     }
@@ -310,6 +323,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
             spend: config.props.spend,
             severity: config.props.severity,
           }],
+          aiContent: artifactContent,
         });
       };
     }
@@ -332,6 +346,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
           // Note: category/region breakdowns not available in Portfolio type
           byCategory: [],
           byRegion: [],
+          aiContent: artifactContent,
         });
       };
     }

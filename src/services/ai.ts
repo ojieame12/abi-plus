@@ -1,6 +1,6 @@
 // AI Orchestration Layer - Routes between Gemini and Perplexity
 import type { GeminiResponse } from './gemini';
-import { callGemini, isGeminiConfigured } from './gemini';
+import { callGemini, callGeminiV2, isGeminiConfigured } from './gemini';
 import type { PerplexityResponse } from './perplexity';
 import { callPerplexity, isPerplexityConfigured } from './perplexity';
 import type { ChatMessage, Suggestion, Source } from '../types/chat';
@@ -18,6 +18,14 @@ import { generateSuggestions, suggestionEngine } from './suggestionEngine';
 
 export type ThinkingMode = 'fast' | 'reasoning';
 
+// AI-generated artifact content for expanded panel
+export interface ArtifactContent {
+  title: string;
+  overview: string;
+  keyPoints: string[];
+  recommendations?: string[];
+}
+
 export interface AIResponse {
   id: string;
   content: string;
@@ -30,6 +38,8 @@ export interface AIResponse {
     filters?: Record<string, unknown>;
     supplierId?: string;
   };
+  // AI-generated content for the artifact panel
+  artifactContent?: ArtifactContent;
   insight?: string | { text?: string; headline?: string; detail?: string; trend?: string; sentiment?: string };
   handoff?: {
     required: boolean;
@@ -227,9 +237,10 @@ export const sendMessage = async (
       response = transformPerplexityResponse(perplexityResponse, intent);
       provider = 'perplexity';
     } else if (isGeminiConfigured()) {
-      console.log('[AI] Calling Gemini...');
-      const geminiResponse = await callGemini(message, conversationHistory);
-      console.log('[AI] Gemini response received');
+      // Use new V2 architecture: widget type determined by intent, AI generates content only
+      console.log('[AI] Calling GeminiV2 (new architecture)...');
+      const geminiResponse = await callGeminiV2(message, conversationHistory);
+      console.log('[AI] GeminiV2 response received');
       response = transformGeminiResponse(geminiResponse, intent);
       provider = 'gemini';
     } else {
@@ -274,6 +285,7 @@ const transformGeminiResponse = (
     suggestions: response.suggestions,
     sources: response.sources,
     artifact: response.artifact,
+    artifactContent: response.artifactContent, // AI-generated artifact content
     insight: response.insight,
     handoff: response.handoff,
     // Pass through widget data and acknowledgement from AI
@@ -292,13 +304,21 @@ const transformPerplexityResponse = (
   response: PerplexityResponse,
   intent: DetectedIntent
 ): Omit<AIResponse, 'id' | 'provider' | 'thinkingDuration'> => {
+  // Use widget router to get proper artifact type
+  const { getWidgetRoute } = require('./widgetRouter');
+  const route = getWidgetRoute(intent.category, intent.subIntent);
+
   // Perplexity responses are typically research/summary - use 0 count for inline display
   return {
     content: response.content,
     responseType: response.responseType,
     suggestions: response.suggestions,
     sources: response.sources,
-    artifact: response.artifact,
+    // Use widget router artifact type if Perplexity didn't provide one
+    artifact: response.artifact || {
+      type: route.artifactType,
+      title: 'Research Results',
+    },
     insight: response.insight,
     escalation: determineEscalation(0, intent.category),
     intent: response.intent || intent,

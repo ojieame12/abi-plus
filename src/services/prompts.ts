@@ -2,6 +2,7 @@
 // Controls how AI formats and structures responses
 
 import { WIDGET_SHOWCASE } from '../types/widgets';
+import type { WidgetType } from '../types/widgets';
 
 // ============================================
 // BASE SYSTEM PROMPT
@@ -30,6 +31,79 @@ You have access to:
 - Provide actionable insights
 - Suggest relevant follow-up questions
 `;
+
+// ============================================
+// CONTENT-FOCUSED PROMPT (New Architecture)
+// Widget type is predetermined - AI only generates content
+// ============================================
+
+export const buildContentGenerationPrompt = (
+  widgetType: WidgetType,
+  intentCategory: string,
+  dataContext: string
+): string => {
+  const widgetDescriptions: Record<string, string> = {
+    risk_distribution: 'a donut chart showing risk level breakdown (High/Medium-High/Medium/Low/Unrated)',
+    supplier_table: 'a table listing suppliers with their risk scores, trends, and spend',
+    supplier_risk_card: 'a detailed card for a single supplier showing score, trend, and key factors',
+    alert_card: 'an alert notification showing recent risk changes',
+    comparison_table: 'a side-by-side comparison of multiple suppliers',
+    price_gauge: 'a gauge showing commodity price levels and trends',
+    events_feed: 'a timeline of recent news and events',
+    handoff_card: 'a card directing user to the dashboard for more details',
+    none: 'no widget - text response only',
+  };
+
+  const widgetDesc = widgetDescriptions[widgetType] || 'a data visualization widget';
+
+  return `You are generating content for an AI response. The widget type is ALREADY DETERMINED to be: ${widgetType}
+${widgetType !== 'none' ? `\nThis widget displays: ${widgetDesc}` : ''}
+
+## Intent: ${intentCategory}
+
+## Available Data
+${dataContext}
+
+## Your Task
+Generate the content to accompany this widget. You are NOT choosing the widget - it's already selected.
+
+## Required Output (JSON only, no markdown fences)
+{
+  "narrative": "1-2 sentences introducing the insight. DO NOT repeat data the widget shows - add context instead.",
+  "widgetContent": {
+    "headline": "Key insight in 5-10 words (e.g., '8 Suppliers Need Risk Assessment')",
+    "summary": "2-3 sentence explanation of what this means and recommended action",
+    "type": "risk_alert|opportunity|info|action_required",
+    "sentiment": "positive|negative|neutral",
+    "factors": [
+      { "title": "Factor Name", "detail": "Specific explanation of this factor", "impact": "positive|negative|neutral" }
+    ]
+  },
+  "artifactContent": {
+    "title": "Expanded Panel Title",
+    "overview": "1-2 paragraph deep-dive explanation",
+    "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
+    "recommendations": ["Recommended action 1", "Recommended action 2"]
+  },
+  "followUps": ["Contextual follow-up question 1?", "Follow-up question 2?", "Follow-up question 3?"]
+}
+
+## Content Guidelines
+- **narrative**: Brief intro that adds context, NOT a summary of widget data
+  - GOOD: "Your portfolio has significant visibility gaps that may impact risk oversight."
+  - BAD: "You have 8 unrated suppliers out of 60 total suppliers."
+- **headline**: The single most important takeaway
+- **summary**: What it means for the user and what they should consider doing
+- **factors**: 2-4 contributing factors explaining WHY this situation exists
+- **artifactContent**: Deeper analysis shown when user expands the panel
+- **followUps**: 3 natural next questions the user might ask
+
+Respond with ONLY valid JSON, no markdown code fences or other text.`;
+};
+
+// ============================================
+// LEGACY: Old prompt composition (for fallback)
+// ============================================
 
 // ============================================
 // STRUCTURED OUTPUT INSTRUCTIONS

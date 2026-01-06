@@ -37,6 +37,7 @@ export function CommunityView({ onSelectQuestion, onAskQuestion, canAsk = false 
     questions,
     tags,
     isLoading,
+    notice,
     totalCount,
     hasMore,
     loadMore,
@@ -86,6 +87,11 @@ export function CommunityView({ onSelectQuestion, onAskQuestion, canAsk = false 
           </motion.div>
 
           {/* Search - refined */}
+          {notice && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              {notice}
+            </div>
+          )}
           <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}

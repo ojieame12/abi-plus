@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Globe, X, Paperclip, Brain, Zap, FileText, Database } from 'lucide-react';
+import { Plus, Globe, X, Paperclip, Brain, Zap, FileText, Database, Search, MessageSquare, Sparkles } from 'lucide-react';
 
 interface AttachedFile {
     id: string;
@@ -13,19 +13,24 @@ interface SourceCount {
     internal?: number;
 }
 
+export type InputMode = 'ask' | 'find';
+
 interface ChatInputProps {
-    onSend?: (message: string, files: AttachedFile[]) => void;
+    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode) => void;
     onFocusChange?: (focused: boolean) => void;
     onMessageChange?: (message: string) => void;
     onModeChange?: (mode: 'fast' | 'reasoning') => void;
     onWebSearchChange?: (enabled: boolean) => void;
+    onInputModeChange?: (mode: InputMode) => void;
     placeholder?: string;
     value?: string;
     mode?: 'fast' | 'reasoning';
     webSearchEnabled?: boolean;
+    inputMode?: InputMode;
     disabled?: boolean;
     variant?: 'default' | 'compact';
     sources?: SourceCount;
+    showModeToggle?: boolean; // Show Ask/Find toggle (only on home/new chat)
 }
 
 export const ChatInput = ({
@@ -34,19 +39,23 @@ export const ChatInput = ({
     onMessageChange,
     onModeChange,
     onWebSearchChange,
-    placeholder = "Ask a follow-up question...",
+    onInputModeChange,
+    placeholder,
     value,
     mode: externalMode,
     webSearchEnabled: externalWebSearch,
+    inputMode: externalInputMode,
     disabled = false,
     variant = 'default',
     sources,
+    showModeToggle = false,
 }: ChatInputProps) => {
     const [internalMessage, setInternalMessage] = useState('');
     const message = value !== undefined ? value : internalMessage;
     const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
     const [internalWebSearch, setInternalWebSearch] = useState(false);
     const [internalMode, setInternalMode] = useState<'fast' | 'reasoning'>('fast');
+    const [internalInputMode, setInternalInputMode] = useState<InputMode>('ask');
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +63,12 @@ export const ChatInput = ({
     // Use external state if provided, otherwise use internal
     const webSearchEnabled = externalWebSearch !== undefined ? externalWebSearch : internalWebSearch;
     const mode = externalMode !== undefined ? externalMode : internalMode;
+    const inputMode = externalInputMode !== undefined ? externalInputMode : internalInputMode;
+
+    // Dynamic placeholder based on input mode
+    const dynamicPlaceholder = placeholder ?? (inputMode === 'ask'
+        ? "Ask anything about your suppliers..."
+        : "Search for reports, charts, documents...");
 
     const handleWebSearchToggle = () => {
         const newValue = !webSearchEnabled;
@@ -68,6 +83,13 @@ export const ChatInput = ({
             setInternalMode(newMode);
         }
         onModeChange?.(newMode);
+    };
+
+    const handleInputModeChange = (newMode: InputMode) => {
+        if (externalInputMode === undefined) {
+            setInternalInputMode(newMode);
+        }
+        onInputModeChange?.(newMode);
     };
 
     const handleFocus = () => {
@@ -89,7 +111,7 @@ export const ChatInput = ({
 
     const handleSend = () => {
         if (message.trim() || attachedFiles.length > 0) {
-            onSend?.(message, attachedFiles);
+            onSend?.(message, attachedFiles, inputMode);
             if (value === undefined) {
                 setInternalMessage('');
             }
@@ -245,18 +267,28 @@ export const ChatInput = ({
                 )}
 
                 {/* Text Input */}
-                <div className="px-5 pt-4 pb-3">
+                <div className="px-5 pt-4 pb-3 relative">
                     <textarea
                         value={message}
                         onChange={(e) => handleMessageChange(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        placeholder={placeholder}
+                        placeholder={dynamicPlaceholder}
                         rows={2}
-                        className="w-full resize-none bg-transparent text-primary placeholder:text-muted focus:outline-none text-[15px]"
+                        className="w-full resize-none bg-transparent text-primary placeholder:text-muted focus:outline-none text-[15px] pr-14"
                         style={{ minHeight: '48px', maxHeight: '150px' }}
                     />
+
+                    {/* Floating Search Toggle - positioned top right */}
+                    {showModeToggle && (
+                        <div className="absolute right-5 top-4">
+                            <InputModeToggle
+                                mode={inputMode}
+                                onModeChange={handleInputModeChange}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Toolbar */}
@@ -295,11 +327,15 @@ export const ChatInput = ({
                         <ThinkingModeToggle mode={mode} onModeChange={handleModeChange} />
                     </div>
 
-                    {/* Send Button */}
+                    {/* Send Button - color changes based on mode, icon stays the same */}
                     <button
                         onClick={handleSend}
                         disabled={!message.trim() && attachedFiles.length === 0}
-                        className="w-9 h-9 rounded-xl bg-[#4A00F8] hover:bg-[#3D00D4] disabled:bg-[#4A00F8]/40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shadow-sm"
+                        className={`w-9 h-9 rounded-xl text-white flex items-center justify-center transition-colors shadow-sm ${
+                            inputMode === 'find'
+                                ? 'bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300'
+                                : 'bg-[#4A00F8] hover:bg-[#3D00D4] disabled:bg-[#4A00F8]/40'
+                        } disabled:cursor-not-allowed`}
                     >
                         <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M17.2731 10.786C17.6085 10.6183 17.8203 10.2755 17.8203 9.90048C17.8203 9.52549 17.6085 9.18269 17.2731 9.015L3.41305 2.085C3.0619 1.90942 2.64017 1.95794 2.33806 2.20867C2.03595 2.45939 1.91055 2.86496 2.0184 3.24245L3.43269 8.19244C3.55412 8.61745 3.94258 8.91047 4.38459 8.91047H8.91031C9.45707 8.91047 9.90031 9.35371 9.90031 9.90047C9.90031 10.4472 9.45707 10.8905 8.91031 10.8905H4.3846C3.94258 10.8905 3.55412 11.1835 3.43269 11.6085L2.0184 16.5585C1.91055 16.936 2.03595 17.3416 2.33806 17.5923C2.64017 17.843 3.0619 17.8915 3.41305 17.716L17.2731 10.786Z" fill="currentColor"/>
@@ -483,6 +519,38 @@ const ThinkingModeToggle = ({ mode = 'fast', onModeChange }: ThinkingModeToggleP
                     <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-900 rotate-45" />
                 </div>
             )}
+        </div>
+    );
+};
+
+// Search Mode Toggle - Single icon button (default is Ask mode)
+interface InputModeToggleProps {
+    mode: InputMode;
+    onModeChange: (mode: InputMode) => void;
+}
+
+const InputModeToggle = ({ mode, onModeChange }: InputModeToggleProps) => {
+    const isSearchMode = mode === 'find';
+
+    return (
+        <div className="relative group">
+            <button
+                onClick={() => onModeChange(isSearchMode ? 'ask' : 'find')}
+                className={`
+                    w-9 h-9 rounded-xl flex items-center justify-center transition-all border
+                    ${isSearchMode
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-500'
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }
+                `}
+            >
+                <Search size={18} strokeWidth={1.5} />
+            </button>
+            {/* Tooltip */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                {isSearchMode ? 'Switch to Ask mode' : 'Search documents'}
+                <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-900 rotate-45" />
+            </div>
         </div>
     );
 };

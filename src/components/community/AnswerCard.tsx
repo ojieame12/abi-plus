@@ -22,21 +22,22 @@ export function AnswerCard({ answer, delay = 0 }: AnswerCardProps) {
         ${answer.isAccepted ? 'border-l-2 border-l-emerald-500' : ''}
       `}
     >
-      {/* Header with accepted badge and score */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          {answer.isAccepted && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium
-                           bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100">
-              <Check size={10} />
-              Accepted
-            </span>
-          )}
+      {/* Header with author and accepted badge */}
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100/60">
+        <div className="flex items-center gap-3">
           <AuthorBadge
             author={answer.author}
             timestamp={answer.createdAt}
             showReputation
+            size="md"
           />
+          {answer.isAccepted && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium
+                           bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">
+              <Check size={12} />
+              Accepted
+            </span>
+          )}
         </div>
         <span className={`text-sm tabular-nums ${answer.score > 0 ? 'text-slate-900 font-medium' : 'text-slate-400'}`}>
           {answer.score} votes

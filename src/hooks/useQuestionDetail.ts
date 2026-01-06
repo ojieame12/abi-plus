@@ -12,6 +12,7 @@ interface UseQuestionDetailReturn {
   question: QuestionWithAnswers | null;
   isLoading: boolean;
   error: string | null;
+  notice: string | null;
   refetch: () => void;
 }
 
@@ -23,6 +24,7 @@ export function useQuestionDetail(
   const [question, setQuestion] = useState<QuestionWithAnswers | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(useMockData ? 'Showing sample question.' : null);
 
   const fetchQuestion = useCallback(async () => {
     if (!questionId) {
@@ -45,16 +47,27 @@ export function useQuestionDetail(
         } else {
           setQuestion(data);
         }
+        setNotice('Showing sample question.');
       } else {
         // Use API
         const data = await apiFetch<QuestionWithAnswers>(
           `/api/community/questions/${questionId}`
         );
         setQuestion(data);
+        setNotice(null);
       }
     } catch (err) {
-      setError('Failed to load question');
       console.error('Error fetching question:', err);
+      if (!useMockData) {
+        const fallback = getMockQuestionById(questionId);
+        if (fallback) {
+          setQuestion(fallback);
+          setNotice('API unavailable. Showing sample question.');
+          return;
+        }
+      }
+      setNotice(null);
+      setError('Failed to load question');
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +85,7 @@ export function useQuestionDetail(
     question,
     isLoading,
     error,
+    notice,
     refetch,
   };
 }

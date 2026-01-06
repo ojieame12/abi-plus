@@ -34,7 +34,7 @@ export function QuestionDetailView({
   canDownvote = false,
   canAnswer = false,
 }: QuestionDetailViewProps) {
-  const { question, isLoading, error, refetch } = useQuestionDetail(questionId);
+  const { question, isLoading, error, notice, refetch } = useQuestionDetail(questionId);
   const { createAnswer, isLoading: isAnswerLoading, error: answerError } = useCreateAnswer();
   const { acceptAnswer, isLoading: isAcceptLoading } = useAcceptAnswer();
 
@@ -121,6 +121,12 @@ export function QuestionDetailView({
             Back to Community
           </motion.button>
 
+          {notice && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              {notice}
+            </div>
+          )}
+
           {/* Question section with voting */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -148,22 +154,24 @@ export function QuestionDetailView({
                 {question.title}
               </h1>
 
-              <div className="flex items-center gap-3 text-xs text-slate-500 mb-6">
+              <div className="flex items-center gap-4 mb-6">
                 <AuthorBadge
                   author={question.author}
                   timestamp={question.createdAt}
                   showReputation
+                  size="lg"
                 />
-                <span className="text-slate-300">·</span>
-                <span>{question.viewCount} views</span>
-                {!isAuthenticated && (
-                  <>
-                    <span className="text-slate-300">·</span>
-                    <span className={question.score > 0 ? 'text-slate-900 font-medium' : 'text-slate-400'}>
-                      {question.score} votes
-                    </span>
-                  </>
-                )}
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span>{question.viewCount} views</span>
+                  {!isAuthenticated && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className={question.score > 0 ? 'text-slate-900 font-medium' : 'text-slate-400'}>
+                        {question.score} votes
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Question Body */}
@@ -386,6 +394,7 @@ function AnswerCardWithVoting({
             author={answer.author}
             timestamp={answer.createdAt}
             showReputation
+            size="md"
           />
         </div>
       </div>
