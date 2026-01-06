@@ -478,11 +478,24 @@ const generateLocalResponse = (
   const portfolio = getPortfolioSummary();
 
   switch (intent.category) {
-    case 'portfolio_overview':
+    case 'portfolio_overview': {
+      const unratedCount = portfolio.distribution.unrated;
+      const highRiskCount = portfolio.distribution.high;
+      const needsAttention = highRiskCount + portfolio.distribution.mediumHigh;
+      const primaryConcern = unratedCount > 3
+        ? `The **${unratedCount} unrated suppliers** represent a visibility gap that may impact risk oversight.`
+        : highRiskCount > 0
+        ? `You have **${highRiskCount} high-risk suppliers** that require attention.`
+        : `Your portfolio is well-managed with most suppliers in low-risk categories.`;
+
       return {
-        content: `Here's your portfolio at a glance. You have ${portfolio.distribution.high} high-risk suppliers that may need attention.`,
+        content: `**Portfolio Risk Overview**\n\nYou're monitoring **${portfolio.totalSuppliers} suppliers** with **${portfolio.totalSpendFormatted}** total spend. ${primaryConcern}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, { portfolio }),
+        sources: [
+          { name: 'Beroe Risk Analytics', type: 'beroe' as const },
+          { name: 'Portfolio Database', type: 'beroe' as const },
+        ],
         portfolio,
         widget: {
           type: 'risk_distribution',
@@ -493,16 +506,17 @@ const generateLocalResponse = (
             totalSpend: portfolio.totalSpendFormatted,
           },
         },
-        acknowledgement: "Here's your portfolio overview.",
+        acknowledgement: "Here's your portfolio at a glance.",
         insight: {
-          headline: `${portfolio.distribution.high} High Risk Suppliers`,
-          detail: `${portfolio.distribution.high + portfolio.distribution.mediumHigh} suppliers need attention out of ${portfolio.totalSuppliers} total`,
-          sentiment: portfolio.distribution.high > 2 ? 'negative' : 'neutral',
+          headline: unratedCount > 3 ? `${unratedCount} Unrated Suppliers` : `${highRiskCount} High Risk Suppliers`,
+          detail: `${needsAttention} suppliers need attention out of ${portfolio.totalSuppliers} total`,
+          sentiment: highRiskCount > 2 || unratedCount > 5 ? 'negative' : 'neutral',
         },
         artifact: { type: 'portfolio_dashboard', title: 'Risk Portfolio Overview' },
         escalation: determineEscalation(portfolio.totalSuppliers, 'portfolio_overview'),
         intent,
       };
+    }
 
     case 'filtered_discovery': {
       const riskLevel = intent.extractedEntities.riskLevel;
@@ -736,8 +750,9 @@ const generateLocalResponse = (
     case 'inflation_drivers': {
       const commodity = intent.extractedEntities.commodity || 'Steel';
       const drivers = getCommodityDrivers(commodity);
+      const topDriver = drivers.drivers[0];
       return {
-        content: `**${drivers.commodity} Price Analysis**\n\n${drivers.commodity} prices are ${drivers.priceChange.direction === 'up' ? 'up' : 'down'} ${drivers.priceChange.percent}% this period.\n\n${drivers.marketContext}`,
+        content: `**${drivers.commodity} Price Analysis**\n\n${drivers.commodity} prices are ${drivers.priceChange.direction === 'up' ? 'up' : 'down'} **${drivers.priceChange.percent}%** this period${topDriver ? `, driven primarily by ${topDriver.name.toLowerCase()} (**${topDriver.contribution}%** contribution)` : ''}.\n\n${drivers.marketContext}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
