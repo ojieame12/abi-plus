@@ -509,6 +509,7 @@ const generateLocalResponse = (
         acknowledgement: "Here's your portfolio at a glance.",
         insight: {
           headline: unratedCount > 3 ? `${unratedCount} Unrated Suppliers` : `${highRiskCount} High Risk Suppliers`,
+          summary: `Your portfolio includes ${portfolio.totalSuppliers} monitored suppliers representing ${portfolio.totalSpendFormatted} in total spend. ${unratedCount > 3 ? `The ${unratedCount} unrated suppliers represent a visibility gap that should be addressed to ensure comprehensive risk coverage.` : highRiskCount > 0 ? `Focus attention on the ${highRiskCount} high-risk suppliers to mitigate potential disruptions.` : 'Most suppliers are in low-risk categories, indicating a well-managed portfolio.'}`,
           detail: `${needsAttention} suppliers need attention out of ${portfolio.totalSuppliers} total`,
           sentiment: highRiskCount > 2 || unratedCount > 5 ? 'negative' : 'neutral',
         },
@@ -738,6 +739,7 @@ const generateLocalResponse = (
         acknowledgement: "Here's the inflation overview.",
         insight: {
           headline: `Portfolio impact ${summary.overallChange.direction === 'up' ? '+' : ''}${summary.overallChange.percent}%`,
+          summary: `${summary.headline} The overall portfolio is seeing a ${summary.overallChange.percent}% ${summary.overallChange.direction === 'up' ? 'increase' : 'decrease'} in costs this period. Review individual category trends to identify negotiation opportunities.`,
           detail: summary.headline,
           sentiment: summary.overallChange.direction === 'up' ? 'negative' : 'positive',
         },
@@ -768,6 +770,7 @@ const generateLocalResponse = (
         acknowledgement: `Analyzing ${drivers.commodity} price trends.`,
         insight: {
           headline: `${drivers.commodity} prices ${drivers.priceChange.direction} ${drivers.priceChange.percent}%`,
+          summary: `Key driver: ${topDriver?.name || 'Multiple factors'} contributing ${topDriver?.contribution || 0}% to the price movement. ${topDriver?.description || ''}`,
           detail: drivers.drivers[0]?.description || 'Multiple factors driving price movement',
           sentiment: drivers.priceChange.direction === 'up' ? 'negative' : 'positive',
         },
@@ -795,6 +798,7 @@ const generateLocalResponse = (
         acknowledgement: "Here's how inflation affects your spend.",
         insight: {
           headline: `${impact.totalImpact} total impact`,
+          summary: `Current inflation trends are adding ${impact.totalImpact} to your portfolio spend, representing a ${impact.impactPercent}% ${impact.totalImpactDirection} ${impact.timeframe}. ${impact.recommendation}`,
           detail: impact.recommendation,
           sentiment: impact.totalImpactDirection === 'increase' ? 'negative' : 'positive',
         },
@@ -824,6 +828,7 @@ const generateLocalResponse = (
         acknowledgement: "Validating the price increase request.",
         insight: {
           headline: `Verdict: ${justification.verdictLabel}`,
+          summary: `${justification.supplierName}'s requested ${justification.requestedIncrease}% increase on ${justification.commodity} is ${Math.abs(justification.requestedIncrease - justification.marketBenchmark).toFixed(1)}% ${justification.requestedIncrease > justification.marketBenchmark ? 'above' : 'below'} the current market benchmark of ${justification.marketBenchmark}%. ${justification.verdict === 'reject' ? 'Consider negotiating or seeking alternative quotes.' : justification.verdict === 'accept' ? 'The request aligns with market conditions.' : 'Additional analysis recommended before decision.'}`,
           detail: `Request ${Math.abs(justification.requestedIncrease - justification.marketBenchmark).toFixed(1)}% ${justification.requestedIncrease > justification.marketBenchmark ? 'above' : 'below'} market`,
           sentiment: justification.verdict === 'reject' ? 'negative' : justification.verdict === 'accept' ? 'positive' : 'neutral',
         },
@@ -851,6 +856,7 @@ const generateLocalResponse = (
         acknowledgement: "Here's the scenario analysis.",
         insight: {
           headline: scenario.delta.label,
+          summary: `${scenario.description} Under the "${scenario.scenarioName}" scenario, the projected impact is ${scenario.delta.label}. Use this analysis to inform budget planning and risk mitigation strategies.`,
           detail: scenario.description,
           sentiment: scenario.delta.direction === 'increase' ? 'negative' : 'positive',
         },

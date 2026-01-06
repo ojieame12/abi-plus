@@ -730,6 +730,8 @@ function App() {
                           } : undefined}
                           // 2. Acknowledgement - show on all responses
                           acknowledgement={hasResponse ? (msg.response?.acknowledgement || undefined) : undefined}
+                          // 2.5 Detail Summary - AI-generated overview (from artifactContent or insight.summary)
+                          detailSummary={hasResponse ? (msg.response?.artifactContent?.overview || (typeof msg.response?.insight === 'object' && 'summary' in msg.response.insight ? msg.response.insight.summary : undefined)) : undefined}
                           // 3. Widget - PERSIST on all assistant messages with data
                           widgetContext={hasResponse ? {
                             intent: msg.response!.intent?.category || 'general',

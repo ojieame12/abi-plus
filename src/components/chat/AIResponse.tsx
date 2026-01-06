@@ -78,11 +78,15 @@ interface AIResponseProps {
     // Optional: Thought process section
     thoughtProcess?: ThoughtProcessData;
 
-    // Optional: Acknowledgement header
+    // Optional: Acknowledgement header (greeting)
     acknowledgement?: string;
 
-    // Required: Main response content
+    // Required: Main response content (narrative)
     children: ReactNode;
+
+    // Optional: Detailed summary shown above widget
+    // This is AI-generated widgetContent.summary or artifactContent.overview
+    detailSummary?: string;
 
     // Widget rendering - two modes:
     // 1. Direct ReactNode (legacy) - just render as-is
@@ -142,6 +146,7 @@ export const AIResponse = ({
     thoughtProcess,
     acknowledgement,
     children,
+    detailSummary,
     widget,
     widgetContext,
     insight,
@@ -481,6 +486,22 @@ export const AIResponse = ({
                         style={{ color: '#1D1D1D' }}
                     >
                         {children}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 3.5 Detail Summary (AI-generated widgetContent.summary) */}
+            <AnimatePresence>
+                {showBody && detailSummary && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                        className="mt-3 p-4 bg-slate-50/70 border border-slate-100 rounded-xl"
+                    >
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                            {detailSummary}
+                        </p>
                     </motion.div>
                 )}
             </AnimatePresence>
