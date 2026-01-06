@@ -650,9 +650,9 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     name: 'PriceGaugeWidget',
     category: 'market',
     description: 'Commodity price indicator with gauge visualization.',
-    intents: ['market_context'],
-    subIntents: ['commodity_drivers', 'none'],  // Only for price queries, not news
-    priority: 100,
+    intents: ['market_context', 'inflation_scenarios'],
+    subIntents: ['commodity_drivers', 'price_forecast', 'none'],  // Also for price forecast queries
+    priority: 110,  // Higher than scenario_card (100) for price_forecast with commodityData
     requiredData: ['commodityData'],
     renderContexts: ['chat', 'panel'],
     sizes: ['M'],

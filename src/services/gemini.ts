@@ -567,6 +567,16 @@ async function fetchDataForIntent(
         data.inflationSummary = getInflationSummary();
         break;
       case 'inflation_scenarios':
+        // For price_forecast subIntent, fetch commodity data for price_gauge widget
+        if (intent.subIntent === 'price_forecast' && intent.extractedEntities.commodity) {
+          data.commodityData = getCommodity(intent.extractedEntities.commodity);
+          data.commodityDrivers = getCommodityDrivers(intent.extractedEntities.commodity);
+        }
+        // Fallback to default commodity if none specified
+        if (intent.subIntent === 'price_forecast' && !data.commodityData) {
+          data.commodityData = getCommodity('copper');
+          data.commodityDrivers = getCommodityDrivers('copper');
+        }
         data.scenarioData = getScenarioData();
         data.inflationSummary = getInflationSummary();
         data.spendImpact = getSpendImpact();

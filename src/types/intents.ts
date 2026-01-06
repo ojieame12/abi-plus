@@ -384,6 +384,7 @@ const PORTFOLIO_MARKET_GUARD = /(price|inflation|commodity|market|benchmark|inde
 const PORTFOLIO_RISK_SIGNAL = /(risk|exposure|distribution|high[- ]?risk|unrated|portfolio risk|risk posture|risk overview)/i;
 
 // Patterns that trigger automatic research (Perplexity)
+// Note: price/commodity forecasts use Beroe data, not external research
 export const RESEARCH_TRIGGERS: RegExp[] = [
   /what('?s| is) happening/i,
   /any news/i,
@@ -401,8 +402,22 @@ export const RESEARCH_TRIGGERS: RegExp[] = [
   /best practice/i,
 ];
 
+// Patterns that indicate commodity/price queries - these use Beroe data, not external research
+const PRICE_DATA_PATTERNS = [
+  /price\s*(forecast|outlook|projection|prediction)/i,
+  /(steel|aluminum|copper|corrugated|packaging|commodity|metal)\s*(forecast|outlook|projection|prediction|price)/i,
+  /(forecast|outlook|projection|prediction)\s*(for|of)\s*(steel|aluminum|copper|corrugated|packaging|commodity|metal)/i,
+];
+
 // Check if query should trigger deep research
 const shouldTriggerResearch = (query: string): { trigger: boolean; context?: string } => {
+  // Check if this is a price/commodity query that should use Beroe data instead
+  for (const pricePattern of PRICE_DATA_PATTERNS) {
+    if (pricePattern.test(query)) {
+      return { trigger: false }; // Use Beroe data, not external research
+    }
+  }
+
   for (const pattern of RESEARCH_TRIGGERS) {
     if (pattern.test(query)) {
       return { trigger: true, context: query };
