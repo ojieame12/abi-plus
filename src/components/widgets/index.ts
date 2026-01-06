@@ -66,6 +66,18 @@ export { AlternativesPreviewCard } from './AlternativesPreviewCard';
 export { ConcentrationWarningCard } from './ConcentrationWarningCard';
 
 // ============================================
+// INFLATION WATCH
+// ============================================
+export {
+  InflationSummaryCard,
+  DriverBreakdownCard,
+  SpendImpactCard,
+  JustificationCard,
+  ScenarioCard,
+  ExecutiveBriefCard,
+} from './inflation';
+
+// ============================================
 // SHARED FROM RISK
 // ============================================
 export { RiskScoreBadge } from '../risk/RiskScoreBadge';

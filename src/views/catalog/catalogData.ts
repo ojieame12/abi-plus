@@ -13,7 +13,8 @@ export type WidgetCategory =
   | 'categories'
   | 'score'
   | 'general'
-  | 'actions';
+  | 'actions'
+  | 'inflation';
 
 export interface PropDefinition {
   name: string;
@@ -45,6 +46,7 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
   score: 'Score & Breakdown',
   general: 'General Purpose',
   actions: 'Actions & Navigation',
+  inflation: 'Inflation Watch',
 };
 
 export const CATEGORY_ORDER: WidgetCategory[] = [
@@ -56,6 +58,7 @@ export const CATEGORY_ORDER: WidgetCategory[] = [
   'score',
   'general',
   'actions',
+  'inflation',
 ];
 
 // ============================================
