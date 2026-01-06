@@ -69,7 +69,8 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
 
 ## Required Output (JSON only, no markdown fences)
 {
-  "narrative": "3-5 sentences with context, key data points, and analysis. Use **bold** for important numbers.",
+  "acknowledgement": "Brief 5-10 word greeting that acknowledges the query (e.g., 'Analyzing your portfolio risk.' or 'Looking at Steel price trends.')",
+  "narrative": "3-5 sentences with context, key data points, and analysis. Use plain text, no markdown formatting.",
   "widgetContent": {
     "headline": "Key insight in 5-10 words (e.g., '8 Suppliers Need Risk Assessment')",
     "summary": "2-3 sentence explanation of what this means and recommended action",
@@ -89,16 +90,19 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
 }
 
 ## Content Guidelines
-- **narrative**: Well-formatted response with structure:
-  - Start with a **bold title** on its own line (e.g., "**Portfolio Risk Analysis**")
-  - Follow with 2-4 sentences of context with **bold numbers** inline
-  - Use line breaks (\\n\\n) between title and body for readability
-  - GOOD FORMAT:
-    "**Portfolio Risk Overview**\\n\\nYour portfolio has **8 unrated suppliers** representing **$12.4M** in spend. This visibility gap may impact risk oversight, especially in the packaging sector. Prioritizing assessments for high-spend vendors would improve coverage."
-  - GOOD FORMAT:
-    "**Corrugated Boxes Price Analysis**\\n\\nPrices are up **5.8%** this period, driven by pulp cost increases (**40%** contribution). European e-commerce demand continues driving packaging consumption higher."
-  - BAD: "Here is your portfolio overview." (too generic, no formatting)
-  - BAD: Long paragraph with no title or bold formatting
+- **acknowledgement**: Short greeting that sets context (shown above the response body)
+  - GOOD: "Analyzing your portfolio risk."
+  - GOOD: "Looking at Steel price trends."
+  - GOOD: "Here's the supplier breakdown."
+  - BAD: "I'd be happy to help you with that!" (too generic)
+- **narrative**: Clean, readable prose with specific data:
+  - Lead with the key finding or summary
+  - Include 2-4 sentences with specific numbers and context
+  - Use plain text only - NO markdown, NO bold, NO formatting
+  - GOOD: "Your portfolio includes 14 suppliers with $10B total spend. The 8 unrated suppliers represent a visibility gap that may impact risk oversight. Prioritizing assessments for high-spend vendors would improve coverage."
+  - GOOD: "Corrugated Boxes prices are up 5.8% this period, driven by pulp cost increases contributing 40% of the movement. European e-commerce demand continues driving packaging consumption higher."
+  - BAD: "**Portfolio Risk Overview**\\n\\n..." (no markdown formatting)
+  - BAD: "Here is your portfolio overview." (too generic, no data)
 - **headline**: The single most important takeaway
 - **summary**: What it means for the user and what they should consider doing
 - **factors**: 2-4 contributing factors explaining WHY this situation exists
@@ -220,60 +224,60 @@ export const INTENT_PROMPTS: Record<string, string> = {
 The user wants to see their overall supplier risk portfolio.
 
 Your response should:
-1. Start with bold title like "**Portfolio Risk Overview**"
-2. State supplier count and spend with bold numbers
+1. Lead with the key finding about their portfolio
+2. State supplier count and spend with specific numbers
 3. Highlight the key concern or insight with context
 4. Widget shows the distribution - your text provides analysis
 
-Good: "**Portfolio Risk Overview**\\n\\nYou're monitoring **14 suppliers** with **$10B** total spend. The **8 unrated suppliers** represent a visibility gap that may impact risk oversight - consider prioritizing assessments for high-spend vendors in this group."
+Good: "You're monitoring 14 suppliers with $10B total spend. The 8 unrated suppliers represent a visibility gap that may impact risk oversight. Consider prioritizing assessments for high-spend vendors in this group."
 `,
 
   filtered_discovery: `
 The user wants to find suppliers matching specific criteria.
 
 Your response should:
-1. Start with a bold title like "**High-Risk Suppliers**" or "**Filtered Results**"
-2. State count and total spend impact with bold numbers
+1. State the count of matching results immediately
+2. Include total spend impact with specific numbers
 3. Mention the most critical supplier if relevant
 4. Widget shows the full table - your text provides context
 
-Good: "**High-Risk Suppliers**\\n\\nFound **5 suppliers** flagged as high-risk, representing **$8.2M** in annual spend. Apex Manufacturing has the highest risk score at 89 due to recent financial concerns."
+Good: "Found 5 suppliers flagged as high-risk, representing $8.2M in annual spend. Apex Manufacturing has the highest risk score at 89 due to recent financial concerns."
 `,
 
   supplier_deep_dive: `
 The user wants detailed information about a specific supplier.
 
 Your response should:
-1. Start with bold supplier name as title
-2. Provide current risk status with specific score
-3. Explain what's notable or concerning
+1. Lead with the supplier's current risk status and score
+2. Explain what's notable or concerning
+3. Provide actionable context about trends
 4. Widget shows details - your text provides analysis
 
-Good: "**Apple Inc. Risk Profile**\\n\\nCurrently rated **high-risk (85)** and trending upward. Financial indicators have weakened over the past quarter, driven by increased debt load and declining margins. Consider reviewing alternatives in this category."
+Good: "Apple Inc. is currently rated high-risk with a score of 85, trending upward. Financial indicators have weakened over the past quarter, driven by increased debt load and declining margins. Consider reviewing alternatives in this category."
 `,
 
   trend_detection: `
 The user wants to know about recent risk changes.
 
 Your response should:
-1. Start with bold title like "**Recent Risk Changes**"
-2. State count of changes and timeframe
-3. Highlight the most critical change with specific numbers
+1. State the count of changes and timeframe immediately
+2. Highlight the most critical change with specific numbers
+3. Provide context on which changes need attention
 4. Widget shows full list - your text calls out priorities
 
-Good: "**Recent Risk Changes**\\n\\n**3 suppliers** had risk score changes in the past 30 days. Apple's increase from **72 to 85** moves them into high-risk territory and warrants immediate review. Two other suppliers showed improvement."
+Good: "3 suppliers had risk score changes in the past 30 days. Apple's increase from 72 to 85 moves them into high-risk territory and warrants immediate review. Two other suppliers showed improvement."
 `,
 
   comparison: `
 The user wants to compare suppliers.
 
 Your response should:
-1. Start with bold title naming the comparison
-2. Provide your recommendation with reasoning
+1. Lead with your recommendation based on the data
+2. Provide specific score comparisons
 3. Highlight 1-2 key differentiators
 4. Widget shows detailed comparison - your text guides decision
 
-Good: "**Apple vs Samsung Comparison**\\n\\nSamsung presents **lower overall risk (45 vs 85)** with stronger financial stability. However, Apple offers better geographic coverage for your APAC operations. Consider Samsung for cost-sensitive contracts."
+Good: "Samsung presents lower overall risk (45 vs 85) with stronger financial stability. However, Apple offers better geographic coverage for your APAC operations. Consider Samsung for cost-sensitive contracts."
 `,
 
   market_context: `

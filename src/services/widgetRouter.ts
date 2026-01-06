@@ -163,6 +163,9 @@ export function getWidgetRoute(
 // ============================================
 
 export interface AIContentSlots {
+  // Greeting/acknowledgement shown above the response body
+  acknowledgement?: string;
+
   // Main narrative (1-2 sentences before widget)
   narrative: string;
 

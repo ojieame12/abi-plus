@@ -1186,11 +1186,14 @@ export async function callGeminiV2(
   // 11. Build source attribution based on data used
   const sources = buildDataSources(intent, data);
 
+  // 12. Use AI-generated acknowledgement if available, else fall back to local
+  const acknowledgement = aiContent?.acknowledgement || generateAcknowledgement(intent, userMessage);
+
   return {
     id: generateId(),
     content: narrative,
     responseType,
-    acknowledgement: generateAcknowledgement(intent, userMessage),
+    acknowledgement,
     suggestions: suggestions.length > 0 ? suggestions : [
       { id: '1', text: 'Show my risk overview', icon: 'chart' },
       { id: '2', text: 'Which suppliers are high risk?', icon: 'search' },

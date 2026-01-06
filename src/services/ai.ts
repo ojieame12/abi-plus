@@ -483,13 +483,13 @@ const generateLocalResponse = (
       const highRiskCount = portfolio.distribution.high;
       const needsAttention = highRiskCount + portfolio.distribution.mediumHigh;
       const primaryConcern = unratedCount > 3
-        ? `The **${unratedCount} unrated suppliers** represent a visibility gap that may impact risk oversight.`
+        ? `The ${unratedCount} unrated suppliers represent a visibility gap that may impact risk oversight.`
         : highRiskCount > 0
-        ? `You have **${highRiskCount} high-risk suppliers** that require attention.`
+        ? `You have ${highRiskCount} high-risk suppliers that require attention.`
         : `Your portfolio is well-managed with most suppliers in low-risk categories.`;
 
       return {
-        content: `**Portfolio Risk Overview**\n\nYou're monitoring **${portfolio.totalSuppliers} suppliers** with **${portfolio.totalSpendFormatted}** total spend. ${primaryConcern}`,
+        content: `You're monitoring ${portfolio.totalSuppliers} suppliers with ${portfolio.totalSpendFormatted} total spend. ${primaryConcern}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, { portfolio }),
         sources: [
@@ -646,7 +646,7 @@ const generateLocalResponse = (
         };
       }
       return {
-        content: "I can help you take action on your supplier risk. What would you like to do?\n\n• **Find alternatives** for risky suppliers\n• **Set up alerts** for risk changes\n• **Create a mitigation plan**\n• **Export data** for reporting",
+        content: "I can help you take action on your supplier risk. What would you like to do? Options include finding alternatives for risky suppliers, setting up alerts for risk changes, creating a mitigation plan, or exporting data for reporting.",
         responseType: 'summary',
         suggestions: generateSuggestions(intent, {}),
         escalation: determineEscalation(0, 'action_trigger'),
@@ -678,7 +678,7 @@ const generateLocalResponse = (
 
     case 'explanation_why': {
       return {
-        content: `**How Supplier Risk Scores Work**\n\nThe SRS (Supplier Risk Score) is calculated from multiple weighted factors:\n\n**Freely Visible:**\n• Overall composite score (0-100)\n• Risk level classification\n\n**Factor Categories** (weights vary):\n• ESG & Sustainability\n• Delivery Performance\n• Quality Metrics\n• Financial Health*\n• Cybersecurity*\n• Compliance*\n\n*Some factors require dashboard access due to partner data restrictions.\n\nWant me to explain a specific supplier's situation?`,
+        content: `The Supplier Risk Score (SRS) is calculated from multiple weighted factors including ESG & Sustainability, Delivery Performance, Quality Metrics, Financial Health, Cybersecurity, and Compliance. The overall composite score ranges from 0-100 with risk level classification. Some detailed factor scores require dashboard access due to partner data restrictions. Want me to explain a specific supplier's situation?`,
         responseType: 'summary',
         suggestions: generateSuggestions(intent, {}),
         escalation: determineEscalation(0, 'explanation_why'),
@@ -689,7 +689,7 @@ const generateLocalResponse = (
     case 'setup_config': {
       suggestionEngine.recordQuestion('setup_config');
       return {
-        content: `**Configuration Options**\n\nI can help you set up:\n\n📊 **Add Suppliers** - Search and add suppliers to monitor\n🔔 **Risk Alerts** - Get notified when scores change\n⚙️ **Weight Configuration** - Customize how risk is calculated\n📥 **Import** - Bulk upload your supplier list\n\nWhat would you like to configure?`,
+        content: `I can help you set up supplier monitoring. Options include adding suppliers, configuring risk alerts, customizing weight settings, or bulk importing your supplier list. What would you like to configure?`,
         responseType: 'summary',
         suggestions: generateSuggestions(intent, {}),
         escalation: determineEscalation(0, 'setup_config'),
@@ -699,7 +699,7 @@ const generateLocalResponse = (
 
     case 'reporting_export': {
       return {
-        content: `**Export & Reporting Options**\n\nI can generate:\n\n📄 **Portfolio Summary** - Overview of your risk posture\n📊 **Supplier List** - CSV export of monitored suppliers\n📈 **Trend Report** - Risk changes over time\n📋 **Executive Summary** - Board-ready risk overview\n\n*Note: Some detailed factor scores are excluded due to partner data restrictions.*`,
+        content: `I can generate several report types: a portfolio summary overview, supplier list CSV export, trend report showing risk changes over time, or an executive summary. Note that some detailed factor scores are excluded due to partner data restrictions.`,
         responseType: 'summary',
         suggestions: generateSuggestions(intent, {}),
         escalation: determineEscalation(0, 'reporting_export'),
@@ -710,7 +710,7 @@ const generateLocalResponse = (
     case 'market_context': {
       // This would ideally trigger Perplexity, but fallback for local
       return {
-        content: `I'd be happy to research market conditions for you. This type of query benefits from real-time market intelligence.\n\n**What I can analyze:**\n• Industry trends affecting your suppliers\n• Regional risk factors\n• Supply chain disruptions\n• Commodity price impacts\n\nLet me search for the latest information...`,
+        content: `I can research market conditions for you. This includes industry trends affecting your suppliers, regional risk factors, supply chain disruptions, and commodity price impacts. Let me search for the latest information.`,
         responseType: 'summary',
         suggestions: generateSuggestions(intent, {}),
         escalation: determineEscalation(0, 'market_context'),
@@ -724,7 +724,7 @@ const generateLocalResponse = (
     case 'inflation_summary': {
       const summary = getInflationSummary();
       return {
-        content: `**${summary.period} Inflation Update**\n\n${summary.headline}\n\nOverall portfolio impact: ${summary.overallChange.direction === 'up' ? '+' : '-'}${summary.overallChange.percent}%`,
+        content: `${summary.period} Inflation Update: ${summary.headline} Overall portfolio impact is ${summary.overallChange.direction === 'up' ? '+' : ''}${summary.overallChange.percent}%.`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
@@ -754,7 +754,7 @@ const generateLocalResponse = (
       const drivers = getCommodityDrivers(commodity);
       const topDriver = drivers.drivers[0];
       return {
-        content: `**${drivers.commodity} Price Analysis**\n\n${drivers.commodity} prices are ${drivers.priceChange.direction === 'up' ? 'up' : 'down'} **${drivers.priceChange.percent}%** this period${topDriver ? `, driven primarily by ${topDriver.name.toLowerCase()} (**${topDriver.contribution}%** contribution)` : ''}.\n\n${drivers.marketContext}`,
+        content: `${drivers.commodity} prices are ${drivers.priceChange.direction === 'up' ? 'up' : 'down'} ${drivers.priceChange.percent}% this period${topDriver ? `, driven primarily by ${topDriver.name.toLowerCase()} (${topDriver.contribution}% contribution)` : ''}. ${drivers.marketContext}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
@@ -783,7 +783,7 @@ const generateLocalResponse = (
     case 'inflation_impact': {
       const impact = getSpendImpact();
       return {
-        content: `**Portfolio Spend Impact**\n\nTotal inflation impact: ${impact.totalImpact} (${impact.totalImpactDirection === 'increase' ? '+' : '-'}${impact.impactPercent}% ${impact.timeframe})\n\n${impact.recommendation}`,
+        content: `Total inflation impact on your portfolio is ${impact.totalImpact}, representing a ${impact.impactPercent}% ${impact.totalImpactDirection} ${impact.timeframe}. ${impact.recommendation}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
@@ -813,7 +813,7 @@ const generateLocalResponse = (
       const commodity = intent.extractedEntities.commodity;
       const justification = getJustificationData(supplier, commodity);
       return {
-        content: `**Price Increase Validation**\n\n${justification.supplierName} is requesting a ${justification.requestedIncrease}% increase on ${justification.commodity}.\n\n**Verdict: ${justification.verdictLabel}**\n\nMarket benchmark: ${justification.marketBenchmark}%`,
+        content: `${justification.supplierName} is requesting a ${justification.requestedIncrease}% increase on ${justification.commodity}. Verdict: ${justification.verdictLabel}. Market benchmark is ${justification.marketBenchmark}%.`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
@@ -841,7 +841,7 @@ const generateLocalResponse = (
     case 'inflation_scenarios': {
       const scenario = getScenarioData();
       return {
-        content: `**Scenario: ${scenario.scenarioName}**\n\n${scenario.description}\n\nProjected impact: ${scenario.delta.label}`,
+        content: `Scenario: ${scenario.scenarioName}. ${scenario.description} Projected impact: ${scenario.delta.label}.`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
