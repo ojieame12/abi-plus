@@ -49,7 +49,7 @@ export const InsightBanner = ({ insight, onClick }: InsightBannerProps) => {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-slate-900 text-sm">
+        <div className="font-medium text-slate-900 text-sm">
           {headline}
         </div>
         {detailText && (

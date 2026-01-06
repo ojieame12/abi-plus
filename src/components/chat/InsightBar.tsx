@@ -68,7 +68,7 @@ export const InsightBar = ({ text, detail, trend = 'neutral', onClick, delay = 0
                     duration: 0.3,
                 }}
             >
-                <div className="text-sm font-semibold text-slate-900">{text}</div>
+                <div className="text-sm font-medium text-slate-900">{text}</div>
                 {detail && (
                     <div className="text-xs text-slate-500 mt-0.5">{detail}</div>
                 )}

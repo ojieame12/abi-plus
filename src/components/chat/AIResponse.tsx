@@ -468,7 +468,7 @@ export const AIResponse = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
-                        className="text-lg font-semibold text-slate-900 tracking-tight"
+                        className="text-lg font-normal text-slate-900 tracking-tight"
                     >
                         {acknowledgement}
                     </motion.h3>
