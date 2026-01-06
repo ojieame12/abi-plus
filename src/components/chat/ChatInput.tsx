@@ -339,7 +339,7 @@ export const ChatInput = ({
                 )}
 
                 {/* Text Input / Builder Area */}
-                <div className="px-5 pt-4 pb-3 relative overflow-hidden" style={{ minHeight: '72px' }}>
+                <div className={`px-5 pt-4 pb-3 relative overflow-hidden transition-all duration-200 ${builderMode ? 'min-h-[120px]' : ''}`} style={{ minHeight: builderMode ? '120px' : '72px' }}>
                     <AnimatePresence mode="wait">
                         {builderMode ? (
                             <motion.div
@@ -380,7 +380,7 @@ export const ChatInput = ({
                                 )}
 
                                 {/* Level chips */}
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-2.5">
                                     {builderLevel === 'domain' && BUILDER_DOMAINS.map(domain => (
                                         <BuilderChip
                                             key={domain.id}
@@ -405,7 +405,7 @@ export const ChatInput = ({
                                 </div>
 
                                 {/* Helper text */}
-                                <p className="text-xs text-slate-400 mt-2">
+                                <p className="text-sm text-slate-400 mt-3">
                                     {builderLevel === 'domain' && 'What area do you want to explore?'}
                                     {builderLevel === 'subject' && 'What specifically?'}
                                     {builderLevel === 'action' && 'What would you like to do?'}
@@ -727,12 +727,12 @@ const BuilderChip = ({ label, onClick, isSelected }: { label: string; onClick: (
         transition={{ duration: 0.15 }}
         onClick={onClick}
         className={`
-            inline-flex items-center px-3 py-1.5 rounded-full
-            text-sm font-medium cursor-pointer select-none
+            inline-flex items-center px-4 py-2 rounded-full
+            text-[15px] font-medium cursor-pointer select-none
             transition-all duration-150 ease-out border
             ${isSelected
                 ? 'bg-violet-50 border-violet-300 text-violet-700'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-600'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-600'
             }
         `}
         whileHover={{ scale: 1.02 }}

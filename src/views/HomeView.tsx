@@ -38,19 +38,8 @@ const TAB_SUGGESTIONS: Record<TabType, string[]> = {
 export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false, selectedQuestion = '' }: HomeViewProps) => {
     const [inputMessage, setInputMessage] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('recommended');
-    const [showBuilder, setShowBuilder] = useState(false);
 
     const isTyping = inputMessage.length > 0;
-
-    // Handle Prompt Builder submission
-    const handleBuilderSubmit = (prompt: string, routeResult: ReturnType<typeof routeBuilderSelection>) => {
-        console.log('[HomeView] Builder submit:', prompt, routeResult);
-        setShowBuilder(false);
-        // Use the generated prompt to start chat
-        if (prompt && onStartChat) {
-            onStartChat(prompt);
-        }
-    };
 
     const handleSend = (message: string, files: File[], inputMode?: 'ask' | 'find') => {
         console.log('Send:', message, files, 'mode:', inputMode);
@@ -112,41 +101,6 @@ export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false,
                         showModeToggle={true}
                     />
                 </motion.div>
-
-                {/* Prompt Builder or Builder trigger */}
-                <AnimatePresence mode="wait">
-                    {showBuilder ? (
-                        <motion.div
-                            key="builder"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                            className="w-full max-w-[680px] mb-6"
-                        >
-                            <PromptBuilder
-                                onSubmit={handleBuilderSubmit}
-                                isDisabled={isTransitioning}
-                            />
-                        </motion.div>
-                    ) : (
-                        <motion.button
-                            key="builder-trigger"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowBuilder(true)}
-                            className="flex items-center gap-2 mb-6 px-4 py-2 rounded-full
-                                bg-gradient-to-r from-violet-500/10 to-purple-500/10
-                                border border-violet-200/50 text-violet-600 text-sm font-medium
-                                hover:from-violet-500/20 hover:to-purple-500/20 hover:border-violet-300/50
-                                transition-all duration-200 shadow-sm"
-                        >
-                            <Sparkles size={16} strokeWidth={2} />
-                            <span>Build a prompt</span>
-                        </motion.button>
-                    )}
-                </AnimatePresence>
 
                 {/* Recommendations - Conditional rendering based on typing state */}
                 <AnimatePresence mode="wait">
