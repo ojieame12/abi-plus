@@ -4,9 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     type BuilderSelection,
     type BuilderDomain,
+    type ActionConfig,
     BUILDER_DOMAINS,
     getSubjectsForDomain,
     getActionsForSubject,
+    getActionConfig,
+    getInputOptions,
     buildPrompt,
 } from '../../services/promptBuilder';
 
@@ -178,13 +181,40 @@ export const ChatInput = ({
     };
 
     const handleActionSelect = (action: string) => {
-        const newSelection = { ...builderSelection, action };
+        const newSelection = { ...builderSelection, action, modifiers: {} };
         setBuilderSelection(newSelection);
-        // Generate and set the prompt
-        const prompt = buildPrompt(newSelection);
+
+        // Check if this action has inputs
+        const actionConfig = builderSelection.domain && builderSelection.subject
+            ? getActionConfig(builderSelection.domain, builderSelection.subject, action)
+            : null;
+
+        // If no inputs required, generate prompt immediately
+        if (!actionConfig?.inputs || actionConfig.inputs.length === 0) {
+            const prompt = buildPrompt(newSelection);
+            if (prompt) {
+                handleMessageChange(prompt);
+                // Auto-exit builder mode after selection complete
+                setTimeout(() => {
+                    setBuilderMode(false);
+                    setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
+                }, 100);
+            }
+        }
+        // Otherwise, stay in builder mode to collect inputs
+    };
+
+    const handleModifierChange = (inputId: string, value: string) => {
+        setBuilderSelection(prev => ({
+            ...prev,
+            modifiers: { ...prev.modifiers, [inputId]: value }
+        }));
+    };
+
+    const handleGeneratePrompt = () => {
+        const prompt = buildPrompt(builderSelection);
         if (prompt) {
             handleMessageChange(prompt);
-            // Auto-exit builder mode after selection complete
             setTimeout(() => {
                 setBuilderMode(false);
                 setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
@@ -198,7 +228,7 @@ export const ChatInput = ({
 
     const handleBuilderBack = () => {
         if (builderSelection.action) {
-            setBuilderSelection(prev => ({ ...prev, action: null }));
+            setBuilderSelection(prev => ({ ...prev, action: null, modifiers: {} }));
         } else if (builderSelection.subject) {
             setBuilderSelection(prev => ({ ...prev, subject: null }));
         } else if (builderSelection.domain) {
@@ -211,10 +241,25 @@ export const ChatInput = ({
     const builderActions = builderSelection.domain && builderSelection.subject
         ? getActionsForSubject(builderSelection.domain, builderSelection.subject)
         : [];
+
+    // Get the selected action's config (to check for inputs)
+    const selectedActionConfig: ActionConfig | undefined = builderSelection.domain && builderSelection.subject && builderSelection.action
+        ? getActionConfig(builderSelection.domain, builderSelection.subject, builderSelection.action)
+        : undefined;
+
+    // Determine builder level - now includes 'inputs' level
     const builderLevel = !builderSelection.domain ? 'domain'
         : !builderSelection.subject ? 'subject'
         : !builderSelection.action ? 'action'
+        : selectedActionConfig?.inputs && selectedActionConfig.inputs.length > 0 ? 'inputs'
         : 'complete';
+
+    // Check if all required inputs are filled
+    const requiredInputsFilled = selectedActionConfig?.inputs
+        ? selectedActionConfig.inputs
+            .filter(input => input.required)
+            .every(input => builderSelection.modifiers[input.id])
+        : true;
 
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return bytes + 'b';
@@ -363,11 +408,19 @@ export const ChatInput = ({
                                             <>
                                                 <ChevronRight size={12} className="text-slate-300" />
                                                 <button
-                                                    onClick={() => setBuilderSelection(prev => ({ ...prev, action: null }))}
+                                                    onClick={() => setBuilderSelection(prev => ({ ...prev, action: null, modifiers: {} }))}
                                                     className="hover:text-violet-500 transition-colors"
                                                 >
                                                     {builderSubjects.find(s => s.id === builderSelection.subject)?.label}
                                                 </button>
+                                            </>
+                                        )}
+                                        {builderSelection.action && (
+                                            <>
+                                                <ChevronRight size={12} className="text-slate-300" />
+                                                <span className="text-violet-500 font-medium">
+                                                    {builderActions.find(a => a.id === builderSelection.action)?.label}
+                                                </span>
                                             </>
                                         )}
                                         <button
@@ -404,11 +457,62 @@ export const ChatInput = ({
                                     ))}
                                 </div>
 
+                                {/* Dynamic Inputs Form */}
+                                {builderLevel === 'inputs' && selectedActionConfig?.inputs && (
+                                    <div className="flex flex-col gap-3 mt-1">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            {selectedActionConfig.inputs.map((input) => {
+                                                const options = input.dataSource
+                                                    ? getInputOptions(input.dataSource)
+                                                    : input.options || [];
+
+                                                return (
+                                                    <div key={input.id} className="flex items-center gap-2">
+                                                        <span className="text-sm text-slate-500">{input.label}:</span>
+                                                        <select
+                                                            value={builderSelection.modifiers[input.id] || ''}
+                                                            onChange={(e) => handleModifierChange(input.id, e.target.value)}
+                                                            className="px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 cursor-pointer hover:border-slate-300 transition-colors min-w-[160px]"
+                                                        >
+                                                            <option value="">{input.placeholder || `Select ${input.label.toLowerCase()}...`}</option>
+                                                            {options.map((opt) => (
+                                                                <option key={opt.id} value={opt.name}>
+                                                                    {opt.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Generate button - only shows when required inputs are filled */}
+                                        <motion.button
+                                            initial={{ opacity: 0, y: 4 }}
+                                            animate={{ opacity: requiredInputsFilled ? 1 : 0.5, y: 0 }}
+                                            onClick={handleGeneratePrompt}
+                                            disabled={!requiredInputsFilled}
+                                            className={`
+                                                self-start inline-flex items-center gap-2 px-4 py-2 rounded-lg
+                                                text-sm font-medium transition-all
+                                                ${requiredInputsFilled
+                                                    ? 'bg-violet-500 text-white hover:bg-violet-600 cursor-pointer'
+                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                }
+                                            `}
+                                        >
+                                            <Sparkles size={14} />
+                                            Generate Prompt
+                                        </motion.button>
+                                    </div>
+                                )}
+
                                 {/* Helper text */}
                                 <p className="text-[15px] text-slate-400 mt-4">
                                     {builderLevel === 'domain' && 'What area do you want to explore?'}
                                     {builderLevel === 'subject' && 'What specifically?'}
                                     {builderLevel === 'action' && 'What would you like to do?'}
+                                    {builderLevel === 'inputs' && 'Configure your query parameters'}
                                 </p>
                             </motion.div>
                         ) : (
