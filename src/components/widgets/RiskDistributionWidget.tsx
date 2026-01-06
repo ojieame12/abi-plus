@@ -1,11 +1,14 @@
 // Risk Distribution Widget - Donut chart showing portfolio risk breakdown
 import type { RiskDistributionData } from '../../types/widgets';
+import { ChevronRight } from 'lucide-react';
 
 interface Props {
   data: RiskDistributionData;
+  onViewDetails?: () => void;
+  beroeSourceCount?: number;
 }
 
-export const RiskDistributionWidget = ({ data }: Props) => {
+export const RiskDistributionWidget = ({ data, onViewDetails, beroeSourceCount = 3 }: Props) => {
   // Defensive: ensure data exists
   if (!data || !data.distribution) {
     return (
@@ -119,6 +122,29 @@ export const RiskDistributionWidget = ({ data }: Props) => {
       <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
         <span className="text-sm text-slate-500">Total Spend</span>
         <span className="text-lg font-normal text-slate-900">{totalSpendFormatted}</span>
+      </div>
+
+      {/* Data Attribution Footer */}
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-white">B</span>
+          </div>
+          <span>{beroeSourceCount} Beroe Data Sources</span>
+        </div>
+        {onViewDetails && (
+          <button
+            onClick={onViewDetails}
+            className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
+          >
+            <span>View Details</span>
+            <ChevronRight
+              size={16}
+              strokeWidth={1.5}
+              className="group-hover:translate-x-0.5 transition-transform"
+            />
+          </button>
+        )}
       </div>
     </div>
   );

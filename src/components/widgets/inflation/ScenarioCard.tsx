@@ -7,6 +7,7 @@ interface ScenarioCardProps extends ScenarioCardData {
   onViewDetails?: () => void;
   onRunScenario?: () => void;
   delay?: number;
+  beroeSourceCount?: number;
 }
 
 const confidenceStyles: Record<string, { bg: string; text: string; label: string }> = {
@@ -28,6 +29,7 @@ export const ScenarioCard = ({
   onViewDetails,
   onRunScenario,
   delay = 0,
+  beroeSourceCount = 3,
 }: ScenarioCardProps) => {
   const isIncrease = delta.direction === 'up';
   const confStyle = confidenceStyles[confidence];
@@ -47,7 +49,7 @@ export const ScenarioCard = ({
       "
     >
       {/* Header */}
-      <div className="p-4 pb-3">
+      <div className="p-5 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -68,7 +70,7 @@ export const ScenarioCard = ({
       </div>
 
       {/* Assumption Banner */}
-      <div className="px-4 pb-3">
+      <div className="px-5 pb-4">
         <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100/60">
           <p className="text-xs text-indigo-600 mb-1">Assumption</p>
           <p className="text-sm font-medium text-indigo-800">{assumption}</p>
@@ -76,7 +78,7 @@ export const ScenarioCard = ({
       </div>
 
       {/* Current vs Projected */}
-      <div className="px-4 pb-3">
+      <div className="px-5 pb-4">
         <div className="flex items-center gap-2">
           {/* Current State */}
           <div className="flex-1 p-3 bg-slate-50 rounded-xl text-center">
@@ -105,7 +107,7 @@ export const ScenarioCard = ({
       </div>
 
       {/* Delta */}
-      <div className="px-4 pb-3">
+      <div className="px-5 pb-4">
         <div className={`
           p-3 rounded-xl flex items-center justify-between
           ${isIncrease ? 'bg-red-50/60 border border-red-100/60' : 'bg-emerald-50/60 border border-emerald-100/60'}
@@ -132,7 +134,7 @@ export const ScenarioCard = ({
       </div>
 
       {/* Top Impacts */}
-      <div className="px-4 pb-3">
+      <div className="px-5 pb-4">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
           Top Impacts
         </p>
@@ -154,7 +156,7 @@ export const ScenarioCard = ({
 
       {/* Recommendation */}
       {recommendation && (
-        <div className="px-4 pb-4">
+        <div className="px-5 pb-5">
           <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100/60">
             <div className="flex items-start gap-2">
               <AlertCircle size={14} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />
@@ -164,33 +166,20 @@ export const ScenarioCard = ({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="px-4 py-3 border-t border-slate-100/60 bg-slate-50/30 flex gap-2">
-        {onRunScenario && (
-          <button
-            onClick={onRunScenario}
-            className="
-              flex-1 flex items-center justify-center gap-1.5
-              px-3 py-2 rounded-lg
-              bg-indigo-600 text-white text-sm font-medium
-              hover:bg-indigo-700 transition-colors
-            "
-          >
-            <GitBranch size={14} strokeWidth={1.5} />
-            Modify Scenario
-          </button>
-        )}
+      {/* Data Attribution Footer */}
+      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/60 bg-slate-50/30">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-white">B</span>
+          </div>
+          <span>{beroeSourceCount} Beroe Data Sources</span>
+        </div>
         {onViewDetails && (
           <button
             onClick={onViewDetails}
-            className="
-              flex-1 flex items-center justify-center gap-1.5
-              text-sm font-medium text-slate-600
-              hover:text-slate-900 transition-colors
-              group
-            "
+            className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
           >
-            View details
+            <span>View Details</span>
             <ChevronRight
               size={16}
               strokeWidth={1.5}

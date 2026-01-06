@@ -9,6 +9,7 @@ import {
   type RenderContext,
   type ComponentConfig,
 } from '../../services/componentSelector';
+import { getWidgetByType } from '../../services/widgetRegistry';
 import { extractEventsArray } from '../../services/widgetTransformers';
 
 // Widget Components
@@ -227,6 +228,15 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     return null;
   }
 
+  // Ensure expandsTo is populated when widget.type is present (registry-backed)
+  if (isContextProps(props) && !config.expandsTo && props.widget?.type) {
+    const registryEntry = getWidgetByType(props.widget.type);
+    const expandsTo = registryEntry?.expandsTo || registryEntry?.artifactType;
+    if (expandsTo) {
+      config = { ...config, expandsTo };
+    }
+  }
+
   // Get the component
   const Component = COMPONENT_MAP[config.componentType];
 
@@ -417,6 +427,24 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         });
       };
     }
+  }
+
+  // Pass onViewDetails for widgets that render an internal details CTA
+  const VIEW_DETAILS_COMPONENTS = new Set([
+    'InflationSummaryCard',
+    'DriverBreakdownCard',
+    'SpendImpactCard',
+    'JustificationCard',
+    'ScenarioCard',
+    'ExecutiveBriefCard',
+    'HealthScorecardWidget',
+    'ConcentrationWarningCard',
+    'SpendExposureWidget',
+    'FactorBreakdownCard',
+  ]);
+
+  if (handleExpand && !artifactHandlers.onViewDetails && VIEW_DETAILS_COMPONENTS.has(config.componentType)) {
+    artifactHandlers.onViewDetails = handleExpand;
   }
 
   // Helper for currency formatting

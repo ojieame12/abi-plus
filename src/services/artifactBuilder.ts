@@ -15,6 +15,12 @@ const artifactTypeMap: Record<string, ArtifactType> = {
   SupplierDetailArtifact: 'supplier_detail',
   ComparisonArtifact: 'supplier_comparison',
   AlternativesArtifact: 'supplier_alternatives',
+  InflationDashboardArtifact: 'inflation_dashboard',
+  DriverAnalysisArtifact: 'driver_analysis',
+  ImpactAnalysisArtifact: 'impact_analysis',
+  JustificationReportArtifact: 'justification_report',
+  ScenarioPlannerArtifact: 'scenario_planner',
+  ExecutivePresentationArtifact: 'executive_presentation',
 };
 
 export const resolveArtifactType = (
@@ -23,6 +29,9 @@ export const resolveArtifactType = (
 ): ArtifactType | null => {
   if (expandsTo && expandsTo in artifactTypeMap) {
     return artifactTypeMap[expandsTo];
+  }
+  if (expandsTo && expandsTo in ARTIFACT_META) {
+    return expandsTo as ArtifactType;
   }
   if (fallback && fallback in artifactTypeMap) {
     return artifactTypeMap[fallback];

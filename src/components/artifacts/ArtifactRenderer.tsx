@@ -365,7 +365,18 @@ export const ArtifactRenderer = ({
       }
 
     default:
-      return <ArtifactPlaceholder type={type} />;
+      {
+        const fallbackAiContent = (payload as any).aiContent;
+        if (fallbackAiContent) {
+          return (
+            <div className="flex flex-col h-full">
+              <AIContentSection aiContent={fallbackAiContent} />
+              <ArtifactPlaceholder type={type} />
+            </div>
+          );
+        }
+        return <ArtifactPlaceholder type={type} />;
+      }
   }
 };
 

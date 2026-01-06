@@ -6,6 +6,7 @@ import type { SpendImpactCardData } from '../../../types/inflation';
 interface SpendImpactCardProps extends SpendImpactCardData {
   onViewDetails?: () => void;
   delay?: number;
+  beroeSourceCount?: number;
 }
 
 export const SpendImpactCard = ({
@@ -18,6 +19,7 @@ export const SpendImpactCard = ({
   recommendation,
   onViewDetails,
   delay = 0,
+  beroeSourceCount = 3,
 }: SpendImpactCardProps) => {
   const isIncrease = totalImpactDirection === 'increase';
 
@@ -36,7 +38,7 @@ export const SpendImpactCard = ({
       "
     >
       {/* Header */}
-      <div className="p-4 pb-3">
+      <div className="p-5 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className={`
@@ -66,7 +68,7 @@ export const SpendImpactCard = ({
       </div>
 
       {/* Most Affected Highlight */}
-      <div className="px-4 pb-3">
+      <div className="px-5 pb-4">
         <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-100/60">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={14} className="text-amber-500" strokeWidth={1.5} />
@@ -83,7 +85,7 @@ export const SpendImpactCard = ({
       </div>
 
       {/* Category Breakdown */}
-      <div className="px-4 pb-4">
+      <div className="px-5 pb-5">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
           Impact by Category
         </p>
@@ -121,7 +123,7 @@ export const SpendImpactCard = ({
 
       {/* Recommendation */}
       {recommendation && (
-        <div className="px-4 pb-4">
+        <div className="px-5 pb-5">
           <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100/60">
             <div className="flex items-start gap-2">
               <Lightbulb size={14} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />
@@ -131,27 +133,28 @@ export const SpendImpactCard = ({
         </div>
       )}
 
-      {/* Action */}
-      {onViewDetails && (
-        <div className="px-4 py-3 border-t border-slate-100/60 bg-slate-50/30">
+      {/* Data Attribution Footer */}
+      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/60 bg-slate-50/30">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-white">B</span>
+          </div>
+          <span>{beroeSourceCount} Beroe Data Sources</span>
+        </div>
+        {onViewDetails && (
           <button
             onClick={onViewDetails}
-            className="
-              w-full flex items-center justify-center gap-1.5
-              text-sm font-medium text-slate-600
-              hover:text-slate-900 transition-colors
-              group
-            "
+            className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
           >
-            View impact analysis
+            <span>View Details</span>
             <ChevronRight
               size={16}
               strokeWidth={1.5}
               className="group-hover:translate-x-0.5 transition-transform"
             />
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
   );
 };

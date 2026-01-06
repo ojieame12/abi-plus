@@ -180,7 +180,31 @@ function App() {
       riskChanges: response.riskChanges,
     });
 
-    if (!payload) return;
+    if (!payload) {
+      const fallbackArtifacts = new Set<ArtifactType>([
+        'inflation_dashboard',
+        'commodity_dashboard',
+        'driver_analysis',
+        'impact_analysis',
+        'justification_report',
+        'scenario_planner',
+        'executive_presentation',
+        'trend_analysis',
+        'category_overview',
+        'regional_analysis',
+        'watchlist_manage',
+        'assessment_request',
+      ]);
+
+      if (!fallbackArtifacts.has(artifactType)) {
+        return;
+      }
+
+      openArtifact(artifactType, {
+        aiContent: response.artifactContent,
+      });
+      return;
+    }
 
     openArtifact(artifactType, {
       ...payload,
