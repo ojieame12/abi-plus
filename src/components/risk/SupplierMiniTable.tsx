@@ -68,7 +68,7 @@ export const SupplierMiniTable = ({
                         onClick={() => onRowClick?.(supplier)}
                         disabled={!onRowClick}
                         className={`w-full flex items-center px-5 py-4 text-left ${
-                            onRowClick ? 'hover:bg-slate-50/50 cursor-pointer' : ''
+                            onRowClick ? 'hover:bg-slate-100/50 active:bg-slate-100 cursor-pointer focus:outline-none focus:bg-slate-100/50' : ''
                         } transition-colors group`}
                     >
                         <div className="flex-1 min-w-0 pr-4">

@@ -91,7 +91,7 @@ export const SupplierTableWidget = ({ data, onViewAll, onRowClick }: Props) => {
                 <tr
                   key={supplier.id}
                   onClick={() => onRowClick?.(supplier)}
-                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="hover:bg-slate-100/50 active:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <td className="px-5 py-4">
                     <div className="font-normal text-slate-900">{supplier.name}</div>

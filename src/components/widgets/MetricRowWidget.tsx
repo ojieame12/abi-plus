@@ -6,7 +6,12 @@ interface Props {
 }
 
 export const MetricRowWidget = ({ data }: Props) => {
-  const { metrics } = data;
+  const { metrics } = data || {};
+
+  // Guard against undefined metrics
+  if (!metrics || metrics.length === 0) {
+    return null;
+  }
 
   const getColorClass = (color?: string) => {
     switch (color) {
