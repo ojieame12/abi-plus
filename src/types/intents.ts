@@ -322,9 +322,15 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /scenario.*(price|cost|inflation)/i,
     /model.*(price|cost).*(change|increase)/i,
     /forecast.*(price|cost|spend)/i,
+    /(price|cost).*forecast/i,
+    /price.*(outlook|projection|prediction)/i,
+    /(outlook|projection|prediction).*(price|cost)/i,
     /if.*(price|cost).*(rise|increase|go up).*(%|percent)/i,
     /project.*(price|spend|cost)/i,
     /what.*(happen|would).*(price|cost).*(increase|rise)/i,
+    // Commodity-specific forecasts
+    /(steel|aluminum|copper|commodity|metal|corrugated|packaging).*(forecast|outlook|projection)/i,
+    /forecast.*(steel|aluminum|copper|commodity|metal|corrugated|packaging)/i,
   ],
   inflation_communication: [
     /help.*(explain|present|communicate).*(price|cost|inflation)/i,
@@ -462,7 +468,7 @@ const detectSubIntent = (query: string, category: IntentCategory): SubIntent => 
     case 'inflation_scenarios':
       if (/supplier|switch|alternative/i.test(q)) return 'what_if_supplier';
       if (/budget/i.test(q)) return 'budget_impact';
-      if (/forecast|predict/i.test(q)) return 'price_forecast';
+      if (/forecast|predict|outlook|projection/i.test(q)) return 'price_forecast';
       return 'what_if_increase';
 
     case 'inflation_communication':

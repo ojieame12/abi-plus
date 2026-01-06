@@ -15,6 +15,7 @@ import {
   MOCK_RISK_CHANGES,
   getInflationSummary,
   getCommodityDrivers,
+  getCommodity,
   getSpendImpact,
   getJustificationData,
   getScenarioData,
@@ -839,6 +840,67 @@ const generateLocalResponse = (
     }
 
     case 'inflation_scenarios': {
+      // Check if this is a price forecast query for a specific commodity
+      const commodity = intent.extractedEntities.commodity;
+      if (intent.subIntent === 'price_forecast' && commodity) {
+        const commodityData = getCommodity(commodity);
+        const drivers = getCommodityDrivers(commodity);
+
+        if (commodityData) {
+          const priceDirection = commodityData.priceChange?.direction || 'stable';
+          const pricePercent = commodityData.priceChange?.percent || 0;
+          const forecastTrend = pricePercent > 0 ? 'upward' : pricePercent < 0 ? 'downward' : 'stable';
+
+          return {
+            content: `**${commodityData.name} Price Forecast (Q1 2025)**\n\nCurrent price: $${commodityData.currentPrice?.toLocaleString() || '2,380'} per ${commodityData.unit || 'metric ton'}. The market is showing ${forecastTrend} momentum with ${Math.abs(pricePercent)}% change over the past 30 days.\n\n**Key Drivers:**\n${drivers.drivers.slice(0, 3).map(d => `- **${d.name}** (${d.contribution}% impact): ${d.description}`).join('\n')}\n\n**Outlook:** ${drivers.marketContext}`,
+            responseType: 'widget',
+            suggestions: generateSuggestions(intent, {}),
+            sources: [
+              { name: 'Beroe Price Analytics', type: 'beroe' as const },
+              { name: 'LME Market Data', type: 'web' as const, url: 'https://www.lme.com' },
+              { name: 'CRU Group', type: 'web' as const, url: 'https://www.crugroup.com' },
+            ],
+            widget: {
+              type: 'price_gauge',
+              title: `${commodityData.name} Price`,
+              data: {
+                title: `Current ${commodityData.name} Price`,
+                price: `$${commodityData.currentPrice?.toLocaleString() || '2,380'}`,
+                unit: `/${commodityData.unit || 'mt'}`,
+                lastChecked: 'Beroe today',
+                change24h: {
+                  value: `$${Math.abs(pricePercent * 10).toFixed(0)}`,
+                  percent: `${(pricePercent / 30).toFixed(1)}%`,
+                  direction: priceDirection === 'up' ? 'up' : 'down',
+                },
+                change30d: {
+                  value: `$${Math.abs(pricePercent * 25).toFixed(0)}`,
+                  percent: `${pricePercent.toFixed(1)}%`,
+                  direction: priceDirection === 'up' ? 'up' : 'down',
+                },
+                market: commodityData.region === 'global' ? 'LME' : commodityData.region?.toUpperCase() || 'Global',
+                gaugeValue: Math.round(50 + (pricePercent * 2)), // Scale percent to gauge position
+                insight: {
+                  text: drivers.marketContext,
+                  detail: `${drivers.drivers[0]?.name} is the primary driver`,
+                },
+              },
+            },
+            acknowledgement: `Here's the ${commodityData.name} price forecast.`,
+            insight: {
+              headline: `${commodityData.name} ${priceDirection === 'up' ? '+' : ''}${pricePercent}% (30d)`,
+              summary: `${commodityData.name} prices are ${forecastTrend === 'upward' ? 'rising' : forecastTrend === 'downward' ? 'falling' : 'stable'}. ${drivers.marketContext}`,
+              detail: `Primary driver: ${drivers.drivers[0]?.name || 'Market conditions'}`,
+              sentiment: priceDirection === 'up' ? 'negative' : 'positive',
+            },
+            artifact: { type: 'commodity_dashboard', title: `${commodityData.name} Dashboard` },
+            escalation: determineEscalation(1, 'inflation_scenarios'),
+            intent,
+          };
+        }
+      }
+
+      // Default scenario handling
       const scenario = getScenarioData();
       return {
         content: `Scenario: ${scenario.scenarioName}. ${scenario.description} Projected impact: ${scenario.delta.label}.`,
