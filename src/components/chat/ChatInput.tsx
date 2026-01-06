@@ -405,7 +405,7 @@ export const ChatInput = ({
                                 </div>
 
                                 {/* Helper text */}
-                                <p className="text-sm text-slate-400 mt-3">
+                                <p className="text-[15px] text-slate-400 mt-4">
                                     {builderLevel === 'domain' && 'What area do you want to explore?'}
                                     {builderLevel === 'subject' && 'What specifically?'}
                                     {builderLevel === 'action' && 'What would you like to do?'}
@@ -727,8 +727,8 @@ const BuilderChip = ({ label, onClick, isSelected }: { label: string; onClick: (
         transition={{ duration: 0.15 }}
         onClick={onClick}
         className={`
-            inline-flex items-center px-4 py-2 rounded-full
-            text-[15px] font-medium cursor-pointer select-none
+            inline-flex items-center px-3.5 py-1.5 rounded-full
+            text-sm font-medium cursor-pointer select-none
             transition-all duration-150 ease-out border
             ${isSelected
                 ? 'bg-violet-50 border-violet-300 text-violet-700'
