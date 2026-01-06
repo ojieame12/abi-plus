@@ -334,8 +334,8 @@ export function buildArtifactPayload(
       const widgetData = context.widgetData as InflationSummaryCardData | undefined;
       if (!widgetData) return null;
 
-      // Build priceMovements array from topIncreases and topDecreases
-      const priceMovements = [
+      // Build priceMovements commodities array from topIncreases and topDecreases
+      const commodities = [
         ...(widgetData.topIncreases || []).map((item, i) => ({
           id: `increase-${i}`,
           name: item.commodity,
@@ -361,8 +361,12 @@ export function buildArtifactPayload(
           overallChange: widgetData.overallChange,
           portfolioImpact: widgetData.portfolioImpact,
         },
-        // priceMovements is a flat array, not nested in an object
-        priceMovements,
+        // priceMovements wrapped in object with commodities array (matches ArtifactRenderer expectation)
+        priceMovements: {
+          commodities,
+          sortBy: 'change' as const,
+          totalCommodities: commodities.length,
+        },
         drivers: (widgetData.keyDrivers || []).map((driver, i) => ({
           id: `driver-${i}`,
           name: driver,
@@ -506,11 +510,12 @@ export function buildArtifactPayload(
       const widgetData = context.widgetData as ScenarioCardData | undefined;
       if (!widgetData) return null;
 
-      // Parse amounts from formatted strings
+      // Parse amounts from formatted strings (e.g., "$10.2B" -> 10200000000)
       const parseAmount = (str: string): number => {
         const match = str.match(/[\d.]+/);
         if (!match) return 0;
         const num = parseFloat(match[0]);
+        if (str.includes('B')) return num * 1000000000;
         if (str.includes('M')) return num * 1000000;
         if (str.includes('K')) return num * 1000;
         return num;
