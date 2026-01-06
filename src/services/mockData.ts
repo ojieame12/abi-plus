@@ -6,6 +6,13 @@ import type {
   RiskLevel,
   RiskFactor,
 } from '../types/supplier';
+import type {
+  InflationSummaryCardData,
+  DriverBreakdownCardData,
+  SpendImpactCardData,
+  JustificationCardData,
+  ScenarioCardData,
+} from '../types/inflation';
 import {
   RISK_FACTORS,
   formatSpend,
@@ -727,45 +734,73 @@ export const generateSpendExposureData = (
 };
 
 // ============================================
+// COMMODITIES DATA
+// ============================================
+
+export interface Commodity {
+  id: string;
+  name: string;
+  category: 'metals' | 'packaging' | 'chemicals' | 'energy' | 'logistics' | 'agriculture';
+  region?: 'global' | 'europe' | 'asia' | 'americas';
+  currentPrice?: number;
+  unit?: string;
+  priceChange?: { percent: number; direction: 'up' | 'down' | 'stable' };
+}
+
+export const COMMODITIES: Commodity[] = [
+  // Metals
+  { id: 'steel', name: 'Steel', category: 'metals', region: 'global', priceChange: { percent: 8.5, direction: 'up' } },
+  { id: 'aluminum', name: 'Aluminum', category: 'metals', region: 'global', priceChange: { percent: 6.2, direction: 'up' } },
+  { id: 'copper', name: 'Copper', category: 'metals', region: 'global', priceChange: { percent: 4.1, direction: 'up' } },
+  { id: 'cold-rolled-steel', name: 'Cold Rolled Steel', category: 'metals', region: 'global', priceChange: { percent: 12.0, direction: 'up' } },
+
+  // Packaging
+  { id: 'corrugated-boxes', name: 'Corrugated Boxes', category: 'packaging', region: 'europe', priceChange: { percent: 5.8, direction: 'up' } },
+  { id: 'plastics', name: 'Plastics', category: 'packaging', region: 'global', priceChange: { percent: -2.3, direction: 'down' } },
+  { id: 'paper-pulp', name: 'Paper & Pulp', category: 'packaging', region: 'europe', priceChange: { percent: 3.2, direction: 'up' } },
+  { id: 'flexible-packaging', name: 'Flexible Packaging', category: 'packaging', region: 'global', priceChange: { percent: 2.1, direction: 'up' } },
+
+  // Chemicals
+  { id: 'resins', name: 'Resins', category: 'chemicals', region: 'global', priceChange: { percent: -1.5, direction: 'down' } },
+  { id: 'rubber', name: 'Rubber', category: 'chemicals', region: 'asia', priceChange: { percent: -1.8, direction: 'down' } },
+  { id: 'silicones', name: 'Silicones', category: 'chemicals', region: 'global', priceChange: { percent: 1.2, direction: 'up' } },
+
+  // Energy
+  { id: 'natural-gas', name: 'Natural Gas', category: 'energy', region: 'europe', priceChange: { percent: 15.3, direction: 'up' } },
+  { id: 'electricity', name: 'Electricity', category: 'energy', region: 'europe', priceChange: { percent: 8.7, direction: 'up' } },
+
+  // Logistics
+  { id: 'ocean-freight', name: 'Ocean Freight', category: 'logistics', region: 'global', priceChange: { percent: -5.2, direction: 'down' } },
+  { id: 'air-freight', name: 'Air Freight', category: 'logistics', region: 'global', priceChange: { percent: 2.8, direction: 'up' } },
+];
+
+// Get commodity by ID or name
+export const getCommodity = (idOrName: string): Commodity | undefined => {
+  const lower = idOrName.toLowerCase();
+  return COMMODITIES.find(c =>
+    c.id === lower || c.name.toLowerCase() === lower
+  );
+};
+
+// Get commodities by category
+export const getCommoditiesByCategory = (category: Commodity['category']): Commodity[] => {
+  return COMMODITIES.filter(c => c.category === category);
+};
+
+// Get commodities by region
+export const getCommoditiesByRegion = (region: Commodity['region']): Commodity[] => {
+  return COMMODITIES.filter(c => c.region === region || c.region === 'global');
+};
+
+// ============================================
 // INFLATION MOCK DATA
 // ============================================
 
-export interface InflationSummaryData {
-  period: string;
-  headline: string;
-  overallChange: { absolute: number; percent: number; direction: 'up' | 'down' | 'stable' };
-  topIncreases: Array<{ commodity: string; change: number; impact: string }>;
-  topDecreases: Array<{ commodity: string; change: number; benefit: string }>;
-  portfolioImpact: { amount: string; percent: number; direction: string };
-  keyDrivers: string[];
-  lastUpdated: string;
-}
-
-export interface CommodityDriverData {
-  commodity: string;
-  priceChange: { absolute: number; percent: number; direction: 'up' | 'down' };
-  period: string;
-  drivers: Array<{
-    factor: string;
-    contribution: number;
-    trend: 'up' | 'down' | 'stable';
-    context: string;
-  }>;
-  marketContext: string;
-  outlook: string;
-}
-
-export interface SpendImpactData {
-  totalImpact: { amount: string; percent: number; direction: string };
-  categories: Array<{
-    name: string;
-    spend: string;
-    impact: string;
-    impactPercent: number;
-    topCommodity: string;
-  }>;
-  mitigationPotential: { amount: string; actions: string[] };
-}
+export type InflationSummaryData = InflationSummaryCardData;
+export type CommodityDriverData = DriverBreakdownCardData;
+export type SpendImpactData = SpendImpactCardData;
+export type JustificationData = JustificationCardData;
+export type ScenarioData = ScenarioCardData;
 
 export const MOCK_INFLATION_SUMMARY: InflationSummaryData = {
   period: 'January 2026',
@@ -790,52 +825,37 @@ export const MOCK_COMMODITY_DRIVERS: CommodityDriverData = {
   priceChange: { absolute: 85, percent: 8.5, direction: 'up' },
   period: 'January 2026',
   drivers: [
-    { factor: 'China production cuts', contribution: 45, trend: 'up', context: 'Reduced output by 12% due to environmental policies' },
-    { factor: 'EV manufacturing demand', contribution: 30, trend: 'up', context: 'Battery and chassis steel demand up 25% YoY' },
-    { factor: 'Energy costs', contribution: 15, trend: 'stable', context: 'Natural gas prices remain elevated' },
-    { factor: 'Shipping disruptions', contribution: 10, trend: 'down', context: 'Red Sea disruptions easing' },
+    { name: 'China production cuts', category: 'supply', contribution: 45, direction: 'up', description: 'Reduced output by 12% due to environmental policies' },
+    { name: 'EV manufacturing demand', category: 'demand', contribution: 30, direction: 'up', description: 'Battery and chassis steel demand up 25% YoY' },
+    { name: 'Energy costs', category: 'supply', contribution: 15, direction: 'up', description: 'Natural gas prices remain elevated' },
+    { name: 'Shipping disruptions', category: 'logistics', contribution: 10, direction: 'down', description: 'Red Sea disruptions easing' },
   ],
   marketContext: 'Global steel production down 5% while demand remains strong, creating supply-demand imbalance.',
-  outlook: 'Prices expected to remain elevated through Q2 before stabilizing as China adjusts policies.',
+  sources: [
+    { title: 'China Steel Output Falls 12%', source: 'Reuters', url: 'https://www.reuters.com/markets/commodities/' },
+    { title: 'EV Demand Drives Steel Surge', source: 'Bloomberg', url: 'https://www.bloomberg.com/commodities' },
+  ],
 };
 
 export const MOCK_SPEND_IMPACT: SpendImpactData = {
-  totalImpact: { amount: '$5.2M', percent: 4.2, direction: 'increase' },
-  categories: [
-    { name: 'Raw Materials', spend: '$45M', impact: '+$2.8M', impactPercent: 6.2, topCommodity: 'Steel' },
-    { name: 'Components', spend: '$32M', impact: '+$1.5M', impactPercent: 4.7, topCommodity: 'Aluminum' },
-    { name: 'Packaging', spend: '$18M', impact: '+$650K', impactPercent: 3.6, topCommodity: 'Plastics' },
-    { name: 'Logistics', spend: '$12M', impact: '+$250K', impactPercent: 2.1, topCommodity: 'Fuel' },
+  totalImpact: '$5.2M',
+  totalImpactDirection: 'increase',
+  impactPercent: 4.2,
+  timeframe: 'vs. last quarter',
+  breakdown: [
+    { category: 'Raw Materials', amount: '+$2.8M', percent: 6.2, direction: 'up' },
+    { category: 'Components', amount: '+$1.5M', percent: 4.7, direction: 'up' },
+    { category: 'Packaging', amount: '+$650K', percent: 3.6, direction: 'up' },
+    { category: 'Logistics', amount: '+$250K', percent: 2.1, direction: 'up' },
   ],
-  mitigationPotential: {
-    amount: '$1.8M',
-    actions: ['Negotiate volume discounts', 'Switch to alternative suppliers', 'Adjust order timing'],
+  mostAffected: {
+    type: 'category',
+    name: 'Raw Materials',
+    impact: '+$2.8M (6.2%)',
   },
+  recommendation: 'Consider negotiating volume discounts or switching to alternative suppliers to mitigate $1.8M in potential savings.',
 };
 
-export interface JustificationData {
-  supplierName: string;
-  commodity: string;
-  requestedIncrease: number;
-  marketBenchmark: number;
-  verdict: 'justified' | 'partially_justified' | 'questionable' | 'insufficient_data';
-  verdictLabel: string;
-  keyPoints: Array<{ point: string; supports: boolean }>;
-  recommendation: string;
-  negotiationLeverage: 'strong' | 'moderate' | 'weak';
-}
-
-export interface ScenarioData {
-  scenarioName: string;
-  description: string;
-  assumption: string;
-  currentState: { label: string; value: string };
-  projectedState: { label: string; value: string };
-  delta: { amount: string; percent: number; direction: 'up' | 'down' };
-  confidence: 'high' | 'medium' | 'low';
-  topImpacts: string[];
-  recommendation?: string;
-}
 
 export const MOCK_JUSTIFICATION_DATA: JustificationData = {
   supplierName: 'Acme Steel',
@@ -870,11 +890,54 @@ export const MOCK_SCENARIO_DATA: ScenarioData = {
   recommendation: 'Consider forward contracts to lock in current rates.',
 };
 
+// Commodity-specific driver data
+const COMMODITY_DRIVERS: Record<string, CommodityDriverData> = {
+  'corrugated boxes': {
+    commodity: 'Corrugated Boxes',
+    priceChange: { absolute: 45, percent: 5.8, direction: 'up' },
+    period: 'January 2026',
+    drivers: [
+      { name: 'Pulp prices surge', category: 'supply', contribution: 40, direction: 'up', description: 'European pulp mills facing energy cost increases' },
+      { name: 'E-commerce packaging demand', category: 'demand', contribution: 30, direction: 'up', description: 'Online retail growth driving 15% higher box consumption' },
+      { name: 'Recycled content regulations', category: 'regulatory', contribution: 20, direction: 'up', description: 'EU mandates pushing up recycled fiber costs' },
+      { name: 'Energy costs in mills', category: 'supply', contribution: 10, direction: 'up', description: 'Natural gas prices affecting production costs' },
+    ],
+    marketContext: 'European corrugated packaging market seeing sustained demand from e-commerce while facing supply-side cost pressures.',
+    sources: [
+      { title: 'European Pulp Prices Hit 18-Month High', source: 'RISI', url: 'https://www.risiinfo.com' },
+      { title: 'E-commerce Packaging Demand Outlook', source: 'Smithers', url: 'https://www.smithers.com' },
+    ],
+  },
+  'aluminum': {
+    commodity: 'Aluminum',
+    priceChange: { absolute: 125, percent: 6.2, direction: 'up' },
+    period: 'January 2026',
+    drivers: [
+      { name: 'China smelter curtailments', category: 'supply', contribution: 35, direction: 'up', description: 'Power rationing reducing output by 8%' },
+      { name: 'EV and renewable demand', category: 'demand', contribution: 30, direction: 'up', description: 'Lightweighting trends accelerating adoption' },
+      { name: 'Bauxite supply constraints', category: 'supply', contribution: 20, direction: 'up', description: 'Guinea export restrictions limiting raw material' },
+      { name: 'Energy transition investments', category: 'demand', contribution: 15, direction: 'up', description: 'Solar and grid infrastructure projects' },
+    ],
+    marketContext: 'Global aluminum market in deficit as demand outpaces production capacity additions.',
+    sources: [
+      { title: 'China Aluminum Output Falls', source: 'Reuters', url: 'https://www.reuters.com' },
+      { title: 'Aluminum Demand in EV Sector', source: 'CRU Group', url: 'https://www.crugroup.com' },
+    ],
+  },
+};
+
 export const getInflationSummary = (): InflationSummaryData => MOCK_INFLATION_SUMMARY;
-export const getCommodityDrivers = (commodity?: string): CommodityDriverData => ({
-  ...MOCK_COMMODITY_DRIVERS,
-  commodity: commodity || MOCK_COMMODITY_DRIVERS.commodity,
-});
+export const getCommodityDrivers = (commodity?: string): CommodityDriverData => {
+  if (commodity) {
+    const lower = commodity.toLowerCase();
+    const specificData = COMMODITY_DRIVERS[lower];
+    if (specificData) return specificData;
+  }
+  return {
+    ...MOCK_COMMODITY_DRIVERS,
+    commodity: commodity || MOCK_COMMODITY_DRIVERS.commodity,
+  };
+};
 export const getSpendImpact = (): SpendImpactData => MOCK_SPEND_IMPACT;
 export const getJustificationData = (supplierName?: string, commodity?: string): JustificationData => ({
   ...MOCK_JUSTIFICATION_DATA,

@@ -725,6 +725,7 @@ function buildWidgetData(
             spend: s.spendFormatted,
             category: s.category,
           })),
+          comparisonDimensions: ['riskScore', 'riskLevel', 'trend', 'spend', 'category'],
         },
       };
 
@@ -832,6 +833,52 @@ function calculateMatchScore(current: Supplier, alternative: Supplier): number {
   return Math.min(score, 98); // Cap at 98%
 }
 
+// Build source attribution array based on data used in response
+function buildDataSources(
+  intent: DetectedIntent,
+  data: FetchedData
+): Array<{ type: 'beroe' | 'dnd' | 'ecovadis'; name: string }> {
+  const sources: Array<{ type: 'beroe' | 'dnd' | 'ecovadis'; name: string }> = [];
+
+  // Risk Watch data sources
+  if (data.portfolio) {
+    sources.push({ type: 'beroe', name: 'Portfolio Risk Analytics' });
+  }
+  if (data.suppliers && data.suppliers.length > 0) {
+    sources.push({ type: 'beroe', name: 'Supplier Risk Database' });
+  }
+  if (data.riskChanges && data.riskChanges.length > 0) {
+    sources.push({ type: 'beroe', name: 'Risk Monitoring System' });
+  }
+  if (data.targetSupplier) {
+    sources.push({ type: 'beroe', name: 'Supplier Profile Data' });
+  }
+
+  // Inflation Watch data sources
+  const isInflationIntent = intent.category.startsWith('inflation_');
+  if (isInflationIntent) {
+    if (data.inflationSummary) {
+      sources.push({ type: 'beroe', name: 'Commodity Price Indices' });
+    }
+    if (data.commodityDrivers) {
+      sources.push({ type: 'beroe', name: 'Market Intelligence Reports' });
+    }
+    if (data.spendImpact) {
+      sources.push({ type: 'beroe', name: 'Spend Analytics Platform' });
+    }
+    if (data.justificationData) {
+      sources.push({ type: 'beroe', name: 'Price Benchmarking Data' });
+    }
+  }
+
+  // Ensure at least 1 data source for non-general queries
+  if (sources.length === 0 && intent.category !== 'general') {
+    sources.push({ type: 'beroe', name: 'Beroe Risk Intelligence' });
+  }
+
+  return sources;
+}
+
 // Step 5: Assemble final response
 export async function callGeminiV2(
   userMessage: string,
@@ -929,6 +976,9 @@ export async function callGeminiV2(
   // 10. Determine response type
   const responseType = route.widgetType === 'none' ? 'summary' : 'widget';
 
+  // 11. Build source attribution based on data used
+  const sources = buildDataSources(intent, data);
+
   return {
     id: generateId(),
     content: narrative,
@@ -944,6 +994,7 @@ export async function callGeminiV2(
     suppliers: data.suppliers,
     portfolio: data.portfolio,
     riskChanges: data.riskChanges,
+    sources,
     artifact: {
       type: route.artifactType,
       title: aiContent?.artifactContent?.title || 'Details',

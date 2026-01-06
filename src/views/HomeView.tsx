@@ -14,24 +14,24 @@ type TabType = 'recommended' | 'portfolio' | 'alerts' | 'actions';
 
 const TAB_SUGGESTIONS: Record<TabType, string[]> = {
     recommended: [
-        "Give me a summary of my supplier risk portfolio",
-        "Which of my suppliers need immediate attention?",
-        "Are there any new risk alerts I should know about?",
+        "What is the price trend for Corrugated Boxes in Europe?",
+        "Show suppliers with recent risk changes in Packaging",
+        "How is steel price volatility affecting my portfolio?",
     ],
     portfolio: [
-        "Show me my portfolio risk distribution",
-        "What's my total spend at risk?",
-        "Which categories have the highest risk exposure?",
+        "Which commodity categories have the highest inflation?",
+        "Show my supplier exposure in Asia Pacific",
+        "What's the price forecast for aluminum this quarter?",
     ],
     alerts: [
-        "Show me suppliers with recent risk changes",
-        "Are there any critical alerts today?",
-        "Which suppliers moved to high risk this week?",
+        "Any price spikes above 5% this month?",
+        "Which suppliers requested price increases above market?",
+        "Show commodities with significant price movements",
     ],
     actions: [
-        "What actions should I take on high-risk suppliers?",
-        "Help me create a risk mitigation plan",
-        "Find alternatives for my riskiest suppliers",
+        "Help me validate a 12% price increase request",
+        "Find alternatives for high-risk packaging suppliers",
+        "Create a scenario for 15% steel price increase",
     ],
 };
 
@@ -117,24 +117,24 @@ export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false,
                             <span className="text-xs text-muted mb-3 block">Recommended</span>
                             <div className="flex flex-col">
                                 <RecommendationItem
-                                    text="What's my current risk exposure across my supplier portfolio?"
-                                    onClick={() => handleQuestionClick("What's my current risk exposure across my supplier portfolio?")}
-                                    isSelected={selectedQuestion === "What's my current risk exposure across my supplier portfolio?"}
+                                    text="What is the price trend for Corrugated Boxes in Europe?"
+                                    onClick={() => handleQuestionClick("What is the price trend for Corrugated Boxes in Europe?")}
+                                    isSelected={selectedQuestion === "What is the price trend for Corrugated Boxes in Europe?"}
                                 />
                                 <RecommendationItem
-                                    text="Show me all high-risk suppliers in my electronics category"
-                                    onClick={() => handleQuestionClick("Show me all high-risk suppliers in my electronics category")}
-                                    isSelected={selectedQuestion === "Show me all high-risk suppliers in my electronics category"}
+                                    text="Why did steel prices increase 8% this month?"
+                                    onClick={() => handleQuestionClick("Why did steel prices increase 8% this month?")}
+                                    isSelected={selectedQuestion === "Why did steel prices increase 8% this month?"}
                                 />
                                 <RecommendationItem
-                                    text="Which suppliers have moved to high risk in the last 30 days?"
-                                    onClick={() => handleQuestionClick("Which suppliers have moved to high risk in the last 30 days?")}
-                                    isSelected={selectedQuestion === "Which suppliers have moved to high risk in the last 30 days?"}
+                                    text="Show my high-risk suppliers in Packaging"
+                                    onClick={() => handleQuestionClick("Show my high-risk suppliers in Packaging")}
+                                    isSelected={selectedQuestion === "Show my high-risk suppliers in Packaging"}
                                 />
                                 <RecommendationItem
-                                    text="Find alternatives for my high-risk semiconductor suppliers"
-                                    onClick={() => handleQuestionClick("Find alternatives for my high-risk semiconductor suppliers")}
-                                    isSelected={selectedQuestion === "Find alternatives for my high-risk semiconductor suppliers"}
+                                    text="How does aluminum inflation affect my spend?"
+                                    onClick={() => handleQuestionClick("How does aluminum inflation affect my spend?")}
+                                    isSelected={selectedQuestion === "How does aluminum inflation affect my spend?"}
                                 />
                             </div>
                         </motion.div>

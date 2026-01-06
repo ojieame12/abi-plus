@@ -1,0 +1,312 @@
+{
+  "project": "Abi Plus AI Chat Interface",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-06",
+
+  "sections": [
+    {
+      "header": "Layout & Structure",
+      "todos": [
+        {"content": "Three-panel responsive layout", "state": true},
+        {"content": "Collapsible sidebar (280px expanded, 64px collapsed)", "state": true},
+        {"content": "Main chat area with flexible width", "state": true},
+        {"content": "Artifact panel (45% width, slides from right)", "state": true},
+        {"content": "Home view with gradient decorations", "state": true},
+        {"content": "Chat input with suggestion chips", "state": true},
+        {"content": "Scroll-to-bottom on new messages", "state": true},
+        {"content": "New Chat button resets to home view", "state": true},
+        {"content": "Sidebar expansion reduces squircle opacity", "state": true}
+      ]
+    },
+    {
+      "header": "Theming & Styling",
+      "todos": [
+        {"content": "Dark theme implementation", "state": true},
+        {"content": "Risk level color coding (high/medium/low)", "state": true},
+        {"content": "Inter font family", "state": true},
+        {"content": "Consistent border radius (rounded-xl)", "state": true},
+        {"content": "Surface backgrounds (#1a1a1a, #1f1f1f)", "state": true},
+        {"content": "Border colors (#2a2a2a, #333)", "state": true},
+        {"content": "Accent colors (blue, green, amber, red)", "state": true}
+      ]
+    },
+    {
+      "header": "Animations",
+      "todos": [
+        {"content": "Staggered entry animation for AI responses", "state": true},
+        {"content": "Acknowledgement animates at 0ms", "state": true},
+        {"content": "ThoughtProcess animates at 100ms", "state": true},
+        {"content": "Insight animates at 200ms", "state": true},
+        {"content": "Widget animates at 300ms", "state": true},
+        {"content": "Narrative animates at 400ms", "state": true},
+        {"content": "Sources animates at 500ms", "state": true},
+        {"content": "Feedback animates at 600ms", "state": true},
+        {"content": "Panel slide transition (300ms ease-out)", "state": true},
+        {"content": "Hover transitions (150ms ease)", "state": true},
+        {"content": "Collapse animation (200ms ease-in-out)", "state": true}
+      ]
+    },
+    {
+      "header": "Chat Components",
+      "todos": [
+        {"content": "AIResponse container with staggered animation", "state": true},
+        {"content": "ThoughtProcess with pulsing brain icon", "state": true},
+        {"content": "ThoughtProcess rotating thinking messages", "state": true},
+        {"content": "ThoughtProcess collapsible after completion", "state": true},
+        {"content": "InsightBanner acknowledgement header", "state": true},
+        {"content": "InsightBar expandable insight summary", "state": true},
+        {"content": "InsightBar headline and summary text", "state": true},
+        {"content": "InsightBar metric change indicator", "state": true},
+        {"content": "InsightBar sparkline trend visualization", "state": true},
+        {"content": "InsightBar factor breakdown list", "state": true},
+        {"content": "InsightBar action buttons", "state": true},
+        {"content": "InsightBar click to expand artifact", "state": true},
+        {"content": "SourceAttribution favicon stack for web sources", "state": true},
+        {"content": "SourceAttribution internal data badges", "state": true},
+        {"content": "ResponseFeedback thumbs up/down icons", "state": true},
+        {"content": "ResponseFeedback border styling", "state": true}
+      ]
+    },
+    {
+      "header": "Risk Watch Widgets",
+      "todos": [
+        {"content": "RiskDistributionWidget (donut chart)", "state": true},
+        {"content": "SupplierTableWidget (paginated table)", "state": true},
+        {"content": "SupplierTableWidget row click opens detail", "state": true},
+        {"content": "SupplierTableWidget internal View All button", "state": true},
+        {"content": "SupplierMiniTable (compact table)", "state": true},
+        {"content": "SupplierMiniTable row click opens detail", "state": true},
+        {"content": "SupplierRiskCard (individual profile)", "state": true},
+        {"content": "RiskChangeAlert (risk changes)", "state": true},
+        {"content": "HandoffCard (restricted data prompt)", "state": true},
+        {"content": "AlternativesPreviewCard (match scores)", "state": true},
+        {"content": "ComparisonTableWidget (side-by-side)", "state": true},
+        {"content": "ComparisonTableWidget with comparisonDimensions", "state": true},
+        {"content": "FactorBreakdownCard (risk factors)", "state": true},
+        {"content": "NewsEventsCard (supplier news)", "state": true},
+        {"content": "ConcentrationWarningCard (alerts)", "state": true},
+        {"content": "SpendExposureWidget (spend by risk)", "state": true},
+        {"content": "MetricRowWidget (key metrics)", "state": true}
+      ]
+    },
+    {
+      "header": "Inflation Watch Widgets",
+      "todos": [
+        {"content": "InflationSummaryCard (monthly overview)", "state": true},
+        {"content": "DriverBreakdownCard (root cause analysis)", "state": true},
+        {"content": "DriverBreakdownCard with correct prop shape (name/category/direction/description)", "state": true},
+        {"content": "SpendImpactCard (portfolio impact)", "state": true},
+        {"content": "SpendImpactCard with correct prop shape (breakdown/mostAffected)", "state": true},
+        {"content": "JustificationCard (price validation)", "state": true},
+        {"content": "ScenarioCard (what-if modeling)", "state": true},
+        {"content": "ExecutiveBriefCard (shareable summary)", "state": true},
+        {"content": "CommodityGauge (price gauge)", "state": false},
+        {"content": "PriceMovementTable (commodity changes)", "state": false}
+      ]
+    },
+    {
+      "header": "General Widgets",
+      "todos": [
+        {"content": "StatCard (single statistic)", "state": true},
+        {"content": "InfoCard (informational)", "state": true},
+        {"content": "ChecklistCard (to-do display)", "state": true},
+        {"content": "DataListCard (key-value list)", "state": true},
+        {"content": "ProgressCard (progress indicator)", "state": true},
+        {"content": "QuoteCard (citation display)", "state": true},
+        {"content": "RecommendationCard (action items)", "state": true},
+        {"content": "ExecutiveSummaryCard (summary format)", "state": true},
+        {"content": "HealthScorecardWidget (scorecard)", "state": true},
+        {"content": "EventsFeedWidget (activity feed)", "state": true}
+      ]
+    },
+    {
+      "header": "Artifact Panel",
+      "todos": [
+        {"content": "Artifact panel 45% width", "state": true},
+        {"content": "Slide-in animation from right", "state": true},
+        {"content": "InsightDetailArtifact for rich insights", "state": true},
+        {"content": "Supplier detail views", "state": true},
+        {"content": "Widget expansion via View All", "state": true},
+        {"content": "Row click to detail navigation", "state": true},
+        {"content": "portfolio_dashboard artifact type", "state": true},
+        {"content": "supplier_list artifact type", "state": true},
+        {"content": "supplier_detail artifact type", "state": true},
+        {"content": "supplier_comparison artifact type", "state": true},
+        {"content": "inflation_dashboard artifact type", "state": true},
+        {"content": "driver_analysis artifact type", "state": true},
+        {"content": "impact_analysis artifact type", "state": true},
+        {"content": "justification_report artifact type", "state": true},
+        {"content": "scenario_planner artifact type", "state": true},
+        {"content": "executive_presentation artifact type", "state": true}
+      ]
+    },
+    {
+      "header": "AI Services",
+      "todos": [
+        {"content": "Gemini 2.0 Flash integration", "state": true},
+        {"content": "callGemini legacy API function", "state": true},
+        {"content": "callGeminiV2 new architecture", "state": true},
+        {"content": "Intent classification", "state": true},
+        {"content": "Portfolio context injection", "state": true},
+        {"content": "Structured JSON response parsing", "state": true},
+        {"content": "Fallback response generation", "state": true},
+        {"content": "Widget data building from fetched data", "state": true},
+        {"content": "Rich insight generation", "state": true},
+        {"content": "Perplexity API integration", "state": true},
+        {"content": "Perplexity web search", "state": true},
+        {"content": "Perplexity source citation extraction", "state": true},
+        {"content": "Perplexity registry-backed routing", "state": true}
+      ]
+    },
+    {
+      "header": "Data Services",
+      "todos": [
+        {"content": "MOCK_SUPPLIERS (14 suppliers)", "state": true},
+        {"content": "MOCK_RISK_CHANGES", "state": true},
+        {"content": "MOCK_INFLATION_SUMMARY", "state": true},
+        {"content": "MOCK_COMMODITY_DRIVERS with correct shape", "state": true},
+        {"content": "MOCK_SPEND_IMPACT with correct shape", "state": true},
+        {"content": "MOCK_JUSTIFICATION_DATA", "state": true},
+        {"content": "MOCK_SCENARIO_DATA", "state": true},
+        {"content": "generateFactorBreakdownData", "state": true},
+        {"content": "generateNewsEventsData", "state": true},
+        {"content": "generateAlternativesData", "state": true},
+        {"content": "generateConcentrationData", "state": true},
+        {"content": "generateSpendExposureData", "state": true},
+        {"content": "fetchPortfolioData", "state": true},
+        {"content": "getPortfolioSummary", "state": true},
+        {"content": "getAllSuppliers", "state": true},
+        {"content": "getSupplierByName", "state": true},
+        {"content": "getHighRiskSuppliers", "state": true},
+        {"content": "filterSuppliers", "state": true},
+        {"content": "getRecentRiskChanges", "state": true}
+      ]
+    },
+    {
+      "header": "Routing & Registry",
+      "todos": [
+        {"content": "Widget registry (widgetRegistry.ts)", "state": true},
+        {"content": "getWidgetConfig function", "state": true},
+        {"content": "selectWidgetFromRegistry function", "state": true},
+        {"content": "getArtifactForWidget function", "state": true},
+        {"content": "getWidgetRouteFromRegistry function", "state": true},
+        {"content": "gemini.ts uses registry routing", "state": true},
+        {"content": "perplexity.ts uses registry routing", "state": true},
+        {"content": "componentSelector with events support", "state": true},
+        {"content": "Demo data for each widget type", "state": true},
+        {"content": "Artifact type mappings", "state": true}
+      ]
+    },
+    {
+      "header": "Intent Classification",
+      "todos": [
+        {"content": "portfolio_overview intent", "state": true},
+        {"content": "filtered_discovery intent", "state": true},
+        {"content": "supplier_deep_dive intent", "state": true},
+        {"content": "trend_detection intent", "state": true},
+        {"content": "comparison intent", "state": true},
+        {"content": "explanation_why intent", "state": true},
+        {"content": "action_trigger intent", "state": true},
+        {"content": "restricted_query intent", "state": true},
+        {"content": "market_context intent", "state": true},
+        {"content": "general intent", "state": true},
+        {"content": "inflation_summary intent", "state": true},
+        {"content": "inflation_drivers intent", "state": true},
+        {"content": "inflation_impact intent", "state": true},
+        {"content": "inflation_justification intent", "state": true},
+        {"content": "inflation_scenarios intent", "state": true},
+        {"content": "inflation_communication intent", "state": true},
+        {"content": "inflation_benchmark intent", "state": true}
+      ]
+    },
+    {
+      "header": "Type Definitions",
+      "todos": [
+        {"content": "ChatMessage interface", "state": true},
+        {"content": "Suggestion interface", "state": true},
+        {"content": "Supplier interface", "state": true},
+        {"content": "RiskPortfolio interface", "state": true},
+        {"content": "RiskChange interface", "state": true},
+        {"content": "RiskLevel type", "state": true},
+        {"content": "RiskFactor interface", "state": true},
+        {"content": "WidgetType union type", "state": true},
+        {"content": "WidgetData interface", "state": true},
+        {"content": "DetectedIntent interface", "state": true},
+        {"content": "InflationSummaryCardData", "state": true},
+        {"content": "DriverBreakdownCardData", "state": true},
+        {"content": "SpendImpactCardData", "state": true},
+        {"content": "JustificationCardData", "state": true},
+        {"content": "ScenarioCardData", "state": true},
+        {"content": "RichInsight interface", "state": true},
+        {"content": "AIContentSlots interface", "state": true}
+      ]
+    },
+    {
+      "header": "Data Flow Pipeline",
+      "todos": [
+        {"content": "User query input", "state": true},
+        {"content": "Intent classification from query", "state": true},
+        {"content": "Widget route selection via registry", "state": true},
+        {"content": "Data fetching based on intent", "state": true},
+        {"content": "Inflation data fetching for inflation intents", "state": true},
+        {"content": "AI content generation", "state": true},
+        {"content": "Widget data building (buildWidgetData)", "state": true},
+        {"content": "Response assembly with all components", "state": true},
+        {"content": "Staggered animation rendering", "state": true}
+      ]
+    },
+    {
+      "header": "Interactions",
+      "todos": [
+        {"content": "Widget internal expand handlers (onViewAll)", "state": true},
+        {"content": "Table row click to supplier detail (onRowClick)", "state": true},
+        {"content": "Hide external button when widget has internal handler", "state": true},
+        {"content": "Sidebar collapse/expand toggle", "state": true},
+        {"content": "Panel open/close animations", "state": true},
+        {"content": "Suggestion chip click triggers query", "state": true},
+        {"content": "Chat history item click loads session", "state": true}
+      ]
+    },
+    {
+      "header": "Bug Fixes Applied",
+      "todos": [
+        {"content": "Fixed duplicate view links (internal + external)", "state": true},
+        {"content": "Fixed artifact panel width (now 45%)", "state": true},
+        {"content": "Fixed table row click navigation", "state": true},
+        {"content": "Fixed RiskDistributionWidget demo data", "state": true},
+        {"content": "Fixed MetricRowWidget demo data", "state": true},
+        {"content": "Fixed ComparisonTableWidget demo data", "state": true},
+        {"content": "Fixed demoSuppliers location→country", "state": true},
+        {"content": "Fixed artifact type comparison→supplier_comparison", "state": true},
+        {"content": "Switched gemini.ts to registry routing", "state": true},
+        {"content": "Switched perplexity.ts to registry routing", "state": true},
+        {"content": "Added inflation data to FetchedData interface", "state": true},
+        {"content": "Added inflation fetching in fetchDataForIntent", "state": true},
+        {"content": "Added buildWidgetData cases for inflation widgets", "state": true},
+        {"content": "Fixed CommodityDriverData mock shape", "state": true},
+        {"content": "Fixed SpendImpactData mock shape", "state": true},
+        {"content": "Added comparisonDimensions to comparison_table", "state": true}
+      ]
+    },
+    {
+      "header": "Pending / Future Work",
+      "todos": [
+        {"content": "CommodityGauge widget implementation", "state": false},
+        {"content": "PriceMovementTable widget implementation", "state": false},
+        {"content": "Real API integration (replace mock data)", "state": false},
+        {"content": "User authentication", "state": false},
+        {"content": "Chat session persistence", "state": false},
+        {"content": "Export functionality", "state": false},
+        {"content": "Notifications system", "state": false},
+        {"content": "Code splitting for bundle size", "state": false}
+      ]
+    }
+  ],
+
+  "summary": {
+    "totalItems": 213,
+    "completed": 205,
+    "pending": 8,
+    "completionRate": "96.2%"
+  }
+}

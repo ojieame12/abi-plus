@@ -403,6 +403,87 @@ const SUGGESTION_RULES: SuggestionRule[] = [
   },
 
   // ==========================================
+  // INFLATION WATCH FOLLOW-UPS
+  // ==========================================
+  {
+    id: 'inflation_price_drivers',
+    appliesTo: ['inflation_summary'],
+    condition: () => true,
+    generate: () => ({
+      id: 'inflation_drivers',
+      text: 'What is driving steel price increases?',
+      icon: 'lightbulb',
+    }),
+    priority: () => 90,
+  },
+  {
+    id: 'inflation_spend_impact',
+    appliesTo: ['inflation_summary', 'inflation_drivers'],
+    condition: () => true,
+    generate: () => ({
+      id: 'spend_impact',
+      text: 'How does this impact my spend?',
+      icon: 'chart',
+    }),
+    priority: () => 85,
+  },
+  {
+    id: 'inflation_commodity_detail',
+    appliesTo: ['inflation_summary'],
+    condition: () => true,
+    generate: () => ({
+      id: 'commodity_detail',
+      text: 'Show price trend for Corrugated Boxes',
+      icon: 'chart',
+    }),
+    priority: () => 80,
+  },
+  {
+    id: 'inflation_validate_increase',
+    appliesTo: ['inflation_drivers', 'inflation_impact'],
+    condition: () => true,
+    generate: () => ({
+      id: 'validate_increase',
+      text: 'Validate a supplier price increase',
+      icon: 'search',
+    }),
+    priority: () => 75,
+  },
+  {
+    id: 'inflation_scenario',
+    appliesTo: ['inflation_impact', 'inflation_drivers'],
+    condition: () => true,
+    generate: () => ({
+      id: 'scenario_model',
+      text: 'Model a 15% steel price increase',
+      icon: 'chart',
+    }),
+    priority: () => 70,
+  },
+  {
+    id: 'inflation_affected_suppliers',
+    appliesTo: ['inflation_summary', 'inflation_drivers'],
+    condition: () => true,
+    generate: () => ({
+      id: 'affected_suppliers',
+      text: 'Which suppliers are most exposed?',
+      icon: 'search',
+    }),
+    priority: () => 75,
+  },
+  {
+    id: 'inflation_to_risk',
+    appliesTo: ['inflation_summary', 'inflation_impact'],
+    condition: () => true,
+    generate: () => ({
+      id: 'to_risk_view',
+      text: 'Show my overall supplier risk',
+      icon: 'chart',
+    }),
+    priority: () => 50,
+  },
+
+  // ==========================================
   // GENERAL/FALLBACK FOLLOW-UPS
   // ==========================================
   {
