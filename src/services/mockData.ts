@@ -945,3 +945,107 @@ export const getJustificationData = (supplierName?: string, commodity?: string):
   commodity: commodity || MOCK_JUSTIFICATION_DATA.commodity,
 });
 export const getScenarioData = (): ScenarioData => MOCK_SCENARIO_DATA;
+
+// Market Events for news/events feed widget
+export interface MarketEvent {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  timestamp: string;
+  category: 'price' | 'supply' | 'demand' | 'regulation' | 'geopolitical';
+  impact: 'positive' | 'negative' | 'neutral';
+  affectedCommodities?: string[];
+}
+
+const MOCK_MARKET_EVENTS: MarketEvent[] = [
+  {
+    id: 'evt-1',
+    title: 'China steel production hits 18-month low',
+    summary: 'Output decline expected to support global prices through Q1',
+    source: 'Reuters',
+    timestamp: '2h ago',
+    category: 'supply',
+    impact: 'positive',
+    affectedCommodities: ['steel', 'iron ore'],
+  },
+  {
+    id: 'evt-2',
+    title: 'EU carbon border tax takes effect',
+    summary: 'New tariffs on carbon-intensive imports may increase aluminum costs 3-5%',
+    source: 'Financial Times',
+    timestamp: '4h ago',
+    category: 'regulation',
+    impact: 'negative',
+    affectedCommodities: ['aluminum', 'steel'],
+  },
+  {
+    id: 'evt-3',
+    title: 'LME copper inventories drop to decade low',
+    summary: 'Tight supply conditions signal continued price support',
+    source: 'Bloomberg',
+    timestamp: '6h ago',
+    category: 'supply',
+    impact: 'negative',
+    affectedCommodities: ['copper'],
+  },
+  {
+    id: 'evt-4',
+    title: 'US packaging demand forecasts revised upward',
+    summary: 'E-commerce growth driving 8% increase in corrugated box consumption',
+    source: 'Industry Week',
+    timestamp: '1d ago',
+    category: 'demand',
+    impact: 'negative',
+    affectedCommodities: ['corrugated boxes', 'paper', 'pulp'],
+  },
+];
+
+export const getMarketEvents = (commodity?: string): MarketEvent[] => {
+  if (commodity) {
+    const lower = commodity.toLowerCase();
+    return MOCK_MARKET_EVENTS.filter(e =>
+      e.affectedCommodities?.some(c => c.toLowerCase().includes(lower) || lower.includes(c.toLowerCase()))
+    );
+  }
+  return MOCK_MARKET_EVENTS;
+};
+
+// Category/Region breakdown helpers
+export const getCategoryBreakdown = (portfolio: RiskPortfolio, suppliers: Supplier[]): Array<{
+  category: string;
+  count: number;
+  spend: number;
+  highRisk: number;
+  avgScore: number;
+}> => {
+  const categories = getCategories();
+  return categories.map(cat => {
+    const catSuppliers = suppliers.filter(s => s.category === cat);
+    const highRisk = catSuppliers.filter(s => s.srs?.level === 'high' || s.srs?.level === 'medium-high').length;
+    const avgScore = catSuppliers.length > 0
+      ? catSuppliers.reduce((sum, s) => sum + (s.srs?.score ?? 50), 0) / catSuppliers.length
+      : 0;
+    const spend = catSuppliers.reduce((sum, s) => sum + s.spend, 0);
+    return { category: cat, count: catSuppliers.length, spend, highRisk, avgScore: Math.round(avgScore) };
+  }).filter(c => c.count > 0);
+};
+
+export const getRegionBreakdown = (portfolio: RiskPortfolio, suppliers: Supplier[]): Array<{
+  region: string;
+  count: number;
+  spend: number;
+  highRisk: number;
+  avgScore: number;
+}> => {
+  const regions = getRegions();
+  return regions.map(reg => {
+    const regSuppliers = suppliers.filter(s => s.location?.region === reg);
+    const highRisk = regSuppliers.filter(s => s.srs?.level === 'high' || s.srs?.level === 'medium-high').length;
+    const avgScore = regSuppliers.length > 0
+      ? regSuppliers.reduce((sum, s) => sum + (s.srs?.score ?? 50), 0) / regSuppliers.length
+      : 0;
+    const spend = regSuppliers.reduce((sum, s) => sum + s.spend, 0);
+    return { region: reg, count: regSuppliers.length, spend, highRisk, avgScore: Math.round(avgScore) };
+  }).filter(r => r.count > 0);
+};

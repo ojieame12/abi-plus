@@ -161,6 +161,7 @@ interface ArtifactContent {
 // Context-based rendering (new interface)
 interface ContextWidgetProps {
   intent: IntentCategory;
+  subIntent?: string;  // Sub-intent for granular widget selection
   renderContext?: RenderContext;
   portfolio?: Portfolio | RiskPortfolio; // Accept both types
   suppliers?: Supplier[];
@@ -192,18 +193,27 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   let config: ComponentConfig | null = null;
 
   if (isContextProps(props)) {
-    // Context-based selection
-    const dataCtx = buildDataContext(props.intent, {
-      portfolio: props.portfolio,
-      suppliers: props.suppliers,
-      supplier: props.supplier,
-      riskChanges: props.riskChanges,
-      widget: props.widget,
-    });
+    // PRIORITY 1: If widget.type is explicitly set, honor it over selection rules
+    // This ensures registry-routed widgets (sub-intent specific) aren't overridden
+    if (props.widget?.type && props.widget.type !== 'none') {
+      config = getConfigFromWidget(props.widget as WidgetData);
+    }
 
-    config = selectComponent(dataCtx, props.renderContext || 'chat');
+    // PRIORITY 2: Fall back to context-based selection if no explicit widget type
+    if (!config) {
+      const dataCtx = buildDataContext(props.intent, {
+        portfolio: props.portfolio,
+        suppliers: props.suppliers,
+        supplier: props.supplier,
+        riskChanges: props.riskChanges,
+        widget: props.widget,
+        subIntent: props.subIntent,
+      });
 
-    // If no rule matched but we have widget data, try direct widget rendering
+      config = selectComponent(dataCtx, props.renderContext || 'chat');
+    }
+
+    // PRIORITY 3: Try widget data if selectComponent returned nothing
     if (!config && props.widget) {
       config = getConfigFromWidget(props.widget as WidgetData);
     }

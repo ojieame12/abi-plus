@@ -6,34 +6,79 @@ interface SourcesDisplayProps {
   compact?: boolean;
 }
 
-export const SourcesDisplay = ({ sources, compact = false }: SourcesDisplayProps) => {
+// Sample favicons for the stacked web sources display
+const SAMPLE_FAVICONS = [
+  'https://www.google.com/favicon.ico',
+  'https://www.reuters.com/favicon.ico',
+  'https://www.bloomberg.com/favicon.ico',
+  'https://www.ft.com/favicon.ico',
+];
+
+export const SourcesDisplay = ({ sources, compact = true }: SourcesDisplayProps) => {
   const { web, internal, totalWebCount, totalInternalCount } = sources;
 
   if (totalWebCount === 0 && totalInternalCount === 0) {
     return null;
   }
 
-  if (compact) {
-    return (
-      <div className="flex items-center gap-4 text-sm">
-        {totalWebCount > 0 && (
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-            <WebIcon />
-            <span className="text-slate-700">{totalWebCount} Web Pages</span>
-          </button>
-        )}
-        {totalInternalCount > 0 && (
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 rounded-lg transition-colors">
-            <DataIcon />
-            <span className="text-violet-700">{totalInternalCount} Data Sources</span>
-          </button>
-        )}
-      </div>
-    );
+  // Default: Inline compact view matching Figma design
+  // [favicon stack] X Web Pages | [beroe icon] X Beroe Data Sources
+  return (
+    <div className="flex items-center gap-3">
+      {/* Web Sources - Stacked favicons */}
+      {totalWebCount > 0 && (
+        <button className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors">
+          <div className="flex items-center">
+            {(web.length > 0 ? web.slice(0, 4) : SAMPLE_FAVICONS).map((source, i) => {
+              const domain = typeof source === 'string' ? new URL(source).hostname : source.domain;
+              const faviconUrl = typeof source === 'string' ? source : `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+              return (
+                <div
+                  key={i}
+                  className="w-5 h-5 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden shadow-sm"
+                  style={{ marginLeft: i === 0 ? 0 : -6 }}
+                >
+                  <img
+                    src={faviconUrl}
+                    alt=""
+                    className="w-3 h-3 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <span className="text-sm text-slate-600">{totalWebCount} Web Pages</span>
+        </button>
+      )}
+
+      {/* Internal Sources - Beroe icon */}
+      {totalInternalCount > 0 && (
+        <button className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors">
+          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-white">B</span>
+          </div>
+          <span className="text-sm text-slate-600">
+            {totalInternalCount} {internal[0]?.type === 'beroe' ? 'Beroe ' : ''}Data Sources
+          </span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+// Expanded view for detailed source listing (used in artifact panel or expanded view)
+export const SourcesDisplayExpanded = ({ sources }: { sources: ResponseSources }) => {
+  const { web, internal, totalWebCount, totalInternalCount } = sources;
+
+  if (totalWebCount === 0 && totalInternalCount === 0) {
+    return null;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Web Sources */}
       {web.length > 0 && (
         <div className="space-y-2">
@@ -46,7 +91,7 @@ export const SourcesDisplay = ({ sources, compact = false }: SourcesDisplayProps
               <WebSourceItem key={i} source={source} />
             ))}
             {totalWebCount > 5 && (
-              <button className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+              <button className="text-sm text-teal-600 hover:text-teal-700 font-medium">
                 View {totalWebCount - 5} more sources
               </button>
             )}
@@ -86,7 +131,7 @@ const WebSourceItem = ({ source }: { source: WebSource }) => (
       className="w-4 h-4 mt-0.5 rounded"
     />
     <div className="flex-1 min-w-0">
-      <div className="text-sm font-medium text-slate-900 truncate group-hover:text-violet-700">
+      <div className="text-sm font-medium text-slate-900 truncate group-hover:text-teal-700">
         {source.name}
       </div>
       {source.snippet && (
@@ -105,7 +150,7 @@ const InternalSourceBadge = ({ source }: { source: InternalSource }) => {
   const getSourceStyle = (type: string) => {
     switch (type) {
       case 'beroe':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'dun_bradstreet':
         return 'bg-amber-50 text-amber-700 border-amber-200';
       case 'ecovadis':
@@ -128,7 +173,7 @@ const InternalSourceBadge = ({ source }: { source: InternalSource }) => {
       case 'ecovadis':
         return 'EV';
       default:
-        return '📊';
+        return 'D';
     }
   };
 
@@ -155,7 +200,7 @@ const WebIcon = () => (
 );
 
 const DataIcon = () => (
-  <svg className="w-4 h-4 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg className="w-4 h-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
   </svg>
 );

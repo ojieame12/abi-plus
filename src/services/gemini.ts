@@ -20,11 +20,17 @@ import {
   getSpendImpact,
   getJustificationData,
   getScenarioData,
+  getCommodity,
+  getMarketEvents,
+  getCategoryBreakdown,
+  getRegionBreakdown,
   type InflationSummaryData,
   type CommodityDriverData,
   type SpendImpactData,
   type JustificationData,
   type ScenarioData,
+  type Commodity,
+  type MarketEvent,
 } from './mockData';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
@@ -380,6 +386,12 @@ interface FetchedData {
   spendImpact?: SpendImpactData;
   justificationData?: JustificationData;
   scenarioData?: ScenarioData;
+  // Market data
+  commodityData?: Commodity;
+  marketEvents?: MarketEvent[];
+  // Breakdown data
+  categoryBreakdown?: Array<{ category: string; count: number; spend: number; highRisk: number; avgScore: number }>;
+  regionBreakdown?: Array<{ region: string; count: number; spend: number; highRisk: number; avgScore: number }>;
 }
 
 // Step 1: Fetch data based on intent requirements
@@ -407,6 +419,9 @@ async function fetchDataForIntent(
         }
         if (intent.extractedEntities.region) {
           filters.region = intent.extractedEntities.region;
+        }
+        if (intent.extractedEntities.category) {
+          filters.category = intent.extractedEntities.category;
         }
         data.suppliers = await filterSuppliers(filters);
         break;
@@ -544,7 +559,25 @@ async function fetchDataForIntent(
   // Also fetch for market_context
   if (intent.category === 'market_context') {
     data.inflationSummary = getInflationSummary();
-    data.commodityDrivers = getCommodityDrivers();
+    data.commodityDrivers = getCommodityDrivers(intent.extractedEntities.commodity);
+    // Fetch market events for news sub-intent
+    data.marketEvents = getMarketEvents(intent.extractedEntities.commodity);
+    // Get specific commodity data for price_gauge
+    if (intent.extractedEntities.commodity) {
+      data.commodityData = getCommodity(intent.extractedEntities.commodity);
+    }
+    // Default to copper if no specific commodity
+    if (!data.commodityData) {
+      data.commodityData = getCommodity('copper');
+    }
+  }
+
+  // Fetch breakdown data for by_dimension sub-intents
+  if (intent.subIntent === 'by_dimension' || intent.subIntent === 'category_changes') {
+    const allSuppliers = await getAllSuppliers();
+    const portfolio = data.portfolio || await getPortfolioSummary();
+    data.categoryBreakdown = getCategoryBreakdown(portfolio, allSuppliers);
+    data.regionBreakdown = getRegionBreakdown(portfolio, allSuppliers);
   }
 
   return data;
@@ -600,6 +633,73 @@ ${supplierList}`);
     parts.push(`
 Recent Risk Changes:
 ${changesList}`);
+  }
+
+  // Inflation/Market data context
+  if (data.inflationSummary) {
+    const inf = data.inflationSummary;
+    parts.push(`
+Inflation Summary (${inf.period}):
+- Overall Change: ${inf.overallChange.percent > 0 ? '+' : ''}${inf.overallChange.percent.toFixed(1)}%
+- Portfolio Impact: ${inf.portfolioImpact.amount} (${inf.portfolioImpact.direction})
+- Top Increases: ${inf.topIncreases.slice(0, 3).map(t => `${t.commodity} +${t.change}%`).join(', ')}
+- Top Decreases: ${inf.topDecreases.slice(0, 2).map(t => `${t.commodity} ${t.change}%`).join(', ')}
+- Key Drivers: ${inf.keyDrivers.slice(0, 3).join(', ')}`);
+  }
+
+  if (data.commodityDrivers) {
+    const cd = data.commodityDrivers;
+    parts.push(`
+Commodity Analysis (${cd.commodity}):
+- Price Change: ${cd.priceChange.percent > 0 ? '+' : ''}${cd.priceChange.percent.toFixed(1)}% (${cd.period})
+- Market Context: ${cd.marketContext || 'N/A'}
+- Top Drivers:
+${cd.drivers.slice(0, 4).map(d => `  - ${d.name}: ${d.contribution}% contribution (${d.direction})`).join('\n')}`);
+  }
+
+  if (data.spendImpact) {
+    const si = data.spendImpact;
+    parts.push(`
+Portfolio Spend Impact:
+- Total Impact: ${si.totalImpact} (${si.totalImpactDirection})
+- Impact %: ${si.impactPercent.toFixed(1)}% ${si.timeframe}
+- Most Affected: ${si.mostAffected.name} (${si.mostAffected.impact})`);
+  }
+
+  if (data.justificationData) {
+    const jd = data.justificationData;
+    parts.push(`
+Price Justification Analysis:
+- Supplier: ${jd.supplierName}
+- Requested Increase: ${jd.requestedIncrease}%
+- Market Benchmark: ${jd.marketBenchmark}%
+- Verdict: ${jd.verdictLabel}
+- Negotiation Leverage: ${jd.negotiationLeverage}`);
+  }
+
+  if (data.scenarioData) {
+    const sc = data.scenarioData;
+    parts.push(`
+Scenario Analysis:
+- Scenario: ${sc.scenarioName}
+- Assumption: ${sc.assumption}
+- Current: ${sc.currentState.value}
+- Projected: ${sc.projectedState.value}
+- Delta: ${sc.delta.amount} (${sc.delta.direction})`);
+  }
+
+  // Include extracted entities for context
+  if (intent.extractedEntities) {
+    const ent = intent.extractedEntities;
+    const entityParts: string[] = [];
+    if (ent.commodity) entityParts.push(`Commodity: ${ent.commodity}`);
+    if (ent.supplierName) entityParts.push(`Supplier: ${ent.supplierName}`);
+    if (ent.riskLevel) entityParts.push(`Risk Level: ${ent.riskLevel}`);
+    if (ent.region) entityParts.push(`Region: ${ent.region}`);
+    if (ent.category) entityParts.push(`Category: ${ent.category}`);
+    if (entityParts.length > 0) {
+      parts.push(`\nExtracted Context: ${entityParts.join(', ')}`);
+    }
   }
 
   return parts.join('\n');
@@ -809,6 +909,83 @@ function buildWidgetData(
         type: 'scenario_card',
         title: aiContent?.widgetContent?.headline || data.scenarioData.scenarioName,
         data: data.scenarioData,
+      };
+
+    case 'price_gauge':
+      if (!data.commodityData) return undefined;
+      return {
+        type: 'price_gauge',
+        title: data.commodityData.name,
+        data: {
+          title: data.commodityData.name,
+          price: data.commodityData.currentPrice ? `$${data.commodityData.currentPrice.toLocaleString()}` : '$8,245',
+          unit: data.commodityData.unit || 'per metric ton',
+          lastChecked: '2h ago',
+          change24h: {
+            value: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${(data.commodityData.priceChange.percent / 30).toFixed(1)}%` : '-1.5%',
+            percent: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${(data.commodityData.priceChange.percent / 30).toFixed(1)}%` : '-1.5%',
+            direction: data.commodityData.priceChange?.direction || 'stable',
+          },
+          change30d: {
+            value: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${data.commodityData.priceChange.percent.toFixed(1)}%` : '-3.7%',
+            percent: data.commodityData.priceChange ? `${data.commodityData.priceChange.percent > 0 ? '+' : ''}${data.commodityData.priceChange.percent.toFixed(1)}%` : '-3.7%',
+            direction: data.commodityData.priceChange?.direction || 'stable',
+          },
+          market: data.commodityData.region === 'global' ? 'LME' : data.commodityData.region?.toUpperCase() || 'Global',
+        },
+      };
+
+    case 'category_breakdown':
+      if (!data.categoryBreakdown?.length) return undefined;
+      return {
+        type: 'category_breakdown',
+        title: aiContent?.widgetContent?.headline || 'Risk by Category',
+        data: {
+          categories: data.categoryBreakdown.map(c => ({
+            name: c.category,
+            count: c.count,
+            spend: `$${(c.spend / 1000000).toFixed(1)}M`,
+            highRisk: c.highRisk,
+            avgScore: c.avgScore,
+          })),
+          totalCategories: data.categoryBreakdown.length,
+        },
+      };
+
+    case 'region_list':
+      if (!data.regionBreakdown?.length) return undefined;
+      return {
+        type: 'region_list',
+        title: aiContent?.widgetContent?.headline || 'Risk by Region',
+        data: {
+          regions: data.regionBreakdown.map(r => ({
+            name: r.region,
+            count: r.count,
+            spend: `$${(r.spend / 1000000).toFixed(1)}M`,
+            highRisk: r.highRisk,
+            avgScore: r.avgScore,
+          })),
+          totalRegions: data.regionBreakdown.length,
+        },
+      };
+
+    case 'events_feed':
+      if (!data.marketEvents?.length) return undefined;
+      return {
+        type: 'events_feed',
+        title: aiContent?.widgetContent?.headline || 'Market Events',
+        data: {
+          events: data.marketEvents.map(e => ({
+            id: e.id,
+            title: e.title,
+            summary: e.summary,
+            source: e.source,
+            timestamp: e.timestamp,
+            category: e.category,
+            impact: e.impact,
+          })),
+          totalEvents: data.marketEvents.length,
+        },
       };
 
     default:

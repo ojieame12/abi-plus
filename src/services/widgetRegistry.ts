@@ -651,6 +651,7 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     category: 'market',
     description: 'Commodity price indicator with gauge visualization.',
     intents: ['market_context'],
+    subIntents: ['commodity_drivers', 'none'],  // Only for price queries, not news
     priority: 100,
     requiredData: ['commodityData'],
     renderContexts: ['chat', 'panel'],

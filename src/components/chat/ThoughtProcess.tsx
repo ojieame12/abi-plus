@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, ChevronDown, Check, Loader2, Database, Lightbulb, Search, Cpu, Globe, LayoutGrid } from 'lucide-react';
+import { Clock, ChevronDown, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Milestone } from '../../services/ai';
 
@@ -11,29 +11,8 @@ interface ThoughtProcessProps {
     duration?: string;
     milestones?: Milestone[];
     isThinking?: boolean;
-    // Live milestone stream during thinking
     liveMilestones?: Milestone[];
 }
-
-// Icon mapping for milestone events
-const MILESTONE_ICONS: Record<string, typeof Search> = {
-    intent_classified: Search,
-    provider_selected: Cpu,
-    sources_found: Globe,
-    data_retrieved: Database,
-    widget_selected: LayoutGrid,
-    response_ready: Check,
-};
-
-// Color mapping for milestone events
-const MILESTONE_COLORS: Record<string, { bg: string; icon: string }> = {
-    intent_classified: { bg: 'bg-blue-50', icon: 'text-blue-500' },
-    provider_selected: { bg: 'bg-purple-50', icon: 'text-purple-500' },
-    sources_found: { bg: 'bg-amber-50', icon: 'text-amber-500' },
-    data_retrieved: { bg: 'bg-emerald-50', icon: 'text-emerald-500' },
-    widget_selected: { bg: 'bg-violet-50', icon: 'text-violet-500' },
-    response_ready: { bg: 'bg-green-50', icon: 'text-green-500' },
-};
 
 // ============================================
 // MAIN COMPONENT
@@ -52,7 +31,6 @@ export const ThoughtProcess = ({
         if (isThinking) {
             setIsExpanded(true);
         } else if (milestones.length > 0) {
-            // Keep expanded briefly after completion, then collapse
             const timer = setTimeout(() => setIsExpanded(false), 1500);
             return () => clearTimeout(timer);
         }
@@ -61,33 +39,31 @@ export const ThoughtProcess = ({
     // Use live milestones during thinking, final milestones after
     const displayMilestones = isThinking ? liveMilestones : milestones;
 
-    // Format timestamp for display
-    const formatTime = (ms: number) => {
-        if (ms < 1000) return `${ms}ms`;
-        return `${(ms / 1000).toFixed(1)}s`;
-    };
-
     return (
-        <div className="border-b border-slate-100">
-            {/* Collapsed Header */}
+        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
+            {/* Header - Always visible */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between py-3 hover:bg-slate-50/50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-100/50 transition-colors"
             >
                 <div className="flex items-center gap-2.5">
                     {isThinking ? (
-                        <Loader2 size={16} className="text-violet-500 animate-spin" strokeWidth={1.5} />
+                        <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center">
+                            <Loader2 size={12} className="text-violet-500 animate-spin" strokeWidth={2} />
+                        </div>
                     ) : (
-                        <Clock size={16} className="text-slate-400" strokeWidth={1.5} />
+                        <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
+                            <Clock size={12} className="text-slate-400" strokeWidth={2} />
+                        </div>
                     )}
-                    <span className={`text-sm ${isThinking ? 'text-violet-600' : 'text-slate-500'}`}>
-                        {isThinking ? 'Processing...' : 'Thought Process'}
+                    <span className={`text-sm font-medium ${isThinking ? 'text-violet-600' : 'text-slate-600'}`}>
+                        Thought Process
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
-                    {!isThinking && (
-                        <span className="text-slate-400 text-sm">{duration}</span>
-                    )}
+                <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-400 tabular-nums">
+                        {isThinking ? 'Processing...' : duration}
+                    </span>
                     <ChevronDown
                         size={16}
                         className={`text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
@@ -106,52 +82,62 @@ export const ThoughtProcess = ({
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                     >
-                        <div className="pb-4 pl-2 space-y-1.5">
-                            {displayMilestones.length === 0 && isThinking && (
-                                <div className="flex items-center gap-3 py-1 text-sm text-slate-400">
-                                    <Loader2 size={14} className="animate-spin" />
-                                    <span>Starting...</span>
-                                </div>
-                            )}
-
-                            {displayMilestones.map((milestone, index) => {
-                                const Icon = MILESTONE_ICONS[milestone.event] || Lightbulb;
-                                const colors = MILESTONE_COLORS[milestone.event] || { bg: 'bg-slate-50', icon: 'text-slate-500' };
-                                const isLast = index === displayMilestones.length - 1;
-                                const isComplete = !isThinking || !isLast;
-
-                                return (
-                                    <motion.div
-                                        key={milestone.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="flex items-center gap-3 py-1"
-                                    >
-                                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                                            isComplete ? colors.bg : 'bg-violet-50'
-                                        }`}>
-                                            {isComplete ? (
-                                                <Icon size={14} className={colors.icon} strokeWidth={1.5} />
-                                            ) : (
-                                                <Loader2 size={14} className="text-violet-500 animate-spin" strokeWidth={1.5} />
-                                            )}
+                        <div className="px-4 pb-4 pt-1 border-t border-slate-100">
+                            <div className="space-y-2 mt-3">
+                                {displayMilestones.length === 0 && isThinking && (
+                                    <div className="flex items-center gap-3 text-sm text-slate-400">
+                                        <div className="w-5 h-5 rounded-full bg-violet-50 flex items-center justify-center">
+                                            <Loader2 size={10} className="animate-spin text-violet-400" />
                                         </div>
-                                        <span className="text-sm text-slate-600 flex-1">
-                                            {milestone.label}
-                                        </span>
-                                        <span className="text-xs text-slate-400 tabular-nums">
-                                            {formatTime(milestone.timestamp)}
-                                        </span>
-                                    </motion.div>
-                                );
-                            })}
+                                        <span>Starting analysis...</span>
+                                    </div>
+                                )}
+
+                                {displayMilestones.map((milestone, index) => {
+                                    const isLast = index === displayMilestones.length - 1;
+                                    const isComplete = !isThinking || !isLast;
+
+                                    return (
+                                        <motion.div
+                                            key={milestone.id}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.2, delay: index * 0.05 }}
+                                            className="flex items-center gap-3"
+                                        >
+                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                                                isComplete
+                                                    ? 'bg-emerald-50'
+                                                    : 'bg-violet-50'
+                                            }`}>
+                                                {isComplete ? (
+                                                    <Check size={10} className="text-emerald-500" strokeWidth={2.5} />
+                                                ) : (
+                                                    <Loader2 size={10} className="text-violet-500 animate-spin" strokeWidth={2} />
+                                                )}
+                                            </div>
+                                            <span className="text-sm text-slate-600 flex-1">
+                                                {milestone.label}
+                                            </span>
+                                            <span className="text-xs text-slate-400 tabular-nums">
+                                                {formatTime(milestone.timestamp)}
+                                            </span>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
     );
+};
+
+// Format timestamp for display
+const formatTime = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
 };
 
 // ============================================
@@ -161,8 +147,8 @@ export const ThoughtProcess = ({
 export const ThinkingIndicator = () => {
     return (
         <div className="flex items-center gap-3 py-3">
-            <div className="w-6 h-6 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Loader2 size={14} className="text-violet-500 animate-spin" strokeWidth={1.5} />
+            <div className="w-5 h-5 rounded-full bg-violet-50 flex items-center justify-center">
+                <Loader2 size={12} className="text-violet-500 animate-spin" strokeWidth={2} />
             </div>
             <span className="text-sm text-slate-600">Processing your request...</span>
         </div>

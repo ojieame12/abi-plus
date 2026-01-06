@@ -59,6 +59,7 @@ interface ArtifactContent {
 
 interface WidgetContext {
     intent: IntentCategory;
+    subIntent?: string;  // Sub-intent for granular widget selection
     portfolio?: Portfolio | RiskPortfolio; // Accept both types
     suppliers?: Supplier[];
     supplier?: Supplier;
@@ -225,6 +226,7 @@ export const AIResponse = ({
             return (
                 <WidgetRenderer
                     intent={widgetContext.intent}
+                    subIntent={widgetContext.subIntent}
                     renderContext={widgetContext.renderContext || 'chat'}
                     portfolio={widgetContext.portfolio}
                     suppliers={widgetContext.suppliers}
@@ -436,9 +438,6 @@ export const AIResponse = ({
 
     // Check if we should show the footer (feedback + sources)
     const hasFooter = sources || followUps.length > 0;
-    const footerClassName = hasDetailedSources
-        ? 'flex flex-col items-start gap-2 pt-2'
-        : 'flex items-center justify-between pt-2';
 
     // ========================================
     // RENDER
@@ -464,7 +463,7 @@ export const AIResponse = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
-                        className="text-xl font-normal text-slate-900 tracking-tight"
+                        className="text-lg font-semibold text-slate-900 tracking-tight"
                     >
                         {acknowledgement}
                     </motion.h3>
@@ -496,6 +495,23 @@ export const AIResponse = ({
                         className="my-4"
                     >
                         {renderWidget()}
+                        {/* Widget Sources Footer */}
+                        {sources && isResponseSources(sources) && sources.totalInternalCount > 0 && (
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                                <button className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+                                    <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+                                        <span className="text-[8px] font-bold text-white">B</span>
+                                    </div>
+                                    <span>{sources.totalInternalCount} Beroe Data Sources</span>
+                                </button>
+                                <button className="flex items-center gap-1 text-sm text-slate-500 hover:text-teal-600 font-medium transition-colors">
+                                    <span>View Details</span>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -512,14 +528,14 @@ export const AIResponse = ({
                 )}
             </AnimatePresence>
 
-            {/* 6. Response Feedback + Sources (only show for latest message) */}
+            {/* 6. Response Feedback + Sources - Same row: feedback left, sources right */}
             <AnimatePresence>
                 {showFooter && hasFooter && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={footerClassName}
+                        className="flex items-center justify-between pt-3 gap-4"
                     >
                         <ResponseFeedback
                             onDownload={onDownload}
@@ -527,7 +543,9 @@ export const AIResponse = ({
                             onThumbsDown={() => onFeedback?.('down')}
                             onRefresh={onRefresh}
                         />
-                        {renderSources()}
+                        <div className="flex-shrink-0">
+                            {renderSources()}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

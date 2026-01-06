@@ -733,6 +733,7 @@ function App() {
                           // 3. Widget - PERSIST on all assistant messages with data
                           widgetContext={hasResponse ? {
                             intent: msg.response!.intent?.category || 'general',
+                            subIntent: msg.response!.intent?.subIntent,
                             portfolio: msg.response!.portfolio,
                             suppliers: msg.response!.suppliers,
                             supplier: msg.response!.suppliers?.[0],
@@ -742,14 +743,8 @@ function App() {
                             renderContext: 'chat',
                             onOpenArtifact: (type, payload) => openArtifact(type as ArtifactType, payload as Partial<ArtifactPayload>),
                           } : undefined}
-                          // 4. Insight bar - PERSIST on all responses
-                          insight={hasResponse && msg.response?.insight ? {
-                            text: typeof msg.response.insight === 'string'
-                              ? msg.response.insight
-                              : msg.response.insight.text || msg.response.insight.headline,
-                            detail: typeof msg.response.insight === 'object' ? msg.response.insight.detail : undefined,
-                            trend: typeof msg.response.insight === 'object' ? msg.response.insight.trend : undefined,
-                          } : undefined}
+                          // 4. Insight bar - PERSIST on all responses (pass full ResponseInsight for rich rendering)
+                          insight={hasResponse ? msg.response?.insight : undefined}
                           // 5. Sources - PERSIST on all responses
                           sources={hasResponse && hasSources ? responseSources : undefined}
                           // 6. Follow-ups - ONLY on latest message (avoid duplicate buttons)

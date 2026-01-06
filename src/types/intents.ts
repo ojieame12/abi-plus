@@ -474,6 +474,12 @@ const detectSubIntent = (query: string, category: IntentCategory): SubIntent => 
     case 'inflation_benchmark':
       return 'market_fairness';
 
+    case 'market_context':
+      // Distinguish between news/events queries and price queries
+      if (/news|event|happening|update|recent|latest|headline/i.test(q)) return 'news_events';
+      if (/trend|price|cost|forecast|outlook/i.test(q)) return 'commodity_drivers';
+      return 'news_events'; // Default to news for market context
+
     default:
       return 'none';
   }
@@ -650,6 +656,24 @@ const extractEntities = (query: string): DetectedIntent['extractedEntities'] => 
     const match = query.match(pattern);
     if (match) {
       entities.commodity = match[1].trim();
+      break;
+    }
+  }
+
+  // Extract category (supplier category/industry)
+  const categoryPatterns: Record<string, RegExp> = {
+    'Packaging': /\b(packaging|corrugated|boxes|cartons?|containers?|wrapping)\b/i,
+    'Metals': /\b(metals?|steel|aluminum|copper|brass|zinc|iron|alloy)\b/i,
+    'Chemicals': /\b(chemicals?|resins?|plastics?|polymers?|adhesives?|coatings?|solvents?)\b/i,
+    'Electronics': /\b(electronics?|semiconductors?|chips?|circuit|pcb|components?)\b/i,
+    'Energy': /\b(energy|oil|gas|natural gas|fuel|petroleum|power)\b/i,
+    'Raw Materials': /\b(raw materials?|paper|pulp|rubber|silicones?|fibers?)\b/i,
+    'Logistics': /\b(logistics?|freight|shipping|transportation|warehouse)\b/i,
+    'Manufacturing': /\b(manufacturing|industrial|machinery|equipment)\b/i,
+  };
+  for (const [categoryName, pattern] of Object.entries(categoryPatterns)) {
+    if (pattern.test(query)) {
+      entities.category = categoryName;
       break;
     }
   }
