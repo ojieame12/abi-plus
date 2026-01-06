@@ -48,6 +48,16 @@ import { NewsEventsCard } from './NewsEventsCard';
 import { AlternativesPreviewCard } from './AlternativesPreviewCard';
 import { ConcentrationWarningCard } from './ConcentrationWarningCard';
 
+// Inflation Watch Widgets
+import {
+  InflationSummaryCard,
+  DriverBreakdownCard,
+  SpendImpactCard,
+  JustificationCard,
+  ScenarioCard,
+  ExecutiveBriefCard,
+} from './inflation';
+
 // Risk Components (for alternates)
 import { RiskDistributionChart } from '../risk/RiskDistributionChart';
 import { SupplierRiskCard } from '../risk/SupplierRiskCard';
@@ -107,6 +117,14 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   NewsEventsCard,
   AlternativesPreviewCard,
   ConcentrationWarningCard,
+
+  // Widget components - Inflation Watch
+  InflationSummaryCard,
+  DriverBreakdownCard,
+  SpendImpactCard,
+  JustificationCard,
+  ScenarioCard,
+  ExecutiveBriefCard,
 
   // Risk components
   RiskDistributionChart,
@@ -639,6 +657,109 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
     // Benchmark - not yet implemented
     case 'benchmark_card':
       return null;
+
+    // Inflation Watch Widgets
+    case 'inflation_summary_card':
+      return {
+        componentType: 'InflationSummaryCard',
+        props: { ...widget.data },
+      };
+
+    case 'driver_breakdown_card':
+      return {
+        componentType: 'DriverBreakdownCard',
+        props: { ...widget.data },
+      };
+
+    case 'spend_impact_card':
+      return {
+        componentType: 'SpendImpactCard',
+        props: { ...widget.data },
+      };
+
+    case 'justification_card':
+      return {
+        componentType: 'JustificationCard',
+        props: { ...widget.data },
+      };
+
+    case 'scenario_card':
+      return {
+        componentType: 'ScenarioCard',
+        props: { ...widget.data },
+      };
+
+    case 'executive_brief_card':
+      return {
+        componentType: 'ExecutiveBriefCard',
+        props: { ...widget.data },
+      };
+
+    case 'commodity_gauge':
+      return {
+        componentType: 'CommodityGaugeCard',
+        props: { ...widget.data },
+      };
+
+    case 'price_movement_table':
+      return {
+        componentType: 'PriceMovementTable',
+        props: { ...widget.data },
+      };
+
+    case 'top_movers_list':
+      return {
+        componentType: 'TopMoversCard',
+        props: { ...widget.data },
+      };
+
+    case 'factor_contribution_chart':
+      return {
+        componentType: 'FactorContributionChart',
+        props: { ...widget.data },
+      };
+
+    case 'exposure_heatmap':
+      return {
+        componentType: 'ExposureHeatmap',
+        props: { ...widget.data },
+      };
+
+    case 'budget_variance_card':
+      return {
+        componentType: 'BudgetVarianceCard',
+        props: { ...widget.data },
+      };
+
+    case 'market_fairness_gauge':
+      return {
+        componentType: 'MarketFairnessGauge',
+        props: { ...widget.data },
+      };
+
+    case 'negotiation_ammo_card':
+      return {
+        componentType: 'NegotiationAmmoCard',
+        props: { ...widget.data },
+      };
+
+    case 'forecast_chart':
+      return {
+        componentType: 'ForecastChart',
+        props: { ...widget.data },
+      };
+
+    case 'sensitivity_table':
+      return {
+        componentType: 'SensitivityTable',
+        props: { ...widget.data },
+      };
+
+    case 'talking_points_card':
+      return {
+        componentType: 'TalkingPointsCard',
+        props: { ...widget.data },
+      };
 
     default:
       // Log unknown widget types for debugging

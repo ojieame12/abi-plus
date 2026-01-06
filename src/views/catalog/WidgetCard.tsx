@@ -1,0 +1,181 @@
+import { useState } from 'react';
+import { ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
+import type { WidgetCatalogEntry } from './catalogData';
+import { PropTable } from './PropTable';
+import { CodeBlock } from './CodeBlock';
+
+// Import all widget components
+import {
+  RiskDistributionWidget,
+  MetricRowWidget,
+  SpendExposureWidget,
+  HealthScorecardWidget,
+  SupplierRiskCardWidget,
+  SupplierTableWidget,
+  SupplierMiniCard,
+  ComparisonTableWidget,
+  AlertCardWidget,
+  TrendChartWidget,
+  TrendChangeIndicator,
+  EventTimelineWidget,
+  EventsFeedWidget,
+  PriceGaugeWidget,
+  NewsItemCard,
+  CategoryBreakdownWidget,
+  RegionListWidget,
+  CategoryBadge,
+  StatusBadge,
+  ScoreBreakdownWidget,
+  StatCard,
+  InfoCard,
+  QuoteCard,
+  RecommendationCard,
+  ChecklistCard,
+  ProgressCard,
+  ExecutiveSummaryCard,
+  DataListCard,
+  FactorBreakdownCard,
+  AlternativesPreviewCard,
+  ConcentrationWarningCard,
+} from '../../components/widgets';
+
+import {
+  HandoffCard,
+  ActionConfirmationCard,
+} from '../../components/risk';
+
+// Component registry
+const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
+  RiskDistributionWidget,
+  MetricRowWidget,
+  SpendExposureWidget,
+  HealthScorecardWidget,
+  SupplierRiskCardWidget,
+  SupplierTableWidget,
+  SupplierMiniCard,
+  ComparisonTableWidget,
+  AlertCardWidget,
+  TrendChartWidget,
+  TrendChangeIndicator,
+  EventTimelineWidget,
+  EventsFeedWidget,
+  PriceGaugeWidget,
+  NewsItemCard,
+  CategoryBreakdownWidget,
+  RegionListWidget,
+  CategoryBadge,
+  StatusBadge,
+  ScoreBreakdownWidget,
+  StatCard,
+  InfoCard,
+  QuoteCard,
+  RecommendationCard,
+  ChecklistCard,
+  ProgressCard,
+  ExecutiveSummaryCard,
+  DataListCard,
+  FactorBreakdownCard,
+  AlternativesPreviewCard,
+  ConcentrationWarningCard,
+  HandoffCard,
+  ActionConfirmationCard,
+};
+
+interface WidgetCardProps {
+  widget: WidgetCatalogEntry;
+}
+
+export const WidgetCard = ({ widget }: WidgetCardProps) => {
+  const [selectedSize, setSelectedSize] = useState<'S' | 'M' | 'L'>(widget.defaultSize);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const Component = COMPONENT_MAP[widget.component];
+
+  const renderWidget = () => {
+    if (!Component) {
+      return (
+        <div className="flex items-center justify-center h-32 bg-slate-100 rounded-lg text-slate-500 text-sm">
+          Component not found: {widget.component}
+        </div>
+      );
+    }
+
+    try {
+      // Handle different prop structures
+      const props = widget.demoData;
+      return <Component {...props} />;
+    } catch (error) {
+      return (
+        <div className="flex items-center justify-center h-32 bg-rose-50 rounded-lg text-rose-500 text-sm">
+          Error rendering widget
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div
+      id={widget.id}
+      className={`bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300 ${
+        isExpanded ? 'col-span-full' : ''
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-slate-900">{widget.name}</h3>
+          <div className="flex items-center gap-1">
+            {widget.sizes.map(size => (
+              <button
+                key={size}
+                onClick={() => setSelectedSize(size)}
+                className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
+                  selectedSize === size
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            title={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="px-5 py-3 border-b border-slate-100">
+        <p className="text-sm text-slate-600">{widget.description}</p>
+      </div>
+
+      {/* Demo Area */}
+      <div className="p-5 bg-gradient-to-br from-slate-50 to-white min-h-[200px]">
+        <div className="text-xs text-slate-400 mb-3 font-medium uppercase tracking-wide">
+          Live Demo
+        </div>
+        <div
+          className={`${
+            selectedSize === 'S' ? 'max-w-xs' : selectedSize === 'M' ? 'max-w-md' : 'max-w-full'
+          }`}
+        >
+          {renderWidget()}
+        </div>
+      </div>
+
+      {/* Props & Code */}
+      <div className="px-5 py-4 space-y-4 border-t border-slate-100">
+        <PropTable props={widget.props} defaultExpanded={false} />
+        <CodeBlock code={widget.usageExample} defaultExpanded={false} />
+      </div>
+    </div>
+  );
+};

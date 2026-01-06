@@ -48,6 +48,14 @@ export interface DataContext {
   supplier?: Supplier; // Single supplier focus
   riskChanges?: RiskChange[];
 
+  // Inflation data
+  inflationSummary?: unknown;
+  commodityData?: unknown;
+  commodityDrivers?: unknown;
+  portfolioExposure?: unknown;
+  justificationData?: unknown;
+  scenarioData?: unknown;
+
   // Widget from AI
   widget?: WidgetData;
 
@@ -537,6 +545,107 @@ const SELECTION_RULES: SelectionRule[] = [
   },
 
   // ==========================================
+  // INFLATION WATCH
+  // ==========================================
+  {
+    id: 'inflation_summary_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'inflation_summary' &&
+      renderCtx === 'chat' &&
+      (!!ctx.inflationSummary || ctx.widget?.type === 'inflation_summary_card'),
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'InflationSummaryCard',
+      size: 'md',
+      props: ctx.widget?.data || ctx.inflationSummary || {},
+      expandsTo: 'InflationDashboardArtifact',
+    }),
+  },
+  {
+    id: 'inflation_drivers_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'inflation_drivers' &&
+      renderCtx === 'chat' &&
+      (!!ctx.commodityDrivers || ctx.widget?.type === 'driver_breakdown_card'),
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'DriverBreakdownCard',
+      size: 'md',
+      props: ctx.widget?.data || ctx.commodityDrivers || {},
+      expandsTo: 'DriverAnalysisArtifact',
+    }),
+  },
+  {
+    id: 'inflation_impact_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'inflation_impact' &&
+      renderCtx === 'chat' &&
+      (!!ctx.portfolioExposure || ctx.widget?.type === 'spend_impact_card'),
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'SpendImpactCard',
+      size: 'md',
+      props: ctx.widget?.data || ctx.portfolioExposure || {},
+      expandsTo: 'ImpactAnalysisArtifact',
+    }),
+  },
+  {
+    id: 'inflation_justification_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'inflation_justification' &&
+      renderCtx === 'chat' &&
+      (!!ctx.justificationData || ctx.widget?.type === 'justification_card'),
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'JustificationCard',
+      size: 'md',
+      props: ctx.widget?.data || ctx.justificationData || {},
+      expandsTo: 'JustificationReportArtifact',
+    }),
+  },
+  {
+    id: 'inflation_scenarios_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'inflation_scenarios' &&
+      renderCtx === 'chat' &&
+      (!!ctx.scenarioData || ctx.widget?.type === 'scenario_card'),
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'ScenarioCard',
+      size: 'md',
+      props: ctx.widget?.data || ctx.scenarioData || {},
+      expandsTo: 'ScenarioPlannerArtifact',
+    }),
+  },
+  {
+    id: 'inflation_communication_chat',
+    matches: (ctx, renderCtx) =>
+      ctx.intent === 'inflation_communication' &&
+      renderCtx === 'chat' &&
+      (!!ctx.inflationSummary || ctx.widget?.type === 'executive_brief_card'),
+    priority: 100,
+    getConfig: (ctx) => ({
+      componentType: 'ExecutiveBriefCard',
+      size: 'md',
+      props: ctx.widget?.data || ctx.inflationSummary || {},
+      expandsTo: 'ExecutivePresentationArtifact',
+    }),
+  },
+  {
+    id: 'commodity_gauge_chat',
+    matches: (ctx, renderCtx) =>
+      (ctx.intent === 'inflation_summary' || ctx.intent === 'inflation_drivers') &&
+      renderCtx === 'chat' &&
+      ctx.widget?.type === 'commodity_gauge',
+    priority: 110, // Higher priority when widget type is commodity_gauge
+    getConfig: (ctx) => ({
+      componentType: 'CommodityGaugeCard',
+      size: 'md',
+      props: ctx.widget?.data || {},
+    }),
+  },
+
+  // ==========================================
   // NO WIDGET NEEDED
   // ==========================================
   {
@@ -679,6 +788,32 @@ export const WIDGET_COMPONENT_MAP: Record<WidgetType, string> = {
   progress_card: 'ProgressCard',
   executive_summary: 'ExecutiveSummaryCard',
   data_list: 'DataListCard',
+
+  // Risk Analysis
+  factor_breakdown: 'FactorBreakdownCard',
+  news_events: 'NewsEventsCard',
+  alternatives_preview: 'AlternativesPreviewCard',
+  concentration_warning: 'ConcentrationWarningCard',
+
+  // Inflation Watch
+  inflation_summary_card: 'InflationSummaryCard',
+  price_movement_table: 'PriceMovementTable',
+  commodity_gauge: 'CommodityGaugeCard',
+  top_movers_list: 'TopMoversCard',
+  driver_breakdown_card: 'DriverBreakdownCard',
+  factor_contribution_chart: 'FactorContributionChart',
+  market_context_card: 'MarketContextCard',
+  spend_impact_card: 'SpendImpactCard',
+  exposure_heatmap: 'ExposureHeatmap',
+  budget_variance_card: 'BudgetVarianceCard',
+  justification_card: 'JustificationCard',
+  market_fairness_gauge: 'MarketFairnessGauge',
+  negotiation_ammo_card: 'NegotiationAmmoCard',
+  scenario_card: 'ScenarioCard',
+  forecast_chart: 'ForecastChart',
+  sensitivity_table: 'SensitivityTable',
+  executive_brief_card: 'ExecutiveBriefCard',
+  talking_points_card: 'TalkingPointsCard',
 
   // Text Only
   none: '',

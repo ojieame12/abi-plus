@@ -171,7 +171,8 @@ export const POST_SUPPLIER_DETAIL_SUGGESTIONS: ContextualSuggestion[] = [
 export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
   portfolio_overview: [
     /risk (exposure|overview|summary|posture)/i,
-    /how.*(risk|portfolio)/i,
+    /how.*(risk|exposure).*(portfolio|suppliers)/i,
+    /how.*(portfolio|suppliers).*(doing|performing|status|look)/i,
     /show.*(my|me).*(risk|portfolio)/i,
     /what('?s| is) my.*risk/i,
     /how many.*(supplier|high risk)/i,
@@ -179,7 +180,6 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /summary of.*(my|the|our).*(portfolio|supplier|risk)/i,
     /supplier risk portfolio/i,
     /portfolio (summary|overview|status)/i,
-    /my (portfolio|suppliers)/i,
     /overview of.*(supplier|portfolio|risk)/i,
   ],
   filtered_discovery: [
@@ -330,6 +330,34 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
   general: [], // Fallback, no specific patterns
 };
 
+// Prioritize more specific intents to avoid broad matches swallowing queries.
+const INTENT_PRIORITY: IntentCategory[] = [
+  // Inflation intents
+  'inflation_summary',
+  'inflation_drivers',
+  'inflation_impact',
+  'inflation_justification',
+  'inflation_scenarios',
+  'inflation_communication',
+  'inflation_benchmark',
+  // Market research
+  'market_context',
+  // Risk-specific intents
+  'restricted_query',
+  'explanation_why',
+  'trend_detection',
+  'comparison',
+  'action_trigger',
+  'supplier_deep_dive',
+  'filtered_discovery',
+  'portfolio_overview',
+  // Configuration & exports
+  'setup_config',
+  'reporting_export',
+  // Fallback
+  'general',
+];
+
 // Patterns that trigger automatic research (Perplexity)
 export const RESEARCH_TRIGGERS: RegExp[] = [
   /what('?s| is) happening/i,
@@ -439,11 +467,12 @@ export const classifyIntent = (query: string): DetectedIntent => {
   // Check for research triggers first
   const researchCheck = shouldTriggerResearch(normalizedQuery);
 
-  // Check each intent category
-  for (const [category, patterns] of Object.entries(INTENT_PATTERNS)) {
+  // Check each intent category in priority order
+  for (const category of INTENT_PRIORITY) {
+    const patterns = INTENT_PATTERNS[category] || [];
     for (const pattern of patterns) {
       if (pattern.test(normalizedQuery)) {
-        const intentCategory = category as IntentCategory;
+        const intentCategory = category;
         const subIntent = detectSubIntent(normalizedQuery, intentCategory);
 
         // Determine if this sub-intent needs research

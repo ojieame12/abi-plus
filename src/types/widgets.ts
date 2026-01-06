@@ -1629,6 +1629,56 @@ Shows: Key points, metrics, focus areas, copy/share buttons
 Use for: Generic lists of items
 Shows: Items with values, status dots, optional icons
 
+### INFLATION & PRICING
+
+**inflation_summary_card** (M, L)
+Use for: Monthly inflation overview, "what changed this month"
+Shows: Period headline, key price changes, portfolio impact, top drivers
+
+**price_movement_table** (M, L)
+Use for: Commodity price table, "show price changes"
+Shows: Table with prices, changes, exposure for each commodity
+
+**commodity_gauge** (M, L)
+Use for: Single commodity price, "what's the price of steel"
+Shows: Price gauge with range, daily/monthly changes, portfolio exposure
+
+**top_movers_list** (S, M)
+Use for: Quick view of biggest changes
+Shows: Top 5 increases and decreases with impact
+
+**driver_breakdown_card** (M, L)
+Use for: "Why did steel go up", root cause analysis
+Shows: Contributing factors with impact %, market context, sources
+
+**spend_impact_card** (M, L)
+Use for: "How does this affect my spend", portfolio exposure
+Shows: Total impact amount, breakdown by category, most affected areas
+
+**justification_card** (M, L)
+Use for: "Is this price increase fair", supplier negotiation
+Shows: Market comparison, verdict, negotiation points, recommendation
+
+**market_fairness_gauge** (M)
+Use for: Price validation, market benchmarking
+Shows: Supplier price vs market range with percentile
+
+**scenario_card** (M, L)
+Use for: "What if prices rise 10%", scenario planning
+Shows: Assumption, current vs projected, delta, recommendations
+
+**forecast_chart** (M, L)
+Use for: Price forecasts, future projections
+Shows: Historical prices + forecast range with confidence bands
+
+**executive_brief_card** (M, L)
+Use for: "Help me explain to leadership", stakeholder communication
+Shows: Summary, key metrics, highlights, outlook, shareable format
+
+**talking_points_card** (M)
+Use for: Stakeholder meeting prep
+Shows: Key points organized by audience with data support
+
 ### TEXT ONLY
 
 **none**

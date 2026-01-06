@@ -39,7 +39,15 @@ export type ArtifactType =
   | 'category_overview'
   | 'portfolio_dashboard'
   | 'regional_analysis'
-  | 'spend_analysis';
+  | 'spend_analysis'
+  // Inflation Watch
+  | 'inflation_dashboard'
+  | 'commodity_dashboard'
+  | 'driver_analysis'
+  | 'impact_analysis'
+  | 'justification_report'
+  | 'scenario_planner'
+  | 'executive_presentation';
 
 // ============================================
 // ARTIFACT METADATA
@@ -179,6 +187,64 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     category: 'discovery',
     description: 'Detailed spend exposure analysis by risk, category, and region',
     defaultWidth: '60%',
+    allowExpand: true,
+  },
+
+  // Inflation Watch Artifacts
+  inflation_dashboard: {
+    id: 'inflation_dashboard',
+    title: 'Inflation Dashboard',
+    category: 'discovery',
+    description: 'Full inflation overview with price movements, exposure, and drivers',
+    defaultWidth: '60%',
+    allowExpand: true,
+  },
+  commodity_dashboard: {
+    id: 'commodity_dashboard',
+    title: 'Commodity Analysis',
+    category: 'insight',
+    description: 'Deep dive into a single commodity with history, drivers, and forecast',
+    defaultWidth: '50%',
+    allowExpand: true,
+  },
+  driver_analysis: {
+    id: 'driver_analysis',
+    title: 'Price Driver Analysis',
+    category: 'insight',
+    description: 'Detailed root cause analysis for price changes with market context',
+    defaultWidth: '50%',
+    allowExpand: true,
+  },
+  impact_analysis: {
+    id: 'impact_analysis',
+    title: 'Impact Analysis',
+    category: 'discovery',
+    description: 'Portfolio impact from inflation with exposure breakdown and mitigation options',
+    defaultWidth: '60%',
+    allowExpand: true,
+  },
+  justification_report: {
+    id: 'justification_report',
+    title: 'Price Justification',
+    category: 'action',
+    description: 'Supplier price increase validation with market comparison and negotiation support',
+    defaultWidth: '50%',
+    allowExpand: true,
+  },
+  scenario_planner: {
+    id: 'scenario_planner',
+    title: 'Scenario Planner',
+    category: 'action',
+    description: 'Interactive what-if modeling for price scenarios and budget impact',
+    defaultWidth: '60%',
+    allowExpand: true,
+  },
+  executive_presentation: {
+    id: 'executive_presentation',
+    title: 'Executive Presentation',
+    category: 'action',
+    description: 'Shareable executive summary with key metrics and stakeholder talking points',
+    defaultWidth: '50%',
     allowExpand: true,
   },
 };
