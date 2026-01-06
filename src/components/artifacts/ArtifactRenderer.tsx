@@ -52,6 +52,60 @@ const ArtifactPlaceholder = ({ type }: { type: string }) => (
 );
 
 // ============================================
+// AI CONTENT SECTION
+// ============================================
+
+interface AIContent {
+  title?: string;
+  overview?: string;
+  keyPoints?: string[];
+  recommendations?: string[];
+}
+
+const AIContentSection = ({ aiContent }: { aiContent?: AIContent }) => {
+  if (!aiContent || (!aiContent.overview && !aiContent.keyPoints?.length)) {
+    return null;
+  }
+
+  return (
+    <div className="px-5 py-4 bg-gradient-to-br from-violet-50/50 to-slate-50 border-b border-slate-100">
+      {aiContent.title && (
+        <h4 className="text-sm font-semibold text-slate-900 mb-2">{aiContent.title}</h4>
+      )}
+      {aiContent.overview && (
+        <p className="text-sm text-slate-600 leading-relaxed mb-3">{aiContent.overview}</p>
+      )}
+      {aiContent.keyPoints && aiContent.keyPoints.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Key Points</span>
+          <ul className="space-y-1">
+            {aiContent.keyPoints.map((point, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 mt-1.5 shrink-0" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {aiContent.recommendations && aiContent.recommendations.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Recommendations</span>
+          <ul className="mt-1.5 space-y-1">
+            {aiContent.recommendations.map((rec, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <span className="text-violet-500 shrink-0">→</span>
+                {rec}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================
 // RENDERER
 // ============================================
 
@@ -132,43 +186,68 @@ export const ArtifactRenderer = ({
         const categories = (payload as any).categories || [];
         const locations = (payload as any).locations || [];
         const supplierIds = suppliers.map((supplier: any) => supplier.id).filter(Boolean);
+        const aiContent = (payload as any).aiContent;
 
         return (
-          <SupplierTableArtifact
-            suppliers={suppliers}
-            totalCount={totalCount}
-            categories={categories}
-            locations={locations}
-            onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
-            onExport={() => onAction?.('export', { context: 'supplier', entityIds: supplierIds })}
-          />
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={aiContent} />
+            <div className="flex-1 min-h-0">
+              <SupplierTableArtifact
+                suppliers={suppliers}
+                totalCount={totalCount}
+                categories={categories}
+                locations={locations}
+                onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
+                onExport={() => onAction?.('export', { context: 'supplier', entityIds: supplierIds })}
+              />
+            </div>
+          </div>
         );
       }
 
     case 'supplier_comparison':
-      return (
-        <ComparisonArtifact
-          suppliers={(payload as any).suppliers || []}
-          onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
-          onExport={() => onAction?.('export', {
-            context: 'comparison',
-            entityIds: ((payload as any).suppliers || []).map((supplier: any) => supplier.id).filter(Boolean),
-          })}
-          onViewDashboard={() => onAction?.('view_dashboard')}
-        />
-      );
+      {
+        const compSuppliers = (payload as any).suppliers || [];
+        const compAiContent = (payload as any).aiContent;
+
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={compAiContent} />
+            <div className="flex-1 min-h-0">
+              <ComparisonArtifact
+                suppliers={compSuppliers}
+                onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
+                onExport={() => onAction?.('export', {
+                  context: 'comparison',
+                  entityIds: compSuppliers.map((supplier: any) => supplier.id).filter(Boolean),
+                })}
+                onViewDashboard={() => onAction?.('view_dashboard')}
+              />
+            </div>
+          </div>
+        );
+      }
 
     case 'supplier_alternatives':
-      return (
-        <AlternativesArtifact
-          currentSupplier={(payload as any).currentSupplier}
-          alternatives={(payload as any).alternatives || []}
-          onRequestAssessment={(ids) => onAction?.('request_assessment', ids)}
-          onAddToShortlist={(ids) => onAction?.('add_to_shortlist', ids)}
-          onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
-          onClose={onClose}
-        />
-      );
+      {
+        const altAiContent = (payload as any).aiContent;
+
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={altAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <AlternativesArtifact
+                currentSupplier={(payload as any).currentSupplier}
+                alternatives={(payload as any).alternatives || []}
+                onRequestAssessment={(ids) => onAction?.('request_assessment', ids)}
+                onAddToShortlist={(ids) => onAction?.('add_to_shortlist', ids)}
+                onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
 
     // Actions
     case 'alert_config':
@@ -212,18 +291,24 @@ export const ArtifactRenderer = ({
         const alerts = (payload as any).alerts || [];
         const topMovers = (payload as any).topMovers || [];
         const lastUpdated = (payload as any).lastUpdated || new Date().toISOString();
+        const portfolioAiContent = (payload as any).aiContent;
 
         return (
-          <PortfolioDashboardArtifact
-            totalSuppliers={totalSuppliers}
-            distribution={distribution}
-            trends={trends}
-            alerts={alerts}
-            topMovers={topMovers}
-            lastUpdated={lastUpdated}
-            onExport={() => onAction?.('export', { context: 'portfolio' })}
-            onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
-          />
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={portfolioAiContent} />
+            <div className="flex-1 min-h-0">
+              <PortfolioDashboardArtifact
+                totalSuppliers={totalSuppliers}
+                distribution={distribution}
+                trends={trends}
+                alerts={alerts}
+                topMovers={topMovers}
+                lastUpdated={lastUpdated}
+                onExport={() => onAction?.('export', { context: 'portfolio' })}
+                onSupplierClick={(supplier) => onAction?.('select_supplier', supplier)}
+              />
+            </div>
+          </div>
         );
       }
 

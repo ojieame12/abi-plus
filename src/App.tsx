@@ -185,6 +185,8 @@ function App() {
       ...payload,
       sourceSuppliers: response.suppliers,
       sourceRiskChanges: response.riskChanges,
+      // Pass AI-generated deep-dive content
+      aiContent: response.artifactContent,
     });
   };
 
@@ -326,6 +328,8 @@ function App() {
           acknowledgement: response.acknowledgement,
           handoff: response.handoff,
           riskChanges: response.riskChanges,
+          // AI-generated artifact panel content
+          artifactContent: response.artifactContent,
         }).catch(err => console.error('[App] Failed to save AI message:', err));
 
         // Auto-detect and update category from intent (only on first message)
@@ -491,6 +495,8 @@ function App() {
           acknowledgement: m.metadata.acknowledgement,
           handoff: m.metadata.handoff,
           riskChanges: m.metadata.riskChanges,
+          // AI-generated artifact panel content
+          artifactContent: m.metadata.artifactContent,
         } : undefined,
         isNew: false,
       }));

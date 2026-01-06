@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Globe, ArrowRight, Sparkles } from 'lucide-react';
+import { Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatInput } from '../components/chat/ChatInput';
-import { PromptBuilder } from '../components/chat/PromptBuilder';
-import { routeBuilderSelection } from '../services/promptBuilder/BuilderRouter';
 
 interface HomeViewProps {
     onOpenArtifact: () => void;

@@ -113,8 +113,8 @@ const INTENT_WIDGET_MAP: Record<IntentCategory, WidgetRoute> = {
 // Sub-intent overrides (more specific routing)
 const SUBINTENT_OVERRIDES: Partial<Record<SubIntent, Partial<WidgetRoute>>> = {
   find_alternatives: {
-    widgetType: 'supplier_table',
-    artifactType: 'supplier_table',
+    widgetType: 'alternatives_preview',
+    artifactType: 'supplier_alternatives',
     requiresSuppliers: true,
   },
   news_events: {
@@ -219,9 +219,8 @@ ${dataContext}
   },
   "artifactContent": {
     "title": "Panel Title",
-    "sections": [
-      { "heading": "Section Name", "content": "Detailed explanation..." }
-    ],
+    "overview": "1-2 paragraph deep-dive explanation of the data and context",
+    "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
     "recommendations": ["Action 1", "Action 2"]
   },
   "followUps": ["Question 1?", "Question 2?", "Question 3?"]
@@ -233,7 +232,7 @@ ${dataContext}
 - headline: Most important takeaway
 - summary: What it means and what to do about it
 - factors: 2-4 contributing factors with their impact
-- artifactContent: Deeper analysis for expanded panel
+- artifactContent: Deep-dive analysis for expanded panel with overview, key points, and recommendations
 - followUps: 3 relevant next questions
 
 Respond with ONLY the JSON, no other text.`;

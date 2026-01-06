@@ -1,5 +1,14 @@
-import { useState, useRef } from 'react';
-import { Plus, Globe, X, Paperclip, Brain, Zap, FileText, Database, Search, MessageSquare, Sparkles } from 'lucide-react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { Plus, Globe, X, Paperclip, Brain, Zap, FileText, Database, Search, MessageSquare, Sparkles, Puzzle, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    type BuilderSelection,
+    type BuilderDomain,
+    BUILDER_DOMAINS,
+    getSubjectsForDomain,
+    getActionsForSubject,
+    buildPrompt,
+} from '../../services/promptBuilder';
 
 interface AttachedFile {
     id: string;
@@ -58,6 +67,13 @@ export const ChatInput = ({
     const [internalInputMode, setInternalInputMode] = useState<InputMode>('ask');
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [builderMode, setBuilderMode] = useState(false);
+    const [builderSelection, setBuilderSelection] = useState<BuilderSelection>({
+        domain: null,
+        subject: null,
+        action: null,
+        modifiers: {},
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Use external state if provided, otherwise use internal
@@ -143,6 +159,62 @@ export const ChatInput = ({
     const removeFile = (id: string) => {
         setAttachedFiles(prev => prev.filter(f => f.id !== id));
     };
+
+    // Builder mode handlers
+    const handleBuilderToggle = () => {
+        if (builderMode) {
+            // Turning off - reset builder state
+            setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
+        }
+        setBuilderMode(!builderMode);
+    };
+
+    const handleDomainSelect = (domain: BuilderDomain) => {
+        setBuilderSelection({ domain, subject: null, action: null, modifiers: {} });
+    };
+
+    const handleSubjectSelect = (subject: string) => {
+        setBuilderSelection(prev => ({ ...prev, subject, action: null, modifiers: {} }));
+    };
+
+    const handleActionSelect = (action: string) => {
+        const newSelection = { ...builderSelection, action };
+        setBuilderSelection(newSelection);
+        // Generate and set the prompt
+        const prompt = buildPrompt(newSelection);
+        if (prompt) {
+            handleMessageChange(prompt);
+            // Auto-exit builder mode after selection complete
+            setTimeout(() => {
+                setBuilderMode(false);
+                setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
+            }, 100);
+        }
+    };
+
+    const handleBuilderReset = () => {
+        setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
+    };
+
+    const handleBuilderBack = () => {
+        if (builderSelection.action) {
+            setBuilderSelection(prev => ({ ...prev, action: null }));
+        } else if (builderSelection.subject) {
+            setBuilderSelection(prev => ({ ...prev, subject: null }));
+        } else if (builderSelection.domain) {
+            setBuilderSelection(prev => ({ ...prev, domain: null }));
+        }
+    };
+
+    // Builder derived state
+    const builderSubjects = builderSelection.domain ? getSubjectsForDomain(builderSelection.domain) : [];
+    const builderActions = builderSelection.domain && builderSelection.subject
+        ? getActionsForSubject(builderSelection.domain, builderSelection.subject)
+        : [];
+    const builderLevel = !builderSelection.domain ? 'domain'
+        : !builderSelection.subject ? 'subject'
+        : !builderSelection.action ? 'action'
+        : 'complete';
 
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return bytes + 'b';
@@ -266,22 +338,104 @@ export const ChatInput = ({
                     </div>
                 )}
 
-                {/* Text Input */}
-                <div className="px-5 pt-4 pb-3 relative">
-                    <textarea
-                        value={message}
-                        onChange={(e) => handleMessageChange(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        placeholder={dynamicPlaceholder}
-                        rows={2}
-                        className="w-full resize-none bg-transparent text-primary placeholder:text-muted focus:outline-none text-[15px] pr-14"
-                        style={{ minHeight: '48px', maxHeight: '150px' }}
-                    />
+                {/* Text Input / Builder Area */}
+                <div className="px-5 pt-4 pb-3 relative overflow-hidden" style={{ minHeight: '72px' }}>
+                    <AnimatePresence mode="wait">
+                        {builderMode ? (
+                            <motion.div
+                                key="builder"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                                className="w-full"
+                            >
+                                {/* Breadcrumb trail */}
+                                {builderSelection.domain && (
+                                    <div className="flex items-center gap-1 text-xs text-slate-400 mb-2">
+                                        <button
+                                            onClick={handleBuilderReset}
+                                            className="hover:text-violet-500 transition-colors"
+                                        >
+                                            {BUILDER_DOMAINS.find(d => d.id === builderSelection.domain)?.label}
+                                        </button>
+                                        {builderSelection.subject && (
+                                            <>
+                                                <ChevronRight size={12} className="text-slate-300" />
+                                                <button
+                                                    onClick={() => setBuilderSelection(prev => ({ ...prev, action: null }))}
+                                                    className="hover:text-violet-500 transition-colors"
+                                                >
+                                                    {builderSubjects.find(s => s.id === builderSelection.subject)?.label}
+                                                </button>
+                                            </>
+                                        )}
+                                        <button
+                                            onClick={handleBuilderBack}
+                                            className="ml-2 text-slate-400 hover:text-slate-600"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Level chips */}
+                                <div className="flex flex-wrap gap-2">
+                                    {builderLevel === 'domain' && BUILDER_DOMAINS.map(domain => (
+                                        <BuilderChip
+                                            key={domain.id}
+                                            label={domain.label}
+                                            onClick={() => handleDomainSelect(domain.id as BuilderDomain)}
+                                        />
+                                    ))}
+                                    {builderLevel === 'subject' && builderSubjects.map(subject => (
+                                        <BuilderChip
+                                            key={subject.id}
+                                            label={subject.label}
+                                            onClick={() => handleSubjectSelect(subject.id)}
+                                        />
+                                    ))}
+                                    {builderLevel === 'action' && builderActions.map(action => (
+                                        <BuilderChip
+                                            key={action.id}
+                                            label={action.label}
+                                            onClick={() => handleActionSelect(action.id)}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Helper text */}
+                                <p className="text-xs text-slate-400 mt-2">
+                                    {builderLevel === 'domain' && 'What area do you want to explore?'}
+                                    {builderLevel === 'subject' && 'What specifically?'}
+                                    {builderLevel === 'action' && 'What would you like to do?'}
+                                </p>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="textarea"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            >
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => handleMessageChange(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    onFocus={handleFocus}
+                                    onBlur={handleBlur}
+                                    placeholder={dynamicPlaceholder}
+                                    rows={2}
+                                    className="w-full resize-none bg-transparent text-primary placeholder:text-muted focus:outline-none text-[15px] pr-14"
+                                    style={{ minHeight: '48px', maxHeight: '150px' }}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Floating Search Toggle - positioned top right */}
-                    {showModeToggle && (
+                    {showModeToggle && !builderMode && (
                         <div className="absolute right-5 top-4">
                             <InputModeToggle
                                 mode={inputMode}
@@ -321,6 +475,16 @@ export const ChatInput = ({
                                 isActive={webSearchEnabled}
                             />
                             <Tooltip>Include Internet Sources</Tooltip>
+                        </div>
+
+                        {/* Builder Mode Toggle */}
+                        <div className="relative group">
+                            <ToolbarButton
+                                icon={Puzzle}
+                                onClick={handleBuilderToggle}
+                                isActive={builderMode}
+                            />
+                            <Tooltip>{builderMode ? 'Exit builder' : 'Build a prompt'}</Tooltip>
                         </div>
 
                         {/* Thinking Mode Toggle */}
@@ -555,3 +719,25 @@ const InputModeToggle = ({ mode, onModeChange }: InputModeToggleProps) => {
     );
 };
 
+// Builder Chip Component
+const BuilderChip = ({ label, onClick, isSelected }: { label: string; onClick: () => void; isSelected?: boolean }) => (
+    <motion.button
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.15 }}
+        onClick={onClick}
+        className={`
+            inline-flex items-center px-3 py-1.5 rounded-full
+            text-sm font-medium cursor-pointer select-none
+            transition-all duration-150 ease-out border
+            ${isSelected
+                ? 'bg-violet-50 border-violet-300 text-violet-700'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-600'
+            }
+        `}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+    >
+        {label}
+    </motion.button>
+);
