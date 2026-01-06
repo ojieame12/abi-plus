@@ -282,6 +282,12 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /root cause.*(price|inflation)/i,
     /factors?.*(affecting|impacting|driving).*(price|cost)/i,
     /why did.*(price|cost|steel|aluminum|copper|commodity)/i,
+    // Price trend queries for specific commodities
+    /price.*trend.*(for|of|in)/i,
+    /what.*price.*trend/i,
+    /(steel|aluminum|copper|corrugated|packaging|commodity|metal).*(price|trend)/i,
+    /trend.*(steel|aluminum|copper|corrugated|packaging|commodity|metal)/i,
+    /how.*(?:is|are).*(steel|aluminum|copper|corrugated).*(price|doing|performing)/i,
   ],
   inflation_impact: [
     /impact.*(my|our).*(spend|budget|portfolio|cost)/i,

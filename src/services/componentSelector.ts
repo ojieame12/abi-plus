@@ -730,6 +730,34 @@ export const buildDataContext = (
     hasHandoff?: boolean;
   } = {}
 ): DataContext => {
+  // Extract inflation data from widget if present
+  const widget = options.widget;
+  let inflationSummary: unknown;
+  let commodityDrivers: unknown;
+  let portfolioExposure: unknown;
+  let justificationData: unknown;
+  let scenarioData: unknown;
+
+  if (widget?.data) {
+    switch (widget.type) {
+      case 'inflation_summary_card':
+        inflationSummary = widget.data;
+        break;
+      case 'driver_breakdown_card':
+        commodityDrivers = widget.data;
+        break;
+      case 'spend_impact_card':
+        portfolioExposure = widget.data;
+        break;
+      case 'justification_card':
+        justificationData = widget.data;
+        break;
+      case 'scenario_card':
+        scenarioData = widget.data;
+        break;
+    }
+  }
+
   return {
     intent,
     subIntent: options.subIntent,
@@ -738,6 +766,12 @@ export const buildDataContext = (
     supplier: options.supplier || options.suppliers?.[0],
     riskChanges: options.riskChanges,
     widget: options.widget,
+    // Inflation data extracted from widget
+    inflationSummary,
+    commodityDrivers,
+    portfolioExposure,
+    justificationData,
+    scenarioData,
     resultCount: options.resultCount ?? options.suppliers?.length,
     hasHandoff: options.hasHandoff,
   };
