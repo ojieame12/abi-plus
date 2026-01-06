@@ -368,6 +368,45 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         });
       };
     }
+
+    // SupplierTableWidget → supplier_table artifact (view all) and supplier_detail (row click)
+    if (config.componentType === 'SupplierTableWidget') {
+      artifactHandlers.onViewAll = () => {
+        onOpenArtifact('supplier_table', {
+          suppliers: props.suppliers || config.props.data?.suppliers || [],
+          totalCount: config.props.data?.totalCount || props.suppliers?.length || 0,
+          filter: config.props.data?.filters,
+          aiContent: artifactContent,
+        });
+      };
+      artifactHandlers.onRowClick = (supplierRow: Record<string, unknown>) => {
+        // Find full supplier data if available, otherwise use row data
+        const fullSupplier = props.suppliers?.find(s => s.id === supplierRow.id) || supplierRow;
+        onOpenArtifact('supplier_detail', {
+          supplier: fullSupplier,
+          aiContent: artifactContent,
+        });
+      };
+    }
+
+    // SupplierMiniTable → supplier_table artifact (view all) and supplier_detail (row click)
+    if (config.componentType === 'SupplierMiniTable') {
+      artifactHandlers.onViewAll = () => {
+        onOpenArtifact('supplier_table', {
+          suppliers: props.suppliers || config.props.suppliers || [],
+          totalCount: config.props.totalCount || props.suppliers?.length || 0,
+          aiContent: artifactContent,
+        });
+      };
+      artifactHandlers.onRowClick = (supplierRow: Record<string, unknown>) => {
+        // Find full supplier data if available, otherwise use row data
+        const fullSupplier = props.suppliers?.find(s => s.id === supplierRow.id) || supplierRow;
+        onOpenArtifact('supplier_detail', {
+          supplier: fullSupplier,
+          aiContent: artifactContent,
+        });
+      };
+    }
   }
 
   // Helper for currency formatting
@@ -378,6 +417,9 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     return `$${value.toFixed(0)}`;
   }
 
+  // Don't show external expand button if widget has its own internal handler
+  const hasInternalExpandHandler = Object.keys(artifactHandlers).length > 0;
+
   return (
     <div className={`widget-container ${className}`}>
       {title && (
@@ -386,7 +428,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         </div>
       )}
       <Component {...config.props} {...artifactHandlers} />
-      {handleExpand && (
+      {handleExpand && !hasInternalExpandHandler && (
         <button
           onClick={handleExpand}
           className="mt-2 text-xs text-violet-600 hover:text-violet-700 font-medium"

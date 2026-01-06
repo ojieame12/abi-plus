@@ -114,18 +114,24 @@ export const CATEGORY_ORDER: WidgetCategory[] = [
 // SHARED DEMO DATA
 // ============================================
 
-const demoDistribution = {
-  high: 2,
-  'medium-high': 1,
-  medium: 3,
-  low: 4,
-  unrated: 10,
+// Full RiskDistributionData format for demo
+const demoDistributionData = {
+  totalSuppliers: 20,
+  totalSpend: 10000000000,
+  totalSpendFormatted: '$10.0B',
+  distribution: {
+    high: { count: 2, spend: 1500000000, percent: 15 },
+    mediumHigh: { count: 1, spend: 800000000, percent: 8 },
+    medium: { count: 3, spend: 3000000000, percent: 30 },
+    low: { count: 4, spend: 2500000000, percent: 25 },
+    unrated: { count: 10, spend: 2200000000, percent: 22 },
+  },
 };
 
 const demoSuppliers = [
-  { id: '1', name: 'Apple Inc.', category: 'Electronics', location: 'USA', srs: { score: 85, level: 'high' as const, trend: 'worsening' as const }, spend: '$10.0M', spendFormatted: '$10.0M' },
-  { id: '2', name: 'Flash Cleaning', category: 'Services', location: 'Germany', srs: { score: 52, level: 'medium' as const, trend: 'stable' as const }, spend: '$2.1M', spendFormatted: '$2.1M' },
-  { id: '3', name: 'Widget Co', category: 'Components', location: 'China', srs: { score: 38, level: 'low' as const, trend: 'improving' as const }, spend: '$850K', spendFormatted: '$850K' },
+  { id: '1', name: 'Apple Inc.', category: 'Electronics', country: 'USA', srs: { score: 85, level: 'high' as const, trend: 'worsening' as const }, spend: '$10.0M', spendFormatted: '$10.0M' },
+  { id: '2', name: 'Flash Cleaning', category: 'Services', country: 'Germany', srs: { score: 52, level: 'medium' as const, trend: 'stable' as const }, spend: '$2.1M', spendFormatted: '$2.1M' },
+  { id: '3', name: 'Widget Co', category: 'Components', country: 'China', srs: { score: 38, level: 'low' as const, trend: 'improving' as const }, spend: '$850K', spendFormatted: '$850K' },
 ];
 
 // ============================================
@@ -159,13 +165,20 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
       { name: 'showLegend', type: 'boolean', required: false, default: 'true', description: 'Whether to show the legend' },
     ],
     demoData: {
-      distribution: demoDistribution,
-      totalSuppliers: 20,
+      data: demoDistributionData,
     },
     usageExample: `<RiskDistributionWidget
-  distribution={{ high: 2, 'medium-high': 1, medium: 3, low: 4, unrated: 10 }}
-  totalSuppliers={20}
-  onSegmentClick={(level) => console.log(level)}
+  data={{
+    totalSuppliers: 20,
+    totalSpendFormatted: '$10.0B',
+    distribution: {
+      high: { count: 2, spend: 1500000000, percent: 15 },
+      mediumHigh: { count: 1, spend: 800000000, percent: 8 },
+      medium: { count: 3, spend: 3000000000, percent: 30 },
+      low: { count: 4, spend: 2500000000, percent: 25 },
+      unrated: { count: 10, spend: 2200000000, percent: 22 },
+    },
+  }}
 />`,
   },
   {
@@ -186,17 +199,21 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
       { name: 'variant', type: "'default' | 'compact'", required: false, default: "'default'", description: 'Display variant' },
     ],
     demoData: {
-      metrics: [
-        { label: 'Total Suppliers', value: '45', change: { value: 3, direction: 'up' } },
-        { label: 'High Risk', value: '14%', change: { value: 2, direction: 'up' } },
-        { label: 'Avg SRS', value: '62' },
-      ],
+      data: {
+        metrics: [
+          { label: 'Total Suppliers', value: '45', change: { value: 3, direction: 'up' as const } },
+          { label: 'High Risk', value: '14%', change: { value: 2, direction: 'up' as const } },
+          { label: 'Avg SRS', value: '62' },
+        ],
+      },
     },
     usageExample: `<MetricRowWidget
-  metrics={[
-    { label: 'Total Suppliers', value: '45' },
-    { label: 'High Risk', value: '14%' },
-  ]}
+  data={{
+    metrics: [
+      { label: 'Total Suppliers', value: '45' },
+      { label: 'High Risk', value: '14%' },
+    ],
+  }}
 />`,
   },
   {
@@ -411,7 +428,7 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     renderContexts: ['chat', 'panel'],
     sizes: ['M', 'L'],
     defaultSize: 'L',
-    artifactType: 'comparison',
+    artifactType: 'supplier_comparison',
     expandsTo: 'ComparisonArtifact',
     props: [
       { name: 'data', type: 'ComparisonTableData', required: true, description: 'Comparison data with suppliers array' },
@@ -420,17 +437,20 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     demoData: {
       data: {
         suppliers: [
-          { id: '1', name: 'Apple Inc.', riskScore: 85, pros: ['Strong quality'], cons: ['High risk'] },
-          { id: '2', name: 'Flash Cleaning', riskScore: 52, pros: ['Good ESG'], cons: ['Lower capacity'] },
+          { id: '1', name: 'Apple Inc.', riskScore: 85, riskLevel: 'high', category: 'Electronics', location: 'USA', spend: '$10.0M', trend: 'worsening', strengths: ['Strong quality', 'Global reach'], weaknesses: ['High risk score', 'Single source'] },
+          { id: '2', name: 'Flash Cleaning', riskScore: 52, riskLevel: 'medium', category: 'Services', location: 'Germany', spend: '$2.1M', trend: 'stable', strengths: ['Good ESG rating', 'Competitive pricing'], weaknesses: ['Limited capacity', 'Regional only'] },
         ],
+        comparisonDimensions: ['Risk Score', 'Spend', 'Location', 'Trend'],
+        recommendation: 'Flash Cleaning offers lower risk with competitive pricing.',
       },
     },
     usageExample: `<ComparisonTableWidget
   data={{
     suppliers: [
-      { id: '1', name: 'Apple Inc.', riskScore: 85, ... },
-      { id: '2', name: 'Flash Cleaning', riskScore: 52, ... },
+      { id: '1', name: 'Apple Inc.', riskScore: 85, riskLevel: 'high', category: 'Electronics', location: 'USA', spend: '$10.0M', trend: 'worsening', strengths: ['Strong quality'], weaknesses: ['High risk'] },
     ],
+    comparisonDimensions: ['Risk Score', 'Spend', 'Location', 'Trend'],
+    recommendation: 'Flash Cleaning offers lower risk.',
   }}
 />`,
   },

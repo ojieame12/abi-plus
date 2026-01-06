@@ -10,7 +10,7 @@ interface ArtifactPanelProps {
     onClose: () => void;
     isExpanded?: boolean;
     onToggleExpand?: () => void;
-    defaultWidth?: '40%' | '50%' | '60%' | '100%';
+    defaultWidth?: '40%' | '45%' | '50%' | '60%' | '100%';
     allowExpand?: boolean;
 }
 

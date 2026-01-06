@@ -18,7 +18,7 @@ import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import type { WidgetData, WidgetType } from '../types/widgets';
 import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from './widgetTransformers';
-import { getWidgetRoute, type AIContentSlots } from './widgetRouter';
+import { getWidgetRouteFromRegistry, type AIContentSlots } from './widgetRouter';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.0-flash-exp'; // Gemini 2.0 Flash (free tier, stable)
@@ -369,7 +369,7 @@ async function fetchDataForIntent(
   intent: DetectedIntent,
   query: string
 ): Promise<FetchedData> {
-  const route = getWidgetRoute(intent.category, intent.subIntent);
+  const route = getWidgetRouteFromRegistry(intent.category, intent.subIntent);
   const data: FetchedData = {};
 
   // Fetch portfolio if needed
@@ -717,13 +717,14 @@ function calculateMatchScore(current: Supplier, alternative: Supplier): number {
 // Step 5: Assemble final response
 export async function callGeminiV2(
   userMessage: string,
-  _conversationHistory: ChatMessage[] = []
+  _conversationHistory: ChatMessage[] = [],
+  intentOverride?: DetectedIntent
 ): Promise<GeminiResponse> {
   console.log('[GeminiV2] Processing:', userMessage);
 
   // 1. Classify intent
-  const intent = classifyIntent(userMessage);
-  const route = getWidgetRoute(intent.category, intent.subIntent);
+  const intent = intentOverride || classifyIntent(userMessage);
+  const route = getWidgetRouteFromRegistry(intent.category, intent.subIntent);
   console.log('[GeminiV2] Intent:', intent.category, '→ Widget:', route.widgetType);
 
   // 2. Handle restricted_query with handoff

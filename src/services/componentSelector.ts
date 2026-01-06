@@ -53,6 +53,7 @@ export interface DataContext {
   suppliers?: Supplier[];
   supplier?: Supplier; // Single supplier focus
   riskChanges?: RiskChange[];
+  events?: unknown[]; // News/events data
 
   // Inflation data
   inflationSummary?: unknown;
@@ -855,6 +856,7 @@ function getAvailableData(ctx: DataContext): RequiredData[] {
   if (ctx.suppliers && ctx.suppliers.length > 0) available.push('suppliers');
   if (ctx.supplier) available.push('supplier');
   if (ctx.riskChanges && ctx.riskChanges.length > 0) available.push('riskChanges');
+  if (ctx.events && ctx.events.length > 0) available.push('events');
   if (ctx.inflationSummary) available.push('inflationSummary');
   if (ctx.commodityDrivers) available.push('commodityDrivers');
   if (ctx.portfolioExposure) available.push('portfolioExposure');

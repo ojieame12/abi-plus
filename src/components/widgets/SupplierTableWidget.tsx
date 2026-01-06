@@ -1,11 +1,24 @@
 // Supplier Table Widget - List of suppliers with key metrics
 import type { SupplierTableData } from '../../types/widgets';
 
-interface Props {
-  data: SupplierTableData;
+interface SupplierRow {
+  id: string;
+  name: string;
+  riskScore: number;
+  riskLevel: string;
+  trend: string;
+  category: string;
+  country: string;
+  spend: string;
 }
 
-export const SupplierTableWidget = ({ data }: Props) => {
+interface Props {
+  data: SupplierTableData;
+  onViewAll?: () => void;
+  onRowClick?: (supplier: SupplierRow) => void;
+}
+
+export const SupplierTableWidget = ({ data, onViewAll, onRowClick }: Props) => {
   // Defensive: ensure data exists
   if (!data || !data.suppliers) {
     return (
@@ -77,6 +90,7 @@ export const SupplierTableWidget = ({ data }: Props) => {
               return (
                 <tr
                   key={supplier.id}
+                  onClick={() => onRowClick?.(supplier)}
                   className="hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   <td className="px-5 py-4">
@@ -113,7 +127,10 @@ export const SupplierTableWidget = ({ data }: Props) => {
       {/* Footer */}
       {totalCount > suppliers.length && (
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-center">
-          <button className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+          <button
+            onClick={onViewAll}
+            className="text-sm text-violet-600 hover:text-violet-700 font-medium"
+          >
             View all {totalCount} suppliers →
           </button>
         </div>

@@ -14,7 +14,7 @@ export interface ArtifactMeta {
   title: string;
   category: ArtifactCategory;
   description: string;
-  defaultWidth?: '40%' | '50%' | '60%' | '100%';
+  defaultWidth?: '40%' | '45%' | '50%' | '60%' | '100%';
   allowExpand?: boolean;
 }
 
@@ -68,7 +68,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Trend Analysis',
     category: 'insight',
     description: 'Historical trend analysis with projections',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   factor_breakdown: {
@@ -76,7 +76,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Factor Analysis',
     category: 'insight',
     description: 'Detailed breakdown of risk factors with history',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   news_events: {
@@ -84,7 +84,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'News & Events',
     category: 'insight',
     description: 'Full news feed with filters and sentiment analysis',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
 
@@ -94,7 +94,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Supplier Details',
     category: 'supplier',
     description: 'Comprehensive supplier profile with tabs',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   supplier_comparison: {
@@ -102,7 +102,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Supplier Comparison',
     category: 'supplier',
     description: 'Side-by-side supplier comparison',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   supplier_table: {
@@ -110,7 +110,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Supplier Table',
     category: 'supplier',
     description: 'Full supplier table with filters and sorting',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   supplier_alternatives: {
@@ -118,7 +118,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Alternative Suppliers',
     category: 'discovery',
     description: 'Find and compare alternative suppliers',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
 
@@ -162,7 +162,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Category Overview',
     category: 'discovery',
     description: 'Overview of all suppliers in a category',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   portfolio_dashboard: {
@@ -170,7 +170,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Portfolio Dashboard',
     category: 'discovery',
     description: 'Full portfolio risk overview',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   regional_analysis: {
@@ -178,7 +178,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Regional Analysis',
     category: 'discovery',
     description: 'Geographic risk distribution',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   spend_analysis: {
@@ -186,7 +186,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Spend Analysis',
     category: 'discovery',
     description: 'Detailed spend exposure analysis by risk, category, and region',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
 
@@ -196,7 +196,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Inflation Dashboard',
     category: 'discovery',
     description: 'Full inflation overview with price movements, exposure, and drivers',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   commodity_dashboard: {
@@ -204,7 +204,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Commodity Analysis',
     category: 'insight',
     description: 'Deep dive into a single commodity with history, drivers, and forecast',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   driver_analysis: {
@@ -212,7 +212,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Price Driver Analysis',
     category: 'insight',
     description: 'Detailed root cause analysis for price changes with market context',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   impact_analysis: {
@@ -220,7 +220,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Impact Analysis',
     category: 'discovery',
     description: 'Portfolio impact from inflation with exposure breakdown and mitigation options',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   justification_report: {
@@ -228,7 +228,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Price Justification',
     category: 'action',
     description: 'Supplier price increase validation with market comparison and negotiation support',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   scenario_planner: {
@@ -236,7 +236,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Scenario Planner',
     category: 'action',
     description: 'Interactive what-if modeling for price scenarios and budget impact',
-    defaultWidth: '60%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
   executive_presentation: {
@@ -244,7 +244,7 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     title: 'Executive Presentation',
     category: 'action',
     description: 'Shareable executive summary with key metrics and stakeholder talking points',
-    defaultWidth: '50%',
+    defaultWidth: '45%',
     allowExpand: true,
   },
 };

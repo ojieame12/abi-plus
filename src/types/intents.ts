@@ -176,7 +176,7 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /show.*(my|me).*(risk|portfolio)/i,
     /what('?s| is) my.*risk/i,
     /how many.*(supplier|high risk)/i,
-    /give me.*(summary|overview)/i,
+    /give me.*(portfolio|risk).*(summary|overview)/i,
     /summary of.*(my|the|our).*(portfolio|supplier|risk)/i,
     /supplier risk portfolio/i,
     /portfolio (summary|overview|status)/i,
@@ -284,6 +284,7 @@ export const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
     /why did.*(price|cost|steel|aluminum|copper|commodity)/i,
   ],
   inflation_impact: [
+    /impact.*(my|our).*(spend|budget|portfolio|cost)/i,
     /how.*(affect|impact).*(my|our).*(spend|budget|portfolio|cost)/i,
     /what('?s| is).*(my|our).*(exposure|impact)/i,
     /inflation.*(impact|exposure|effect)/i,
@@ -357,6 +358,10 @@ const INTENT_PRIORITY: IntentCategory[] = [
   // Fallback
   'general',
 ];
+
+// Guard to avoid routing market/price queries into portfolio_overview
+const PORTFOLIO_MARKET_GUARD = /(price|inflation|commodity|market|benchmark|index|forecast|outlook|cpi|ppi)/i;
+const PORTFOLIO_RISK_SIGNAL = /(risk|exposure|distribution|high[- ]?risk|unrated|portfolio risk|risk posture|risk overview)/i;
 
 // Patterns that trigger automatic research (Perplexity)
 export const RESEARCH_TRIGGERS: RegExp[] = [
@@ -469,6 +474,14 @@ export const classifyIntent = (query: string): DetectedIntent => {
 
   // Check each intent category in priority order
   for (const category of INTENT_PRIORITY) {
+    if (
+      category === 'portfolio_overview' &&
+      PORTFOLIO_MARKET_GUARD.test(normalizedQuery) &&
+      !PORTFOLIO_RISK_SIGNAL.test(normalizedQuery)
+    ) {
+      continue;
+    }
+
     const patterns = INTENT_PATTERNS[category] || [];
     for (const pattern of patterns) {
       if (pattern.test(normalizedQuery)) {

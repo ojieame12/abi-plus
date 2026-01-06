@@ -316,7 +316,7 @@ export const sendMessage = async (
       }
     } else if (isGeminiConfigured()) {
       console.log('[AI] Calling GeminiV2...');
-      const geminiResponse = await callGeminiV2(message, conversationHistory);
+      const geminiResponse = await callGeminiV2(message, conversationHistory, intent);
       response = transformGeminiResponse(geminiResponse, intent);
       provider = 'gemini';
     } else {
