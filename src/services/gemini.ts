@@ -14,6 +14,18 @@ import {
   type RiskChange,
   type RiskPortfolio,
 } from './supplierDataClient';
+import {
+  getInflationSummary,
+  getCommodityDrivers,
+  getSpendImpact,
+  getJustificationData,
+  getScenarioData,
+  type InflationSummaryData,
+  type CommodityDriverData,
+  type SpendImpactData,
+  type JustificationData,
+  type ScenarioData,
+} from './mockData';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import type { WidgetData, WidgetType } from '../types/widgets';
@@ -362,6 +374,12 @@ interface FetchedData {
   suppliers?: Supplier[];
   riskChanges?: RiskChange[];
   targetSupplier?: Supplier;
+  // Inflation data
+  inflationSummary?: InflationSummaryData;
+  commodityDrivers?: CommodityDriverData;
+  spendImpact?: SpendImpactData;
+  justificationData?: JustificationData;
+  scenarioData?: ScenarioData;
 }
 
 // Step 1: Fetch data based on intent requirements
@@ -486,6 +504,47 @@ async function fetchDataForIntent(
         allSuppliers.find(s => s.id === c.supplierId)
       ).filter(Boolean) as Supplier[];
     }
+  }
+
+  // Fetch inflation data based on intent
+  if (intent.category.startsWith('inflation_')) {
+    switch (intent.category) {
+      case 'inflation_summary':
+        data.inflationSummary = getInflationSummary();
+        break;
+      case 'inflation_drivers':
+        data.commodityDrivers = getCommodityDrivers(intent.extractedEntities.commodity);
+        break;
+      case 'inflation_impact':
+        data.spendImpact = getSpendImpact();
+        data.inflationSummary = getInflationSummary();
+        break;
+      case 'inflation_justification':
+        data.justificationData = getJustificationData(
+          intent.extractedEntities.supplierName,
+          intent.extractedEntities.commodity
+        );
+        data.inflationSummary = getInflationSummary();
+        break;
+      case 'inflation_scenarios':
+        data.scenarioData = getScenarioData();
+        data.inflationSummary = getInflationSummary();
+        data.spendImpact = getSpendImpact();
+        break;
+      case 'inflation_communication':
+      case 'inflation_benchmark':
+        // These need inflation summary as base data
+        data.inflationSummary = getInflationSummary();
+        data.commodityDrivers = getCommodityDrivers();
+        data.spendImpact = getSpendImpact();
+        break;
+    }
+  }
+
+  // Also fetch for market_context
+  if (intent.category === 'market_context') {
+    data.inflationSummary = getInflationSummary();
+    data.commodityDrivers = getCommodityDrivers();
   }
 
   return data;
@@ -690,6 +749,65 @@ function buildWidgetData(
               matchScore: calculateMatchScore(data.targetSupplier!, s),
             })),
         },
+      };
+
+    // Inflation widgets
+    case 'inflation_summary_card':
+      if (!data.inflationSummary) return undefined;
+      return {
+        type: 'inflation_summary_card',
+        title: aiContent?.widgetContent?.headline || data.inflationSummary.headline,
+        data: data.inflationSummary,
+      };
+
+    case 'driver_breakdown_card':
+      if (!data.commodityDrivers) return undefined;
+      return {
+        type: 'driver_breakdown_card',
+        title: aiContent?.widgetContent?.headline || `${data.commodityDrivers.commodity} Price Drivers`,
+        data: data.commodityDrivers,
+      };
+
+    case 'spend_impact_card':
+      if (!data.spendImpact) return undefined;
+      return {
+        type: 'spend_impact_card',
+        title: aiContent?.widgetContent?.headline || 'Portfolio Impact',
+        data: data.spendImpact,
+      };
+
+    case 'executive_brief_card':
+      if (!data.inflationSummary) return undefined;
+      return {
+        type: 'executive_brief_card',
+        title: aiContent?.widgetContent?.headline || 'Executive Brief',
+        data: {
+          period: data.inflationSummary.period,
+          headline: data.inflationSummary.headline,
+          portfolioImpact: data.inflationSummary.portfolioImpact,
+          keyDrivers: data.inflationSummary.keyDrivers,
+          recommendations: aiContent?.artifactContent?.recommendations || [
+            'Monitor steel and aluminum contracts',
+            'Explore alternative suppliers',
+            'Review hedging strategies',
+          ],
+        },
+      };
+
+    case 'justification_card':
+      if (!data.justificationData) return undefined;
+      return {
+        type: 'justification_card',
+        title: aiContent?.widgetContent?.headline || `Price Increase Analysis: ${data.justificationData.supplierName}`,
+        data: data.justificationData,
+      };
+
+    case 'scenario_card':
+      if (!data.scenarioData) return undefined;
+      return {
+        type: 'scenario_card',
+        title: aiContent?.widgetContent?.headline || data.scenarioData.scenarioName,
+        data: data.scenarioData,
       };
 
     default:

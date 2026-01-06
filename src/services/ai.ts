@@ -438,9 +438,9 @@ const transformPerplexityResponse = (
   response: PerplexityResponse,
   intent: DetectedIntent
 ): Omit<AIResponse, 'id' | 'provider' | 'thinkingDuration'> => {
-  // Use widget router to get proper artifact type
-  const { getWidgetRoute } = require('./widgetRouter');
-  const route = getWidgetRoute(intent.category, intent.subIntent);
+  // Use registry-based widget router to get proper artifact type
+  const { getWidgetRouteFromRegistry } = require('./widgetRouter');
+  const route = getWidgetRouteFromRegistry(intent.category, intent.subIntent);
 
   // Perplexity responses are typically research/summary - use 0 count for inline display
   return {
@@ -645,7 +645,7 @@ const generateLocalResponse = (
           data: { suppliers: toCompare },
         },
         acknowledgement: "Here's how they stack up.",
-        artifact: { type: 'comparison', title: 'Supplier Comparison' },
+        artifact: { type: 'supplier_comparison', title: 'Supplier Comparison' },
         escalation: determineEscalation(toCompare.length, 'comparison'),
         intent,
       };

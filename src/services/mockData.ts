@@ -725,3 +725,160 @@ export const generateSpendExposureData = (
     } : undefined,
   };
 };
+
+// ============================================
+// INFLATION MOCK DATA
+// ============================================
+
+export interface InflationSummaryData {
+  period: string;
+  headline: string;
+  overallChange: { absolute: number; percent: number; direction: 'up' | 'down' | 'stable' };
+  topIncreases: Array<{ commodity: string; change: number; impact: string }>;
+  topDecreases: Array<{ commodity: string; change: number; benefit: string }>;
+  portfolioImpact: { amount: string; percent: number; direction: string };
+  keyDrivers: string[];
+  lastUpdated: string;
+}
+
+export interface CommodityDriverData {
+  commodity: string;
+  priceChange: { absolute: number; percent: number; direction: 'up' | 'down' };
+  period: string;
+  drivers: Array<{
+    factor: string;
+    contribution: number;
+    trend: 'up' | 'down' | 'stable';
+    context: string;
+  }>;
+  marketContext: string;
+  outlook: string;
+}
+
+export interface SpendImpactData {
+  totalImpact: { amount: string; percent: number; direction: string };
+  categories: Array<{
+    name: string;
+    spend: string;
+    impact: string;
+    impactPercent: number;
+    topCommodity: string;
+  }>;
+  mitigationPotential: { amount: string; actions: string[] };
+}
+
+export const MOCK_INFLATION_SUMMARY: InflationSummaryData = {
+  period: 'January 2026',
+  headline: 'Steel and aluminum prices surge amid supply constraints and EV demand',
+  overallChange: { absolute: 125000000, percent: 4.2, direction: 'up' },
+  topIncreases: [
+    { commodity: 'Steel', change: 8.5, impact: '$2.5M impact' },
+    { commodity: 'Aluminum', change: 6.2, impact: '$1.8M impact' },
+    { commodity: 'Copper', change: 4.1, impact: '$950K impact' },
+  ],
+  topDecreases: [
+    { commodity: 'Plastics', change: -2.3, benefit: '$500K savings' },
+    { commodity: 'Rubber', change: -1.8, benefit: '$320K savings' },
+  ],
+  portfolioImpact: { amount: '$5.2M', percent: 4.2, direction: 'increase' },
+  keyDrivers: ['China production cuts', 'EV demand surge', 'Energy costs'],
+  lastUpdated: '2 hours ago',
+};
+
+export const MOCK_COMMODITY_DRIVERS: CommodityDriverData = {
+  commodity: 'Steel',
+  priceChange: { absolute: 85, percent: 8.5, direction: 'up' },
+  period: 'January 2026',
+  drivers: [
+    { factor: 'China production cuts', contribution: 45, trend: 'up', context: 'Reduced output by 12% due to environmental policies' },
+    { factor: 'EV manufacturing demand', contribution: 30, trend: 'up', context: 'Battery and chassis steel demand up 25% YoY' },
+    { factor: 'Energy costs', contribution: 15, trend: 'stable', context: 'Natural gas prices remain elevated' },
+    { factor: 'Shipping disruptions', contribution: 10, trend: 'down', context: 'Red Sea disruptions easing' },
+  ],
+  marketContext: 'Global steel production down 5% while demand remains strong, creating supply-demand imbalance.',
+  outlook: 'Prices expected to remain elevated through Q2 before stabilizing as China adjusts policies.',
+};
+
+export const MOCK_SPEND_IMPACT: SpendImpactData = {
+  totalImpact: { amount: '$5.2M', percent: 4.2, direction: 'increase' },
+  categories: [
+    { name: 'Raw Materials', spend: '$45M', impact: '+$2.8M', impactPercent: 6.2, topCommodity: 'Steel' },
+    { name: 'Components', spend: '$32M', impact: '+$1.5M', impactPercent: 4.7, topCommodity: 'Aluminum' },
+    { name: 'Packaging', spend: '$18M', impact: '+$650K', impactPercent: 3.6, topCommodity: 'Plastics' },
+    { name: 'Logistics', spend: '$12M', impact: '+$250K', impactPercent: 2.1, topCommodity: 'Fuel' },
+  ],
+  mitigationPotential: {
+    amount: '$1.8M',
+    actions: ['Negotiate volume discounts', 'Switch to alternative suppliers', 'Adjust order timing'],
+  },
+};
+
+export interface JustificationData {
+  supplierName: string;
+  commodity: string;
+  requestedIncrease: number;
+  marketBenchmark: number;
+  verdict: 'justified' | 'partially_justified' | 'questionable' | 'insufficient_data';
+  verdictLabel: string;
+  keyPoints: Array<{ point: string; supports: boolean }>;
+  recommendation: string;
+  negotiationLeverage: 'strong' | 'moderate' | 'weak';
+}
+
+export interface ScenarioData {
+  scenarioName: string;
+  description: string;
+  assumption: string;
+  currentState: { label: string; value: string };
+  projectedState: { label: string; value: string };
+  delta: { amount: string; percent: number; direction: 'up' | 'down' };
+  confidence: 'high' | 'medium' | 'low';
+  topImpacts: string[];
+  recommendation?: string;
+}
+
+export const MOCK_JUSTIFICATION_DATA: JustificationData = {
+  supplierName: 'Acme Steel',
+  commodity: 'Cold Rolled Steel',
+  requestedIncrease: 12,
+  marketBenchmark: 8.5,
+  verdict: 'partially_justified',
+  verdictLabel: 'Partially Justified',
+  keyPoints: [
+    { point: 'Market prices increased 8.5% average', supports: true },
+    { point: 'Energy costs up 15% affecting production', supports: true },
+    { point: 'Supplier margin already above industry average', supports: false },
+    { point: 'Alternative suppliers available at lower rates', supports: false },
+  ],
+  recommendation: 'Counter-offer at 9% increase with volume commitment for additional discount.',
+  negotiationLeverage: 'moderate',
+};
+
+export const MOCK_SCENARIO_DATA: ScenarioData = {
+  scenarioName: 'Steel Price Surge',
+  description: 'Impact analysis if steel prices continue upward trend',
+  assumption: 'Steel prices increase 15% over next quarter',
+  currentState: { label: 'Current Q2 Spend', value: '$45.2M' },
+  projectedState: { label: 'Projected Q3 Spend', value: '$52.0M' },
+  delta: { amount: '$6.8M', percent: 15, direction: 'up' },
+  confidence: 'medium',
+  topImpacts: [
+    'Raw materials budget +$4.2M',
+    'Component costs +$1.8M',
+    'Margin compression 2.1%',
+  ],
+  recommendation: 'Consider forward contracts to lock in current rates.',
+};
+
+export const getInflationSummary = (): InflationSummaryData => MOCK_INFLATION_SUMMARY;
+export const getCommodityDrivers = (commodity?: string): CommodityDriverData => ({
+  ...MOCK_COMMODITY_DRIVERS,
+  commodity: commodity || MOCK_COMMODITY_DRIVERS.commodity,
+});
+export const getSpendImpact = (): SpendImpactData => MOCK_SPEND_IMPACT;
+export const getJustificationData = (supplierName?: string, commodity?: string): JustificationData => ({
+  ...MOCK_JUSTIFICATION_DATA,
+  supplierName: supplierName || MOCK_JUSTIFICATION_DATA.supplierName,
+  commodity: commodity || MOCK_JUSTIFICATION_DATA.commodity,
+});
+export const getScenarioData = (): ScenarioData => MOCK_SCENARIO_DATA;
