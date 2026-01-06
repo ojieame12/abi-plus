@@ -712,13 +712,23 @@ const generateLocalResponse = (
         content: `**${summary.period} Inflation Update**\n\n${summary.headline}\n\nOverall portfolio impact: ${summary.overallChange.direction === 'up' ? '+' : '-'}${summary.overallChange.percent}%`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
+        sources: [
+          { name: 'Beroe Market Intelligence', type: 'beroe' as const },
+          { name: 'Commodity Price Index', type: 'beroe' as const },
+        ],
         widget: {
           type: 'inflation_summary_card',
           title: 'Monthly Inflation Summary',
           data: summary,
         },
         acknowledgement: "Here's the inflation overview.",
+        insight: {
+          headline: `Portfolio impact ${summary.overallChange.direction === 'up' ? '+' : ''}${summary.overallChange.percent}%`,
+          detail: summary.headline,
+          sentiment: summary.overallChange.direction === 'up' ? 'negative' : 'positive',
+        },
         artifact: { type: 'inflation_dashboard', title: 'Inflation Dashboard' },
+        escalation: determineEscalation(summary.categories?.length || 5, 'inflation_summary'),
         intent,
       };
     }
@@ -730,13 +740,24 @@ const generateLocalResponse = (
         content: `**${drivers.commodity} Price Analysis**\n\n${drivers.commodity} prices are ${drivers.priceChange.direction === 'up' ? 'up' : 'down'} ${drivers.priceChange.percent}% this period.\n\n${drivers.marketContext}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
+        sources: [
+          { name: 'Beroe Price Analytics', type: 'beroe' as const },
+          { name: 'Market Intelligence', type: 'beroe' as const },
+          { name: 'Supplier Cost Data', type: 'beroe' as const },
+        ],
         widget: {
           type: 'driver_breakdown_card',
           title: `${drivers.commodity} Price Drivers`,
           data: drivers,
         },
         acknowledgement: `Analyzing ${drivers.commodity} price trends.`,
+        insight: {
+          headline: `${drivers.commodity} prices ${drivers.priceChange.direction} ${drivers.priceChange.percent}%`,
+          detail: drivers.drivers[0]?.description || 'Multiple factors driving price movement',
+          sentiment: drivers.priceChange.direction === 'up' ? 'negative' : 'positive',
+        },
         artifact: { type: 'driver_analysis', title: `${drivers.commodity} Analysis` },
+        escalation: determineEscalation(drivers.drivers.length, 'inflation_drivers'),
         intent,
       };
     }
@@ -747,13 +768,23 @@ const generateLocalResponse = (
         content: `**Portfolio Spend Impact**\n\nTotal inflation impact: ${impact.totalImpact} (${impact.totalImpactDirection === 'increase' ? '+' : '-'}${impact.impactPercent}% ${impact.timeframe})\n\n${impact.recommendation}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
+        sources: [
+          { name: 'Beroe Spend Analytics', type: 'beroe' as const },
+          { name: 'Budget Tracking', type: 'beroe' as const },
+        ],
         widget: {
           type: 'spend_impact_card',
           title: 'Spend Impact Analysis',
           data: impact,
         },
         acknowledgement: "Here's how inflation affects your spend.",
+        insight: {
+          headline: `${impact.totalImpact} total impact`,
+          detail: impact.recommendation,
+          sentiment: impact.totalImpactDirection === 'increase' ? 'negative' : 'positive',
+        },
         artifact: { type: 'impact_analysis', title: 'Impact Analysis' },
+        escalation: determineEscalation(impact.categories?.length || 4, 'inflation_impact'),
         intent,
       };
     }
@@ -766,13 +797,23 @@ const generateLocalResponse = (
         content: `**Price Increase Validation**\n\n${justification.supplierName} is requesting a ${justification.requestedIncrease}% increase on ${justification.commodity}.\n\n**Verdict: ${justification.verdictLabel}**\n\nMarket benchmark: ${justification.marketBenchmark}%`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
+        sources: [
+          { name: 'Beroe Benchmarking', type: 'beroe' as const },
+          { name: 'Market Rate Index', type: 'beroe' as const },
+        ],
         widget: {
           type: 'justification_card',
           title: 'Price Increase Validation',
           data: justification,
         },
         acknowledgement: "Validating the price increase request.",
+        insight: {
+          headline: `Verdict: ${justification.verdictLabel}`,
+          detail: `Request ${Math.abs(justification.requestedIncrease - justification.marketBenchmark).toFixed(1)}% ${justification.requestedIncrease > justification.marketBenchmark ? 'above' : 'below'} market`,
+          sentiment: justification.verdict === 'reject' ? 'negative' : justification.verdict === 'accept' ? 'positive' : 'neutral',
+        },
         artifact: { type: 'justification_report', title: 'Justification Report' },
+        escalation: determineEscalation(1, 'inflation_justification'),
         intent,
       };
     }
@@ -783,13 +824,23 @@ const generateLocalResponse = (
         content: `**Scenario: ${scenario.scenarioName}**\n\n${scenario.description}\n\nProjected impact: ${scenario.delta.label}`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
+        sources: [
+          { name: 'Beroe Forecasting', type: 'beroe' as const },
+          { name: 'Scenario Modeling', type: 'beroe' as const },
+        ],
         widget: {
           type: 'scenario_card',
           title: 'What-If Scenario',
           data: scenario,
         },
         acknowledgement: "Here's the scenario analysis.",
+        insight: {
+          headline: scenario.delta.label,
+          detail: scenario.description,
+          sentiment: scenario.delta.direction === 'increase' ? 'negative' : 'positive',
+        },
         artifact: { type: 'scenario_planner', title: 'Scenario Planner' },
+        escalation: determineEscalation(scenario.variables?.length || 3, 'inflation_scenarios'),
         intent,
       };
     }
