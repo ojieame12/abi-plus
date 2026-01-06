@@ -339,7 +339,7 @@ export const ChatInput = ({
                 )}
 
                 {/* Text Input / Builder Area */}
-                <div className={`px-5 pt-4 pb-3 relative overflow-hidden transition-all duration-200 ${builderMode ? 'min-h-[120px]' : ''}`} style={{ minHeight: builderMode ? '120px' : '72px' }}>
+                <div className={`px-5 pt-4 pb-3 relative overflow-hidden transition-all duration-200 ${builderMode ? 'min-h-[140px]' : ''}`} style={{ minHeight: builderMode ? '140px' : '100px' }}>
                     <AnimatePresence mode="wait">
                         {builderMode ? (
                             <motion.div
@@ -426,9 +426,9 @@ export const ChatInput = ({
                                     onFocus={handleFocus}
                                     onBlur={handleBlur}
                                     placeholder={dynamicPlaceholder}
-                                    rows={2}
+                                    rows={3}
                                     className="w-full resize-none bg-transparent text-primary placeholder:text-muted focus:outline-none text-[15px] pr-14"
-                                    style={{ minHeight: '48px', maxHeight: '150px' }}
+                                    style={{ minHeight: '72px', maxHeight: '180px' }}
                                 />
                             </motion.div>
                         )}
