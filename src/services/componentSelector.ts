@@ -402,6 +402,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'PriceGaugeWidget',
       size: 'md',
+      expandsTo: 'commodity_dashboard',
       props: {
         data: ctx.widget!.data,
       },
@@ -649,6 +650,7 @@ const SELECTION_RULES: SelectionRule[] = [
       componentType: 'CommodityGaugeCard',
       size: 'md',
       props: ctx.widget?.data || {},
+      expandsTo: 'commodity_dashboard',
     }),
   },
 

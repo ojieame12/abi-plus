@@ -96,6 +96,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
 
   // Widget components - Market/Categories
   PriceGaugeWidget,
+  CommodityGaugeCard: PriceGaugeWidget, // Alias for commodity_gauge widget type
   NewsItemCard,
   CategoryBreakdownWidget,
   RegionListWidget,

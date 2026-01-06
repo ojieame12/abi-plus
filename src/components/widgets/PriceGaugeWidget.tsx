@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
 import type { PriceGaugeData } from '../../types/widgets';
 
 // Props can be either the new structured data OR the legacy props
@@ -23,10 +23,14 @@ interface LegacyPriceGaugeWidgetProps {
         text: string;
         detail?: string;
     };
+    onViewDetails?: () => void;
+    beroeSourceCount?: number;
 }
 
 interface NewPriceGaugeWidgetProps {
     data: PriceGaugeData;
+    onViewDetails?: () => void;
+    beroeSourceCount?: number;
 }
 
 type PriceGaugeWidgetProps = LegacyPriceGaugeWidgetProps | NewPriceGaugeWidgetProps;
@@ -37,6 +41,10 @@ const isNewFormat = (props: PriceGaugeWidgetProps): props is NewPriceGaugeWidget
 };
 
 export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
+    // Extract common props
+    const onViewDetails = 'onViewDetails' in props ? props.onViewDetails : undefined;
+    const beroeSourceCount = 'beroeSourceCount' in props ? props.beroeSourceCount : 3;
+
     // Normalize to common format
     let title: string;
     let price: string;
@@ -232,6 +240,29 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
                     <div className="text-lg font-normal text-slate-900">{market}</div>
                     <div className="text-xs text-slate-500 mt-1">Market</div>
                 </div>
+            </div>
+
+            {/* Data Attribution Footer */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/30">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+                        <span className="text-[8px] font-bold text-white">B</span>
+                    </div>
+                    <span>{beroeSourceCount} Beroe Data Sources</span>
+                </div>
+                {onViewDetails && (
+                    <button
+                        onClick={onViewDetails}
+                        className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
+                    >
+                        <span>View Details</span>
+                        <ChevronRight
+                            size={16}
+                            strokeWidth={1.5}
+                            className="group-hover:translate-x-0.5 transition-transform"
+                        />
+                    </button>
+                )}
             </div>
         </div>
     );

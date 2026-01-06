@@ -178,6 +178,8 @@ function App() {
       suppliers: response.suppliers,
       portfolio: response.portfolio,
       riskChanges: response.riskChanges,
+      // Pass widget data for inflation artifacts
+      widgetData: response.widget?.data as Record<string, unknown> | undefined,
     });
 
     if (!payload) {
@@ -262,6 +264,39 @@ function App() {
       case 'view_dashboard':
         // Could navigate to external dashboard
         console.log('Navigate to dashboard');
+        break;
+      case 'view_commodity':
+        // Open commodity dashboard artifact
+        if (data && typeof data === 'object') {
+          openArtifact('commodity_dashboard', data as Partial<ArtifactPayload>);
+        }
+        break;
+      case 'create_scenario':
+        // Open scenario planner with pre-filled assumptions
+        if (data && typeof data === 'object') {
+          openArtifact('scenario_planner', data as Partial<ArtifactPayload>);
+        } else {
+          openArtifact('scenario_planner');
+        }
+        break;
+      case 'select_scenario':
+        // Handle scenario selection - could update state or open detail view
+        console.log('Scenario selected:', data);
+        break;
+      case 'start_negotiation':
+        // Open justification report for negotiation prep
+        if (data && typeof data === 'object') {
+          openArtifact('justification_report', data as Partial<ArtifactPayload>);
+        } else {
+          openArtifact('justification_report');
+        }
+        break;
+      case 'share':
+        // Handle sharing - could copy link or open share dialog
+        if (data && typeof data === 'object' && 'url' in data) {
+          navigator.clipboard?.writeText(String(data.url));
+          console.log('Copied share link:', data);
+        }
         break;
       default:
         console.log('Unhandled action:', action);

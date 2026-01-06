@@ -21,6 +21,15 @@ import { AlternativesArtifact } from './views/AlternativesArtifact';
 import { NewsEventsArtifact } from './views/NewsEventsArtifact';
 import { SpendAnalysisArtifact } from './views/SpendAnalysisArtifact';
 
+// Import inflation artifacts
+import { InflationDashboardArtifact } from './views/InflationDashboardArtifact';
+import { DriverAnalysisArtifact } from './views/DriverAnalysisArtifact';
+import { ImpactAnalysisArtifact } from './views/ImpactAnalysisArtifact';
+import { ScenarioPlannerArtifact } from './views/ScenarioPlannerArtifact';
+import { JustificationReportArtifact } from './views/JustificationReportArtifact';
+import { ExecutivePresentationArtifact } from './views/ExecutivePresentationArtifact';
+import { CommodityDashboardArtifact } from './views/CommodityDashboardArtifact';
+
 // ============================================
 // TYPES
 // ============================================
@@ -339,6 +348,170 @@ export const ArtifactRenderer = ({
     case 'category_overview':
     case 'regional_analysis':
       return <ArtifactPlaceholder type={type} />;
+
+    // Inflation Watch Artifacts
+    case 'inflation_dashboard':
+      {
+        const inflationAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={inflationAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <InflationDashboardArtifact
+                period={(payload as any).period}
+                summary={(payload as any).summary}
+                priceMovements={(payload as any).priceMovements?.commodities || []}
+                drivers={(payload as any).drivers || []}
+                alerts={(payload as any).alerts || []}
+                onExport={() => onAction?.('export')}
+                onDrillDown={(commodity) => onAction?.('drill_down', { commodity })}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
+
+    case 'driver_analysis':
+      {
+        const driverAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={driverAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <DriverAnalysisArtifact
+                commodity={(payload as any).commodity}
+                period={(payload as any).period}
+                priceChange={(payload as any).priceChange}
+                drivers={(payload as any).drivers || []}
+                driverContributions={(payload as any).driverContributions || []}
+                marketNews={(payload as any).marketNews || []}
+                historicalDrivers={(payload as any).historicalDrivers || []}
+                marketContext={(payload as any).marketContext}
+                sources={(payload as any).sources || []}
+                onExport={() => onAction?.('export')}
+                onViewCommodity={() => onAction?.('view_commodity')}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
+
+    case 'impact_analysis':
+      {
+        const impactAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={impactAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <ImpactAnalysisArtifact
+                period={(payload as any).period}
+                exposure={(payload as any).exposure}
+                riskCorrelation={(payload as any).riskCorrelation}
+                budgetImpact={(payload as any).budgetImpact}
+                mitigationOptions={(payload as any).mitigationOptions || []}
+                onExport={() => onAction?.('export')}
+                onDrillDown={(dimension, value) => onAction?.('drill_down', { dimension, value })}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
+
+    case 'scenario_planner':
+      {
+        const scenarioAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={scenarioAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <ScenarioPlannerArtifact
+                scenarios={(payload as any).scenarios || []}
+                baselineData={(payload as any).baselineData}
+                availableFactors={(payload as any).availableFactors || []}
+                onExport={() => onAction?.('export')}
+                onCreateScenario={(assumptions) => onAction?.('create_scenario', { assumptions })}
+                onSelectScenario={(scenario) => onAction?.('select_scenario', scenario)}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
+
+    case 'justification_report':
+      {
+        const justificationAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={justificationAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <JustificationReportArtifact
+                justification={(payload as any).justification}
+                historicalPricing={(payload as any).historicalPricing || []}
+                competitorPricing={(payload as any).competitorPricing || []}
+                contractTerms={(payload as any).contractTerms}
+                onExport={() => onAction?.('export')}
+                onStartNegotiation={() => onAction?.('start_negotiation')}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
+
+    case 'executive_presentation':
+      {
+        const execAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={execAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <ExecutivePresentationArtifact
+                title={(payload as any).title}
+                period={(payload as any).period}
+                summary={(payload as any).summary}
+                keyMetrics={(payload as any).keyMetrics || []}
+                highlights={(payload as any).highlights || []}
+                talkingPoints={(payload as any).talkingPoints || []}
+                outlook={(payload as any).outlook}
+                nextSteps={(payload as any).nextSteps || []}
+                shareableUrl={(payload as any).shareableUrl}
+                onExport={() => onAction?.('export')}
+                onShare={() => onAction?.('share')}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
+
+    case 'commodity_dashboard':
+      {
+        const commodityAiContent = (payload as any).aiContent;
+        return (
+          <div className="flex flex-col h-full">
+            <AIContentSection aiContent={commodityAiContent} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <CommodityDashboardArtifact
+                commodity={(payload as any).commodity}
+                drivers={(payload as any).drivers || []}
+                exposure={(payload as any).exposure}
+                affectedSuppliers={(payload as any).affectedSuppliers || []}
+                historicalComparison={(payload as any).historicalComparison || []}
+                forecast={(payload as any).forecast}
+                relatedCommodities={(payload as any).relatedCommodities || []}
+                onExport={() => onAction?.('export')}
+                onSetAlert={() => onAction?.('set_alert')}
+                onViewSupplier={(supplierId) => onAction?.('view_supplier', { supplierId })}
+                onClose={onClose}
+              />
+            </div>
+          </div>
+        );
+      }
 
     case 'spend_analysis':
       {

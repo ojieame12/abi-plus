@@ -2,11 +2,22 @@ import { ARTIFACT_META } from '../components/artifacts/registry';
 import type { ArtifactPayload, ArtifactType } from '../components/artifacts/registry';
 import type { Supplier, RiskChange, RiskPortfolio } from '../types/supplier';
 import { formatSpend, getRiskLevelFromScore } from '../types/supplier';
+import type {
+  InflationSummaryCardData,
+  DriverBreakdownCardData,
+  SpendImpactCardData,
+  JustificationCardData,
+  ScenarioCardData,
+  ExecutiveBriefCardData,
+  CommodityGaugeData,
+} from '../types/inflation';
 
 interface ArtifactContext {
   suppliers?: Supplier[];
   portfolio?: RiskPortfolio;
   riskChanges?: RiskChange[];
+  // Inflation widget data - passed from widget.data
+  widgetData?: Record<string, unknown>;
 }
 
 const artifactTypeMap: Record<string, ArtifactType> = {
@@ -311,6 +322,297 @@ export function buildArtifactPayload(
           matchScore: calculateSupplierMatchScore(currentSupplier, s),
           spend: s.spendFormatted,
         })),
+      } as ArtifactPayload;
+    }
+
+    // ============================================
+    // INFLATION ARTIFACTS
+    // ============================================
+
+    case 'inflation_dashboard': {
+      const widgetData = context.widgetData as InflationSummaryCardData | undefined;
+      if (!widgetData) return null;
+
+      return {
+        type: 'inflation_dashboard',
+        period: widgetData.period,
+        summary: {
+          period: widgetData.period,
+          headline: widgetData.headline,
+          overallChange: widgetData.overallChange,
+          portfolioImpact: widgetData.portfolioImpact,
+        },
+        priceMovements: {
+          commodities: [
+            ...(widgetData.topIncreases || []).map((item, i) => ({
+              id: `increase-${i}`,
+              name: item.commodity,
+              category: 'commodity',
+              change: { percent: item.change, direction: 'up' as const, absolute: 0 },
+              exposure: item.impact,
+            })),
+            ...(widgetData.topDecreases || []).map((item, i) => ({
+              id: `decrease-${i}`,
+              name: item.commodity,
+              category: 'commodity',
+              change: { percent: Math.abs(item.change), direction: 'down' as const, absolute: 0 },
+              exposure: item.benefit,
+            })),
+          ],
+        },
+        drivers: (widgetData.keyDrivers || []).map((driver, i) => ({
+          id: `driver-${i}`,
+          name: driver,
+          category: 'market_speculation' as const,
+          impact: 'medium' as const,
+          direction: 'inflationary' as const,
+          contribution: Math.round(100 / (widgetData.keyDrivers?.length || 1)),
+          description: driver,
+        })),
+        alerts: [],
+      } as ArtifactPayload;
+    }
+
+    case 'driver_analysis': {
+      const widgetData = context.widgetData as DriverBreakdownCardData | undefined;
+      if (!widgetData) return null;
+
+      return {
+        type: 'driver_analysis',
+        commodity: widgetData.commodity,
+        period: widgetData.period,
+        priceChange: widgetData.priceChange,
+        drivers: (widgetData.drivers || []).map((driver, i) => ({
+          id: `driver-${i}`,
+          name: driver.name,
+          category: driver.category,
+          impact: driver.contribution > 30 ? 'high' : driver.contribution > 15 ? 'medium' : 'low',
+          direction: driver.direction === 'up' ? 'inflationary' : 'deflationary',
+          contribution: driver.contribution,
+          description: driver.description,
+        })),
+        driverContributions: (widgetData.drivers || []).map(driver => ({
+          driver: driver.name,
+          category: driver.category,
+          contribution: driver.contribution,
+        })),
+        marketNews: [],
+        historicalDrivers: [],
+        marketContext: widgetData.marketContext,
+        sources: widgetData.sources || [],
+      } as ArtifactPayload;
+    }
+
+    case 'impact_analysis': {
+      const widgetData = context.widgetData as SpendImpactCardData | undefined;
+      if (!widgetData) return null;
+
+      // Parse total impact amount (e.g., "$5.2M" -> 5200000)
+      const parseAmount = (str: string): number => {
+        const match = str.match(/[\d.]+/);
+        if (!match) return 0;
+        const num = parseFloat(match[0]);
+        if (str.includes('M')) return num * 1000000;
+        if (str.includes('K')) return num * 1000;
+        return num;
+      };
+
+      const totalImpact = parseAmount(widgetData.totalImpact);
+
+      return {
+        type: 'impact_analysis',
+        period: widgetData.timeframe,
+        exposure: {
+          totalExposure: totalImpact,
+          totalExposureFormatted: widgetData.totalImpact,
+          impactAmount: totalImpact,
+          impactAmountFormatted: widgetData.totalImpact,
+          impactPercent: widgetData.impactPercent * (widgetData.totalImpactDirection === 'increase' ? 1 : -1),
+          byCommodity: [],
+          byCategory: (widgetData.breakdown || []).map(item => ({
+            category: item.category,
+            exposure: parseAmount(item.amount),
+            exposureFormatted: item.amount,
+            percentOfTotal: item.percent,
+            commodities: [],
+            avgPriceChange: item.percent * (item.direction === 'up' ? 1 : -1),
+            riskLevel: item.percent > 20 ? 'high' : item.percent > 10 ? 'medium' : 'low',
+          })),
+          bySupplier: [],
+          byRiskLevel: [],
+        },
+        riskCorrelation: {
+          highRiskHighExposure: 0,
+          concentrationRisk: widgetData.mostAffected ? [{
+            type: widgetData.mostAffected.type as 'commodity' | 'supplier' | 'region',
+            name: widgetData.mostAffected.name,
+            concentration: 30, // Default since we don't have exact data
+          }] : [],
+        },
+        budgetImpact: undefined,
+        mitigationOptions: widgetData.recommendation ? [{
+          action: widgetData.recommendation,
+          potentialSavings: 'TBD',
+          effort: 'medium' as const,
+          timeframe: '30 days',
+        }] : [],
+      } as ArtifactPayload;
+    }
+
+    case 'justification_report': {
+      const widgetData = context.widgetData as JustificationCardData | undefined;
+      if (!widgetData) return null;
+
+      return {
+        type: 'justification_report',
+        justification: {
+          supplierId: '',
+          supplierName: widgetData.supplierName,
+          commodity: widgetData.commodity,
+          requestedIncrease: widgetData.requestedIncrease,
+          marketIncrease: widgetData.marketBenchmark,
+          variance: widgetData.requestedIncrease - widgetData.marketBenchmark,
+          verdict: widgetData.verdict,
+          marketComparison: {
+            supplierPrice: 0,
+            marketAvg: 0,
+            marketLow: 0,
+            marketHigh: 0,
+            percentile: 50,
+          },
+          factors: (widgetData.keyPoints || []).map((point, i) => ({
+            name: point.point,
+            claimed: 0,
+            market: 0,
+            delta: 0,
+            verdict: point.supports ? 'supports' as const : 'disputes' as const,
+          })),
+          recommendation: widgetData.recommendation,
+          negotiationPoints: [],
+          supportingData: [],
+        },
+        historicalPricing: [],
+        competitorPricing: [],
+        contractTerms: undefined,
+      } as ArtifactPayload;
+    }
+
+    case 'scenario_planner': {
+      const widgetData = context.widgetData as ScenarioCardData | undefined;
+      if (!widgetData) return null;
+
+      // Parse amounts from formatted strings
+      const parseAmount = (str: string): number => {
+        const match = str.match(/[\d.]+/);
+        if (!match) return 0;
+        const num = parseFloat(match[0]);
+        if (str.includes('M')) return num * 1000000;
+        if (str.includes('K')) return num * 1000;
+        return num;
+      };
+
+      const baselineValue = parseAmount(widgetData.currentState.value);
+      const projectedValue = parseAmount(widgetData.projectedState.value);
+      const deltaValue = parseAmount(widgetData.delta.amount);
+
+      return {
+        type: 'scenario_planner',
+        scenarios: [{
+          id: 'scenario-1',
+          name: widgetData.scenarioName,
+          description: widgetData.description,
+          type: 'price_increase' as const,
+          assumptions: [{
+            factor: widgetData.assumption,
+            currentValue: baselineValue,
+            projectedValue: projectedValue,
+            changePercent: widgetData.delta.percent,
+            confidence: widgetData.confidence,
+          }],
+          results: {
+            baselineSpend: baselineValue,
+            projectedSpend: projectedValue,
+            delta: deltaValue * (widgetData.delta.direction === 'up' ? 1 : -1),
+            deltaFormatted: widgetData.delta.amount,
+            deltaPercent: widgetData.delta.percent * (widgetData.delta.direction === 'up' ? 1 : -1),
+            impactByCategory: [],
+            impactBySupplier: [],
+            recommendations: widgetData.recommendation ? [widgetData.recommendation] : [],
+            risks: widgetData.topImpacts || [],
+            opportunities: [],
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }],
+        baselineData: {
+          totalSpend: baselineValue,
+          byCategory: [],
+          bySupplier: [],
+        },
+        availableFactors: [],
+      } as ArtifactPayload;
+    }
+
+    case 'executive_presentation': {
+      const widgetData = context.widgetData as ExecutiveBriefCardData | undefined;
+      if (!widgetData) return null;
+
+      return {
+        type: 'executive_presentation',
+        title: widgetData.title,
+        period: widgetData.period,
+        summary: widgetData.summary,
+        keyMetrics: (widgetData.keyMetrics || []).map(metric => ({
+          label: metric.label,
+          value: metric.value,
+          change: metric.change,
+          status: metric.status,
+        })),
+        highlights: (widgetData.highlights || []).map(highlight => ({
+          type: highlight.type,
+          text: highlight.text,
+        })),
+        talkingPoints: [],
+        outlook: widgetData.outlook,
+        nextSteps: [],
+        shareableUrl: widgetData.shareableUrl,
+      } as ArtifactPayload;
+    }
+
+    case 'commodity_dashboard': {
+      const widgetData = context.widgetData as CommodityGaugeData | undefined;
+      if (!widgetData) return null;
+
+      return {
+        type: 'commodity_dashboard',
+        commodity: {
+          commodityId: widgetData.commodity,
+          name: widgetData.commodity,
+          category: widgetData.category,
+          currentPrice: widgetData.currentPrice,
+          previousPrice: widgetData.currentPrice * (1 - (widgetData.changes?.monthly?.percent || 0) / 100),
+          unit: widgetData.unit,
+          currency: widgetData.currency,
+          market: widgetData.market,
+          lastUpdated: widgetData.lastUpdated,
+          changes: widgetData.changes,
+          history: [],
+        },
+        drivers: [],
+        exposure: widgetData.portfolioExposure ? {
+          commodityId: widgetData.commodity,
+          commodityName: widgetData.commodity,
+          category: widgetData.category,
+          exposure: 0,
+          exposureFormatted: widgetData.portfolioExposure.amount,
+          priceChange: widgetData.changes?.monthly || { percent: 0, direction: 'stable', absolute: 0 },
+          supplierCount: widgetData.portfolioExposure.supplierCount,
+          topSuppliers: [],
+        } : undefined,
+        affectedSuppliers: [],
+        historicalComparison: [],
+        forecast: undefined,
+        relatedCommodities: [],
       } as ArtifactPayload;
     }
 
