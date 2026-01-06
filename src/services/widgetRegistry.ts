@@ -657,28 +657,43 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     renderContexts: ['chat', 'panel'],
     sizes: ['M'],
     defaultSize: 'M',
+    artifactType: 'commodity_dashboard',
+    expandsTo: 'CommodityDashboardArtifact',
     props: [
-      { name: 'title', type: 'string', required: true, description: 'Commodity name' },
-      { name: 'price', type: 'string', required: true, description: 'Current price' },
-      { name: 'unit', type: 'string', required: true, description: 'Price unit' },
-      { name: 'change24h', type: '{ value, percent, direction }', required: true, description: '24h change' },
-      { name: 'change30d', type: '{ value, percent, direction }', required: true, description: '30d change' },
+      { name: 'commodity', type: 'string', required: true, description: 'Commodity name' },
+      { name: 'currentPrice', type: 'number', required: true, description: 'Current price (numeric)' },
+      { name: 'unit', type: 'string', required: true, description: 'Price unit (mt, lb, kg)' },
+      { name: 'currency', type: 'string', required: true, description: 'Currency code (USD, EUR)' },
+      { name: 'gaugePosition', type: 'number', required: true, description: 'Gauge position 0-100' },
+      { name: 'change24h', type: '{ value: number, percent: number }', required: true, description: '24h change (numeric)' },
+      { name: 'change30d', type: '{ value: number, percent: number }', required: true, description: '30d change (numeric)' },
+      { name: 'market', type: 'string', required: true, description: 'Market identifier (LME, COMEX)' },
     ],
     demoData: {
-      title: 'Copper',
-      price: '$8,245',
-      unit: 'per metric ton',
-      lastChecked: '2h ago',
-      change24h: { value: '-$125', percent: '-1.5%', direction: 'down' },
-      change30d: { value: '-$320', percent: '-3.7%', direction: 'down' },
+      commodity: 'Copper',
+      currentPrice: 8245,
+      unit: 'mt',
+      currency: 'USD',
+      lastUpdated: 'Beroe today',
+      gaugeMin: 5772,
+      gaugeMax: 10719,
+      gaugePosition: 50,
+      change24h: { value: -125, percent: -1.5 },
+      change30d: { value: -320, percent: -3.7 },
       market: 'LME',
+      tags: ['Softening', 'Demand Weak'],
     },
     usageExample: `<PriceGaugeWidget
-  title="Copper"
-  price="$8,245"
-  unit="per metric ton"
-  change24h={{ value: '-$125', percent: '-1.5%', direction: 'down' }}
-  change30d={{ value: '-$320', percent: '-3.7%', direction: 'down' }}
+  data={{
+    commodity: "Copper",
+    currentPrice: 8245,
+    unit: "mt",
+    currency: "USD",
+    gaugePosition: 50,
+    change24h: { value: -125, percent: -1.5 },
+    change30d: { value: -320, percent: -3.7 },
+    market: "LME"
+  }}
 />`,
   },
   {

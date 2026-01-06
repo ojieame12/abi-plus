@@ -864,26 +864,29 @@ const generateLocalResponse = (
               type: 'price_gauge',
               title: `${commodityData.name} Price`,
               data: {
-                title: `Current ${commodityData.name} Price`,
-                price: `$${commodityData.currentPrice?.toLocaleString() || '2,380'}`,
-                unit: `/${commodityData.unit || 'mt'}`,
-                lastChecked: 'Beroe today',
+                // PriceGaugeData format (numeric values)
+                commodity: commodityData.name,
+                currentPrice: commodityData.currentPrice || 0,
+                unit: commodityData.unit || 'mt',
+                currency: 'USD',
+                lastUpdated: 'Beroe today',
+                gaugeMin: (commodityData.currentPrice || 0) * 0.7,
+                gaugeMax: (commodityData.currentPrice || 0) * 1.3,
+                gaugePosition: Math.round(50 + (pricePercent * 2)),
                 change24h: {
-                  value: `$${Math.abs(pricePercent * 10).toFixed(0)}`,
-                  percent: `${(pricePercent / 30).toFixed(1)}%`,
-                  direction: priceDirection === 'up' ? 'up' : 'down',
+                  value: Math.abs((commodityData.currentPrice || 0) * (pricePercent / 30) / 100),
+                  percent: pricePercent / 30,
                 },
                 change30d: {
-                  value: `$${Math.abs(pricePercent * 25).toFixed(0)}`,
-                  percent: `${pricePercent.toFixed(1)}%`,
-                  direction: priceDirection === 'up' ? 'up' : 'down',
+                  value: Math.abs((commodityData.currentPrice || 0) * pricePercent / 100),
+                  percent: pricePercent,
                 },
                 market: commodityData.region === 'global' ? 'LME' : commodityData.region?.toUpperCase() || 'Global',
-                gaugeValue: Math.round(50 + (pricePercent * 2)), // Scale percent to gauge position
-                insight: {
-                  text: drivers.marketContext,
-                  detail: `${drivers.drivers[0]?.name} is the primary driver`,
-                },
+                tags: priceDirection === 'up'
+                  ? ['Rising Trend', 'Supply Pressure']
+                  : priceDirection === 'down'
+                    ? ['Softening', 'Demand Weak']
+                    : ['Stable'],
               },
             },
             acknowledgement: `Here's the ${commodityData.name} price forecast.`,
