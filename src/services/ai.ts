@@ -19,7 +19,10 @@ import {
   getSpendImpact,
   getJustificationData,
   getScenarioData,
+  generateSpendExposureData,
+  getCategoryBreakdown,
 } from './mockData';
+import { formatSpend } from '../types/supplier';
 import {
   transformSuppliersToTableData,
   transformRiskChangesToAlertData,
@@ -485,7 +488,60 @@ const generateLocalResponse = (
     case 'portfolio_overview': {
       const unratedCount = portfolio.distribution.unrated;
       const highRiskCount = portfolio.distribution.high;
-      const needsAttention = highRiskCount + portfolio.distribution.mediumHigh;
+      const mediumHighCount = portfolio.distribution.mediumHigh;
+      const needsAttention = highRiskCount + mediumHighCount;
+
+      // Handle by_dimension subIntent - spend exposure and concentration analysis
+      if (intent.subIntent === 'by_dimension') {
+        const spendExposure = generateSpendExposureData(MOCK_SUPPLIERS.filter(s => s.isFollowed));
+        const categoryBreakdown = getCategoryBreakdown(portfolio, MOCK_SUPPLIERS.filter(s => s.isFollowed));
+
+        // Find concentration risks
+        const topCategory = categoryBreakdown.sort((a, b) => b.spend - a.spend)[0];
+        const highRiskSpend = spendExposure.breakdown.find(b => b.level === 'high');
+        const highRiskExposurePercent = highRiskSpend?.percent || 0;
+
+        // Build analytical content
+        const concentrationRisk = topCategory && topCategory.spend > portfolio.totalSpend * 0.4
+          ? `${topCategory.category} represents ${Math.round((topCategory.spend / portfolio.totalSpend) * 100)}% of spend—a concentration risk.`
+          : null;
+
+        const riskExposure = highRiskExposurePercent > 15
+          ? `${Math.round(highRiskExposurePercent)}% of spend is with high-risk suppliers.`
+          : highRiskExposurePercent > 0
+          ? `High-risk exposure is manageable at ${Math.round(highRiskExposurePercent)}% of spend.`
+          : 'No spend is currently at high risk.';
+
+        return {
+          content: `Your ${portfolio.totalSpendFormatted} portfolio has ${needsAttention} suppliers requiring attention. ${concentrationRisk || ''} ${riskExposure}`.trim(),
+          responseType: 'widget',
+          suggestions: generateSuggestions(intent, { portfolio }),
+          sources: [
+            { name: 'Beroe Risk Analytics', type: 'beroe' as const },
+            { name: 'Spend Analytics', type: 'beroe' as const },
+          ],
+          portfolio,
+          widget: {
+            type: 'spend_exposure',
+            title: 'Spend Exposure by Risk Level',
+            data: spendExposure,
+          },
+          acknowledgement: "Here's your spend exposure analysis.",
+          insight: {
+            headline: concentrationRisk ? 'Concentration Risk Detected' : `${needsAttention} Suppliers Need Attention`,
+            summary: `Across ${categoryBreakdown.length} categories, ${formatSpend(highRiskSpend?.amount || 0)} (${Math.round(highRiskExposurePercent)}%) is exposed to high-risk suppliers. ${concentrationRisk || `Your spend is reasonably diversified across categories.`}`,
+            detail: spendExposure.highestExposure
+              ? `Highest risk exposure: ${spendExposure.highestExposure.supplierName} (${spendExposure.highestExposure.amount})`
+              : `${categoryBreakdown.length} active categories monitored`,
+            sentiment: highRiskExposurePercent > 20 || concentrationRisk ? 'negative' : 'neutral',
+          },
+          artifact: { type: 'portfolio_dashboard', title: 'Spend & Risk Analysis' },
+          escalation: determineEscalation(portfolio.totalSuppliers, 'portfolio_overview'),
+          intent,
+        };
+      }
+
+      // Default portfolio overview (no specific subIntent)
       const primaryConcern = unratedCount > 3
         ? `The ${unratedCount} unrated suppliers represent a visibility gap that may impact risk oversight.`
         : highRiskCount > 0

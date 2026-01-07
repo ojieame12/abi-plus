@@ -1234,6 +1234,37 @@ function mapEventType(category?: string, impact?: string): 'news' | 'risk_change
   return 'news';
 }
 
+// Helper to transform portfolio data to RiskDistributionWidget-compatible format
+function transformPortfolioToWidgetData(portfolio: RiskPortfolio): {
+  distribution: {
+    high: { count: number; spend: number; percent: number };
+    mediumHigh: { count: number; spend: number; percent: number };
+    medium: { count: number; spend: number; percent: number };
+    low: { count: number; spend: number; percent: number };
+    unrated: { count: number; spend: number; percent: number };
+  };
+  totalSuppliers: number;
+  totalSpend: number;
+  totalSpendFormatted: string;
+} {
+  const total = portfolio.totalSuppliers || 1; // Avoid division by zero
+  const dist = portfolio.distribution;
+
+  // Convert flat counts to nested objects with count, spend, percent
+  return {
+    distribution: {
+      high: { count: dist.high || 0, spend: 0, percent: ((dist.high || 0) / total) * 100 },
+      mediumHigh: { count: dist.mediumHigh || 0, spend: 0, percent: ((dist.mediumHigh || 0) / total) * 100 },
+      medium: { count: dist.medium || 0, spend: 0, percent: ((dist.medium || 0) / total) * 100 },
+      low: { count: dist.low || 0, spend: 0, percent: ((dist.low || 0) / total) * 100 },
+      unrated: { count: dist.unrated || 0, spend: 0, percent: ((dist.unrated || 0) / total) * 100 },
+    },
+    totalSuppliers: portfolio.totalSuppliers,
+    totalSpend: portfolio.totalSpend,
+    totalSpendFormatted: portfolio.totalSpendFormatted,
+  };
+}
+
 // Build source attribution in ResponseSources format for UI rendering
 function buildDataSources(
   intent: DetectedIntent,
@@ -1562,11 +1593,7 @@ const enhanceResponseWithData = async (
       baseResponse.widget = {
         type: 'risk_distribution',
         title: 'Risk Portfolio Overview',
-        data: {
-          distribution: portfolio.distribution,
-          totalSuppliers: portfolio.totalSuppliers,
-          totalSpend: portfolio.totalSpendFormatted,
-        },
+        data: transformPortfolioToWidgetData(portfolio),
       };
     }
 
@@ -1948,11 +1975,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
         widget: {
           type: 'risk_distribution',
           title: 'Risk Portfolio Overview',
-          data: {
-            distribution: portfolio.distribution,
-            totalSuppliers: portfolio.totalSuppliers,
-            totalSpend: portfolio.totalSpendFormatted,
-          },
+          data: transformPortfolioToWidgetData(portfolio),
         },
         artifact: { type: 'portfolio_dashboard', title: 'Risk Portfolio Overview' },
         intent,
