@@ -41,6 +41,8 @@ export interface BuilderMeta {
   promptTemplate?: string;  // The detailed prompt template from builder
   routePath?: string;       // e.g., 'risk:portfolio-health:executive-summary'
   requiresResearch?: boolean;
+  isExternalSupplierResearch?: boolean;  // True when researching supplier not in database
+  supplierName?: string;  // Name of supplier being researched
 }
 
 export const buildContentGenerationPrompt = (
@@ -76,17 +78,49 @@ export const buildContentGenerationPrompt = (
     ? `\n## User's Detailed Request\nThe user has made a structured query using the prompt builder. Address these specific areas:\n${builderMeta.promptTemplate}\n`
     : '';
 
+  // External supplier research context
+  const isExternalResearch = builderMeta?.isExternalSupplierResearch;
+  const supplierName = builderMeta?.supplierName;
+  const externalResearchContext = isExternalResearch && supplierName
+    ? `\n## IMPORTANT: External Company Research
+This supplier "${supplierName}" is NOT in the user's portfolio database.
+Use your knowledge to provide accurate information about this company.
+Research and include:
+- Company's primary industry and category
+- Headquarters location (city, country)
+- Key business areas and market position
+- Known risk factors (supply chain, financial, ESG, geopolitical)
+- Recent news or developments if relevant
+\n`
+    : '';
+
+  // Add researchedCompany field to JSON schema for external suppliers
+  const researchedCompanySchema = isExternalResearch
+    ? `,
+  "researchedCompany": {
+    "name": "${supplierName}",
+    "category": "Primary industry/category (e.g., Electronics, Manufacturing)",
+    "industry": "Specific industry (e.g., Consumer Electronics, Semiconductors)",
+    "headquarters": { "city": "City name", "country": "Country name", "region": "Asia Pacific|Europe|North America|Latin America|Middle East|Africa" },
+    "overview": "2-3 sentence company overview",
+    "keyFactors": [
+      { "name": "Factor name (e.g., Market Position, Supply Chain Complexity)", "impact": "positive|negative|neutral" }
+    ]
+  }`
+    : '';
+
   return `You are generating content for an AI response. The widget type is ALREADY DETERMINED to be: ${widgetType}
 ${widgetType !== 'none' ? `\nThis widget displays: ${widgetDesc}` : ''}
 
 ## Intent: ${intentCategory}
-${builderContext}
+${builderContext}${externalResearchContext}
 ## Available Data
 ${dataContext}
 
 ## Your Task
 Generate the content to accompany this widget. You are NOT choosing the widget - it's already selected.
 ${hasDetailedBuilder ? 'The user has made a detailed structured request - provide a comprehensive response that addresses their specific requirements.' : ''}
+${isExternalResearch ? `IMPORTANT: Since "${supplierName}" is NOT in the user\'s database, you MUST research this company using your knowledge and populate the "researchedCompany" field with accurate company information.` : ''}
 
 ## Required Output (JSON only, no markdown fences)
 {
@@ -107,7 +141,7 @@ ${hasDetailedBuilder ? 'The user has made a detailed structured request - provid
     "keyPoints": ["Key point 1", "Key point 2", "Key point 3"${hasDetailedBuilder ? ', "Key point 4", "Key point 5"' : ''}],
     "recommendations": ["Recommended action 1", "Recommended action 2"${hasDetailedBuilder ? ', "Recommended action 3"' : ''}]
   },
-  "followUps": ["Contextual follow-up question 1?", "Follow-up question 2?", "Follow-up question 3?"]
+  "followUps": ["Contextual follow-up question 1?", "Follow-up question 2?", "Follow-up question 3?"]${researchedCompanySchema}
 }
 
 ## Content Guidelines

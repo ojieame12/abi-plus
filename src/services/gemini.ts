@@ -517,6 +517,8 @@ interface FetchedData {
   regionBreakdown?: Array<{ region: string; count: number; spend: number; highRisk: number; avgScore: number }>;
   // Spend exposure data
   spendExposureData?: SpendExposureData;
+  // Flag for external supplier research (not in our database)
+  isSyntheticSupplier?: boolean;
 }
 
 // Step 1: Fetch data based on intent requirements
@@ -919,9 +921,16 @@ ${regionList}`);
 async function generateAIContent(
   widgetType: WidgetType,
   intentCategory: string,
-  dataContext: string
+  dataContext: string,
+  options?: { isSyntheticSupplier?: boolean; supplierName?: string }
 ): Promise<AIContentSlots | null> {
-  const prompt = buildContentGenerationPrompt(widgetType, intentCategory, dataContext);
+  const builderMeta = options?.isSyntheticSupplier
+    ? {
+        isExternalSupplierResearch: true,
+        supplierName: options.supplierName,
+      }
+    : undefined;
+  const prompt = buildContentGenerationPrompt(widgetType, intentCategory, dataContext, builderMeta);
 
   const requestBody = {
     contents: [
@@ -1013,10 +1022,17 @@ function buildWidgetData(
 
     case 'supplier_risk_card':
       if (!data.targetSupplier) return undefined;
+      const riskCardData = transformSupplierToRiskCardData(data.targetSupplier);
+      // Mark synthetic suppliers (not in our database - researched externally)
+      if (data.isSyntheticSupplier) {
+        riskCardData.isResearched = true;
+      }
       return {
         type: 'supplier_risk_card',
-        title: `${data.targetSupplier.name} Risk Profile`,
-        data: transformSupplierToRiskCardData(data.targetSupplier),
+        title: data.isSyntheticSupplier
+          ? `${data.targetSupplier.name} Overview`
+          : `${data.targetSupplier.name} Risk Profile`,
+        data: riskCardData,
       };
 
     case 'alert_card':
@@ -1434,8 +1450,43 @@ export async function callGeminiV2(
   // 4. Build data context for AI
   const dataContext = buildDataContext(intent, data, userMessage);
 
-  // 5. Call AI for content generation
-  const aiContent = await generateAIContent(route.widgetType, intent.category, dataContext);
+  // 5. Call AI for content generation (pass synthetic supplier flag for external research)
+  const aiContent = await generateAIContent(
+    route.widgetType,
+    intent.category,
+    dataContext,
+    data.isSyntheticSupplier
+      ? { isSyntheticSupplier: true, supplierName: data.targetSupplier?.name }
+      : undefined
+  );
+
+  // 5b. If AI returned researched company data, enrich the synthetic supplier
+  if (aiContent?.researchedCompany && data.isSyntheticSupplier && data.targetSupplier) {
+    const rc = aiContent.researchedCompany;
+    data.targetSupplier.category = rc.category || data.targetSupplier.category;
+    data.targetSupplier.industry = rc.industry || data.targetSupplier.industry;
+    if (rc.headquarters) {
+      data.targetSupplier.location = {
+        city: rc.headquarters.city || 'Unknown',
+        country: rc.headquarters.country || 'Unknown',
+        region: (rc.headquarters.region as typeof data.targetSupplier.location.region) || 'Asia Pacific',
+      };
+    }
+    // Convert AI key factors to SRS factors format for widget
+    if (rc.keyFactors?.length) {
+      data.targetSupplier.srs = {
+        ...data.targetSupplier.srs,
+        factors: rc.keyFactors.map((f, i) => ({
+          id: `research-${i}`,
+          name: f.name,
+          tier: 'freely-displayable' as const,
+          weight: 0.25,
+          rating: f.impact === 'negative' ? 'High' : f.impact === 'positive' ? 'Low' : 'Medium',
+        })),
+      };
+    }
+    console.log('[GeminiV2] Enriched synthetic supplier with AI research:', rc);
+  }
 
   // 6. Build widget data
   const widget = buildWidgetData(route.widgetType, data, aiContent);

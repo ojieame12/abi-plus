@@ -192,6 +192,16 @@ export interface AIContentSlots {
 
   // Follow-up suggestions
   followUps: string[];
+
+  // Researched company data (for external suppliers not in our database)
+  researchedCompany?: {
+    name: string;
+    category: string;
+    industry: string;
+    headquarters: { city: string; country: string; region: string };
+    overview: string;
+    keyFactors: Array<{ name: string; impact: 'positive' | 'negative' | 'neutral' }>;
+  };
 }
 
 // ============================================
@@ -295,7 +305,8 @@ export function getWidgetRouteFromRegistry(
   return {
     widgetType: selectedWidget.type,
     artifactType: (selectedWidget.artifactType || 'none') as ArtifactType,
-    requiresSuppliers: selectedWidget.requiredData.includes('suppliers'),
+    // Include 'supplier' (singular) as well - widgets that need a single supplier still need the supplier lookup
+    requiresSuppliers: selectedWidget.requiredData.includes('suppliers') || selectedWidget.requiredData.includes('supplier'),
     requiresPortfolio: selectedWidget.requiredData.includes('portfolio'),
     requiresRiskChanges: selectedWidget.requiredData.includes('riskChanges'),
     requiresHandoff: intent === 'restricted_query',

@@ -245,6 +245,8 @@ export interface SupplierRiskCardData {
   spendFormatted: string;
   lastUpdated: string;
   keyFactors?: { name: string; impact: 'positive' | 'negative' | 'neutral' }[];
+  /** True when supplier is not in our database - data is from external research */
+  isResearched?: boolean;
 }
 
 export interface RiskDistributionData {
