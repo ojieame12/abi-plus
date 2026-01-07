@@ -744,41 +744,52 @@ export interface Commodity {
   region?: 'global' | 'europe' | 'asia' | 'americas';
   currentPrice?: number;
   unit?: string;
+  currency?: 'USD' | 'EUR' | 'CNY' | 'GBP';  // Currency for price display
   priceChange?: { percent: number; direction: 'up' | 'down' | 'stable' };
 }
 
 export const COMMODITIES: Commodity[] = [
-  // Metals
-  { id: 'steel', name: 'Steel', category: 'metals', region: 'global', priceChange: { percent: 8.5, direction: 'up' } },
-  { id: 'aluminum', name: 'Aluminum', category: 'metals', region: 'global', priceChange: { percent: 6.2, direction: 'up' } },
-  { id: 'copper', name: 'Copper', category: 'metals', region: 'global', priceChange: { percent: 4.1, direction: 'up' } },
-  { id: 'cold-rolled-steel', name: 'Cold Rolled Steel', category: 'metals', region: 'global', priceChange: { percent: 12.0, direction: 'up' } },
+  // Metals (LME prices in USD)
+  { id: 'steel', name: 'Steel', category: 'metals', region: 'global', currentPrice: 680, unit: 'mt', currency: 'USD', priceChange: { percent: 8.5, direction: 'up' } },
+  { id: 'aluminum', name: 'Aluminum', category: 'metals', region: 'global', currentPrice: 2380, unit: 'mt', currency: 'USD', priceChange: { percent: 6.2, direction: 'up' } },
+  { id: 'copper', name: 'Copper', category: 'metals', region: 'global', currentPrice: 8245, unit: 'mt', currency: 'USD', priceChange: { percent: 4.1, direction: 'up' } },
+  { id: 'cold-rolled-steel', name: 'Cold Rolled Steel', category: 'metals', region: 'global', currentPrice: 920, unit: 'mt', currency: 'USD', priceChange: { percent: 12.0, direction: 'up' } },
 
-  // Packaging
-  { id: 'corrugated-boxes', name: 'Corrugated Boxes', category: 'packaging', region: 'europe', priceChange: { percent: 5.8, direction: 'up' } },
-  { id: 'plastics', name: 'Plastics', category: 'packaging', region: 'global', priceChange: { percent: -2.3, direction: 'down' } },
-  { id: 'paper-pulp', name: 'Paper & Pulp', category: 'packaging', region: 'europe', priceChange: { percent: 3.2, direction: 'up' } },
-  { id: 'flexible-packaging', name: 'Flexible Packaging', category: 'packaging', region: 'global', priceChange: { percent: 2.1, direction: 'up' } },
+  // Packaging (USD)
+  { id: 'corrugated-boxes', name: 'Corrugated Boxes', category: 'packaging', region: 'europe', currentPrice: 850, unit: 'mt', currency: 'EUR', priceChange: { percent: 5.8, direction: 'up' } },
+  { id: 'plastics', name: 'Plastics', category: 'packaging', region: 'global', currentPrice: 1450, unit: 'mt', currency: 'USD', priceChange: { percent: -2.3, direction: 'down' } },
+  { id: 'paper-pulp', name: 'Paper & Pulp', category: 'packaging', region: 'europe', currentPrice: 720, unit: 'mt', currency: 'EUR', priceChange: { percent: 3.2, direction: 'up' } },
+  { id: 'flexible-packaging', name: 'Flexible Packaging', category: 'packaging', region: 'global', currentPrice: 2100, unit: 'mt', currency: 'USD', priceChange: { percent: 2.1, direction: 'up' } },
 
-  // Chemicals
-  { id: 'resins', name: 'Resins', category: 'chemicals', region: 'global', priceChange: { percent: -1.5, direction: 'down' } },
-  { id: 'rubber', name: 'Rubber', category: 'chemicals', region: 'asia', priceChange: { percent: -1.8, direction: 'down' } },
-  { id: 'silicones', name: 'Silicones', category: 'chemicals', region: 'global', priceChange: { percent: 1.2, direction: 'up' } },
+  // Chemicals (mixed currencies)
+  { id: 'resins', name: 'Resins', category: 'chemicals', region: 'global', currentPrice: 1680, unit: 'mt', currency: 'USD', priceChange: { percent: -1.5, direction: 'down' } },
+  { id: 'rubber', name: 'Rubber', category: 'chemicals', region: 'asia', currentPrice: 1850, unit: 'mt', currency: 'USD', priceChange: { percent: -1.8, direction: 'down' } },
+  { id: 'silicones', name: 'Silicones', category: 'chemicals', region: 'global', currentPrice: 3200, unit: 'mt', currency: 'USD', priceChange: { percent: 1.2, direction: 'up' } },
+  { id: 'lithium-carbonate', name: 'Lithium Carbonate', category: 'chemicals', region: 'global', currentPrice: 126005, unit: 'mt', currency: 'CNY', priceChange: { percent: 56.0, direction: 'up' } },
+  { id: 'rare-earth-elements', name: 'Rare Earth Elements', category: 'chemicals', region: 'asia', currentPrice: 50000, unit: 'mt', currency: 'CNY', priceChange: { percent: 14.0, direction: 'up' } },
 
-  // Energy
-  { id: 'natural-gas', name: 'Natural Gas', category: 'energy', region: 'europe', priceChange: { percent: 15.3, direction: 'up' } },
-  { id: 'electricity', name: 'Electricity', category: 'energy', region: 'europe', priceChange: { percent: 8.7, direction: 'up' } },
+  // Energy (mixed)
+  { id: 'natural-gas', name: 'Natural Gas', category: 'energy', region: 'europe', currentPrice: 32.5, unit: 'MMBtu', currency: 'EUR', priceChange: { percent: 15.3, direction: 'up' } },
+  { id: 'electricity', name: 'Electricity', category: 'energy', region: 'europe', currentPrice: 85, unit: 'MWh', currency: 'EUR', priceChange: { percent: 8.7, direction: 'up' } },
 
-  // Logistics
-  { id: 'ocean-freight', name: 'Ocean Freight', category: 'logistics', region: 'global', priceChange: { percent: -5.2, direction: 'down' } },
-  { id: 'air-freight', name: 'Air Freight', category: 'logistics', region: 'global', priceChange: { percent: 2.8, direction: 'up' } },
+  // Logistics (USD)
+  { id: 'ocean-freight', name: 'Ocean Freight', category: 'logistics', region: 'global', currentPrice: 2850, unit: 'TEU', currency: 'USD', priceChange: { percent: -5.2, direction: 'down' } },
+  { id: 'air-freight', name: 'Air Freight', category: 'logistics', region: 'global', currentPrice: 4.25, unit: 'kg', currency: 'USD', priceChange: { percent: 2.8, direction: 'up' } },
 ];
 
-// Get commodity by ID or name
+// Get commodity by ID or name (tolerant matching - partial names work)
 export const getCommodity = (idOrName: string): Commodity | undefined => {
-  const lower = idOrName.toLowerCase();
-  return COMMODITIES.find(c =>
+  const lower = idOrName.toLowerCase().trim();
+
+  // Exact match first
+  const exact = COMMODITIES.find(c =>
     c.id === lower || c.name.toLowerCase() === lower
+  );
+  if (exact) return exact;
+
+  // Partial match: query contains commodity name or vice versa
+  return COMMODITIES.find(c =>
+    c.name.toLowerCase().includes(lower) || lower.includes(c.name.toLowerCase())
   );
 };
 
@@ -1048,4 +1059,390 @@ export const getRegionBreakdown = (portfolio: RiskPortfolio, suppliers: Supplier
     const spend = regSuppliers.reduce((sum, s) => sum + s.spend, 0);
     return { region: reg, count: regSuppliers.length, spend, highRisk, avgScore: Math.round(avgScore) };
   }).filter(r => r.count > 0);
+};
+
+// ============================================
+// VALUE LADDER MOCK DATA (4-Layer System)
+// ============================================
+
+import type {
+  ValueLadder,
+  AnalystConnectAction,
+  CommunityAction,
+  ExpertDeepDiveAction,
+  SourceEnhancement,
+  SourceEnhancementSuggestion,
+} from '../types/aiResponse';
+
+// Mock Beroe Analysts (Layer 2)
+const MOCK_ANALYSTS = [
+  {
+    id: 'analyst_001',
+    name: 'Sarah Chen',
+    title: 'Senior Category Analyst',
+    specialty: 'Metals & Mining',
+    photo: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face',
+    availability: 'available' as const,
+    responseTime: '~2 hours',
+  },
+  {
+    id: 'analyst_002',
+    name: 'Michael Torres',
+    title: 'Principal Analyst',
+    specialty: 'Packaging & Paper',
+    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    availability: 'available' as const,
+    responseTime: '~4 hours',
+  },
+  {
+    id: 'analyst_003',
+    name: 'Emma Williams',
+    title: 'Category Lead',
+    specialty: 'Chemicals & Energy',
+    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    availability: 'busy' as const,
+    responseTime: '~1 day',
+  },
+  {
+    id: 'analyst_004',
+    name: 'James Park',
+    title: 'Senior Analyst',
+    specialty: 'Logistics & Freight',
+    photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    availability: 'available' as const,
+    responseTime: '~3 hours',
+  },
+];
+
+// Mock Expert Network (Layer 3)
+const MOCK_EXPERTS = [
+  {
+    id: 'expert_001',
+    name: 'Dr. Robert Hayes',
+    title: 'Former VP Supply Chain',
+    formerCompany: 'Tesla',
+    expertise: 'EV Battery Materials, Lithium Supply Chain',
+    isTopVoice: true,
+  },
+  {
+    id: 'expert_002',
+    name: 'Patricia Morgan',
+    title: 'Former Chief Procurement Officer',
+    formerCompany: 'Unilever',
+    expertise: 'Sustainable Packaging, FMCG Supply',
+    isTopVoice: true,
+  },
+  {
+    id: 'expert_003',
+    name: 'Thomas Schmidt',
+    title: 'Former Managing Director',
+    formerCompany: 'ThyssenKrupp',
+    expertise: 'Steel Markets, European Manufacturing',
+    isTopVoice: false,
+  },
+  {
+    id: 'expert_004',
+    name: 'Lisa Chang',
+    title: 'Former Head of Strategic Sourcing',
+    formerCompany: 'Apple',
+    expertise: 'Electronics, Asia-Pacific Supply Chain',
+    isTopVoice: true,
+  },
+];
+
+// Mock Community Threads (Layer 4)
+const MOCK_COMMUNITY_THREADS = [
+  {
+    id: 'thread_001',
+    title: 'Steel price increases - how are you handling supplier negotiations?',
+    replyCount: 23,
+    category: 'Metals',
+  },
+  {
+    id: 'thread_002',
+    title: 'Alternative packaging suppliers in APAC region',
+    replyCount: 15,
+    category: 'Packaging',
+  },
+  {
+    id: 'thread_003',
+    title: 'Managing lithium supply constraints for EV components',
+    replyCount: 31,
+    category: 'Chemicals',
+  },
+  {
+    id: 'thread_004',
+    title: 'Best practices for supplier risk monitoring',
+    replyCount: 42,
+    category: 'Risk Management',
+  },
+  {
+    id: 'thread_005',
+    title: 'Ocean freight rate volatility - strategies?',
+    replyCount: 18,
+    category: 'Logistics',
+  },
+];
+
+// Category to specialty mapping for analyst matching
+const CATEGORY_SPECIALTY_MAP: Record<string, string[]> = {
+  'metals': ['Metals & Mining'],
+  'steel': ['Metals & Mining'],
+  'aluminum': ['Metals & Mining'],
+  'copper': ['Metals & Mining'],
+  'packaging': ['Packaging & Paper'],
+  'corrugated': ['Packaging & Paper'],
+  'paper': ['Packaging & Paper'],
+  'chemicals': ['Chemicals & Energy'],
+  'energy': ['Chemicals & Energy'],
+  'lithium': ['Chemicals & Energy'],
+  'logistics': ['Logistics & Freight'],
+  'freight': ['Logistics & Freight'],
+  'shipping': ['Logistics & Freight'],
+};
+
+/**
+ * Generate Value Ladder actions based on context
+ * @param context - Query context (commodity, supplier, category)
+ * @param intent - Detected intent from query
+ * @returns ValueLadder with available actions
+ */
+export const generateValueLadder = (
+  context?: {
+    commodity?: string;
+    supplier?: string;
+    category?: string;
+    queryId?: string;
+  },
+  intent?: string
+): ValueLadder => {
+  const valueLadder: ValueLadder = {};
+
+  // Layer 2: Analyst Connect - Match analyst based on category/commodity
+  const searchTerms = [
+    context?.commodity?.toLowerCase(),
+    context?.category?.toLowerCase(),
+    context?.supplier?.toLowerCase(),
+  ].filter(Boolean);
+
+  let matchedSpecialty: string | undefined;
+  for (const term of searchTerms) {
+    if (term) {
+      for (const [key, specialties] of Object.entries(CATEGORY_SPECIALTY_MAP)) {
+        if (term.includes(key)) {
+          matchedSpecialty = specialties[0];
+          break;
+        }
+      }
+    }
+    if (matchedSpecialty) break;
+  }
+
+  const matchedAnalyst = matchedSpecialty
+    ? MOCK_ANALYSTS.find(a => a.specialty === matchedSpecialty)
+    : MOCK_ANALYSTS[Math.floor(Math.random() * MOCK_ANALYSTS.length)];
+
+  if (matchedAnalyst) {
+    valueLadder.analystConnect = {
+      available: true,
+      analyst: matchedAnalyst,
+      cta: `Ask ${matchedAnalyst.name.split(' ')[0]} about this`,
+      context: context?.queryId ? {
+        queryId: context.queryId,
+        relevantSection: 'main_response',
+      } : undefined,
+    };
+  }
+
+  // Layer 4: Community - Find related threads
+  const relatedThreads = MOCK_COMMUNITY_THREADS.filter(thread => {
+    const titleLower = thread.title.toLowerCase();
+    const categoryLower = thread.category.toLowerCase();
+    return searchTerms.some(term =>
+      term && (titleLower.includes(term) || categoryLower.includes(term) || term.includes(categoryLower.toLowerCase()))
+    );
+  });
+
+  // Community is always available - show matched threads or fallback to first general thread
+  const threads = relatedThreads.length > 0 ? relatedThreads : [MOCK_COMMUNITY_THREADS[0]];
+  valueLadder.community = {
+    available: true,
+    relatedThreadCount: threads.length,
+    topThread: threads[0],
+    cta: threads.length > 1 ? `${threads.length} related discussions` : 'See related discussions',
+  };
+
+  // Layer 3: Expert Deep-Dive - Match expert based on context (premium)
+  // Use deterministic matching - first matched expert or first in list
+  const matchedExpert = MOCK_EXPERTS.find(expert => {
+    const expertiseLower = expert.expertise.toLowerCase();
+    return searchTerms.some(term => term && expertiseLower.includes(term));
+  }) || MOCK_EXPERTS[0];
+
+  // Expert is available for complex intents (deterministic, no randomness)
+  const complexIntents = ['market_context', 'comparison', 'explanation_why', 'negotiation', 'scenario_analysis'];
+  const shouldShowExpert = intent && complexIntents.includes(intent);
+
+  if (shouldShowExpert && matchedExpert) {
+    // Recommendation shown when there's a matched analyst (deterministic)
+    const showRecommendation = !!matchedAnalyst;
+    valueLadder.expertDeepDive = {
+      available: true,
+      matchedExpert,
+      isPremium: true,
+      cta: 'Request expert intro',
+      recommendedBy: showRecommendation ? {
+        analystName: matchedAnalyst.name,
+        reason: `${matchedExpert.name} has deep expertise in this area`,
+      } : undefined,
+    };
+  }
+
+  return valueLadder;
+};
+
+/**
+ * Generate Source Enhancement suggestions based on source mix
+ * @param sourceMix - What sources were used in the response
+ * @param intent - Detected intent
+ * @returns SourceEnhancement with suggestions
+ */
+export const generateSourceEnhancement = (
+  sourceMix: 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'all',
+  intent?: string
+): SourceEnhancement => {
+  const suggestions: SourceEnhancementSuggestion[] = [];
+
+  // Map internal names to API names
+  const currentSourceType: SourceEnhancement['currentSourceType'] =
+    sourceMix === 'internal_only' ? 'beroe_only' :
+    sourceMix === 'internal_plus_partners' ? 'beroe_plus_partners' :
+    sourceMix === 'internal_plus_web' ? 'beroe_plus_web' : 'all';
+
+  // If using only internal/Beroe data, suggest adding web sources
+  if (sourceMix === 'internal_only') {
+    suggestions.push({
+      type: 'add_web',
+      text: 'Add web sources',
+      description: 'Include recent news, filings, and market reports',
+      icon: 'globe',
+    });
+  }
+
+  // If not using all sources, suggest deep research
+  if (sourceMix !== 'all') {
+    suggestions.push({
+      type: 'deep_research',
+      text: 'Deep research',
+      description: 'Multi-source analysis with verification',
+      icon: 'search',
+    });
+  }
+
+  // For complex intents, suggest analyst or expert
+  const complexIntents = ['market_context', 'comparison', 'explanation_why', 'negotiation', 'scenario_analysis'];
+  if (intent && complexIntents.includes(intent)) {
+    if (sourceMix === 'internal_only' || sourceMix === 'internal_plus_partners') {
+      suggestions.push({
+        type: 'analyst',
+        text: 'Ask an analyst',
+        description: 'Get expert validation from Beroe team',
+        icon: 'user',
+      });
+    }
+    suggestions.push({
+      type: 'expert',
+      text: 'Expert consultation',
+      description: 'Connect with industry specialists',
+      icon: 'sparkles',
+    });
+  }
+
+  return {
+    currentSourceType,
+    suggestions,
+  };
+};
+
+/**
+ * Determine source mix from response sources
+ * Handles both array format (Source[]) and object format (ResponseSources)
+ * @param sources - Array of Source objects OR ResponseSources object
+ * @returns Source mix type
+ */
+export const determineSourceMix = (
+  sources: Array<{ type?: string }> | { web?: unknown[]; internal?: unknown[] } | undefined
+): 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'all' => {
+  // Handle undefined/null
+  if (!sources) {
+    return 'internal_only';
+  }
+
+  // Handle object format (ResponseSources): { web: [], internal: [] }
+  if (!Array.isArray(sources)) {
+    const hasWeb = Array.isArray((sources as any).web) && (sources as any).web.length > 0;
+    const hasInternal = Array.isArray((sources as any).internal) && (sources as any).internal.length > 0;
+    // Partner data would be in internal array with specific types
+    if (hasWeb && hasInternal) {
+      return 'internal_plus_web';
+    }
+    if (hasWeb) {
+      return 'internal_plus_web';
+    }
+    if (hasInternal) {
+      return 'internal_only';
+    }
+    return 'internal_only';
+  }
+
+  // Handle array format (Source[])
+  if (sources.length === 0) {
+    return 'internal_only';
+  }
+
+  // Categorize source types based on chat.ts Source interface
+  const WEB_TYPES = ['web', 'news'];
+  const INTERNAL_TYPES = ['beroe', 'internal_data', 'supplier_data', 'report', 'data', 'analysis'];
+  const PARTNER_TYPES = ['dnd', 'ecovadis'];
+
+  let hasWeb = false;
+  let hasInternal = false;
+  let hasPartner = false;
+
+  for (const source of sources) {
+    const type = (source as any).type?.toLowerCase();
+    if (!type) continue;
+
+    if (WEB_TYPES.includes(type)) {
+      hasWeb = true;
+    } else if (INTERNAL_TYPES.includes(type)) {
+      hasInternal = true;
+    } else if (PARTNER_TYPES.includes(type)) {
+      hasPartner = true;
+    }
+  }
+
+  // Determine mix based on what's actually present
+  if (hasInternal && hasWeb && hasPartner) {
+    return 'all';
+  }
+  if (hasInternal && hasWeb) {
+    return 'internal_plus_web';
+  }
+  if (hasInternal && hasPartner) {
+    return 'internal_plus_partners';
+  }
+  if (hasInternal) {
+    return 'internal_only';
+  }
+  if (hasWeb && hasPartner) {
+    return 'all';
+  }
+  if (hasWeb) {
+    return 'internal_plus_web';
+  }
+  if (hasPartner) {
+    return 'internal_plus_partners';
+  }
+  return 'internal_only';
 };

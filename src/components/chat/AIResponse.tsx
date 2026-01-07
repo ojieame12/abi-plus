@@ -7,13 +7,15 @@ import { SourcesDisplay } from './SourcesDisplay';
 import { SourceAttribution } from './SourceAttribution';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
+import { ValueLadderActions } from './ValueLadderActions';
+import { SourceEnhancementChips } from './SourceEnhancementChips';
 import { WidgetRenderer } from '../widgets/WidgetRenderer';
 import { buildInsightFromSupplier, buildInsightFromPortfolio, findSupplierFromContext } from '../../utils/insightBuilder';
 import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
 import type { Supplier, Portfolio, RiskChange } from '../../types/data';
 import type { RiskPortfolio } from '../../types/supplier';
-import type { ResponseInsight, ResponseSources } from '../../types/aiResponse';
+import type { ResponseInsight, ResponseSources, ValueLadder, SourceEnhancement, SourceEnhancementType } from '../../types/aiResponse';
 import type { RenderContext } from '../../services/componentSelector';
 import type { Milestone } from '../../services/ai';
 
@@ -101,6 +103,16 @@ interface AIResponseProps {
     // Sources - supports both legacy and new format
     sources?: LegacySourcesData | ResponseSources;
 
+    // Value Ladder - 4-layer system actions (Layer 2, 3, 4)
+    valueLadder?: ValueLadder;
+    onAnalystConnect?: () => void;
+    onCommunity?: () => void;
+    onExpertDeepDive?: () => void;
+
+    // Source Enhancement - suggestions when using limited sources
+    sourceEnhancement?: SourceEnhancement;
+    onSourceEnhancement?: (type: SourceEnhancementType) => void;
+
     // Follow-up suggestions
     followUps?: FollowUpItem[];
     onFollowUpClick?: (item: FollowUpItem) => void;
@@ -137,9 +149,11 @@ const ANIMATION_TIMING = {
     thinkingDuration: 2200,    // How long thinking phase lasts (4 steps @ 400ms each + 600ms buffer)
     bodyDelay: 200,            // After thinking, body fades in
     widgetDelay: 500,          // Widget slides in
+    valueLadderDelay: 700,     // Value ladder actions appear
     insightDelay: 900,         // Insight bar grows
     footerDelay: 1200,         // Sources + feedback appear
-    followUpsDelay: 1500,      // Follow-ups stagger in
+    sourceEnhanceDelay: 1400,  // Source enhancement chips appear
+    followUpsDelay: 1600,      // Follow-ups stagger in
 };
 
 export const AIResponse = ({
@@ -151,6 +165,12 @@ export const AIResponse = ({
     widgetContext,
     insight,
     sources,
+    valueLadder,
+    onAnalystConnect,
+    onCommunity,
+    onExpertDeepDive,
+    sourceEnhancement,
+    onSourceEnhancement,
     followUps = [],
     onFollowUpClick,
     onDownload,
@@ -167,8 +187,10 @@ export const AIResponse = ({
     );
     const [showBody, setShowBody] = useState(!isAnimating);
     const [showWidget, setShowWidget] = useState(!isAnimating);
+    const [showValueLadder, setShowValueLadder] = useState(!isAnimating);
     const [showInsight, setShowInsight] = useState(!isAnimating);
     const [showFooter, setShowFooter] = useState(!isAnimating);
+    const [showSourceEnhancement, setShowSourceEnhancement] = useState(!isAnimating);
     const [showFollowUps, setShowFollowUps] = useState(!isAnimating);
 
     // Orchestrate animation phases
@@ -177,8 +199,10 @@ export const AIResponse = ({
             setPhase('complete');
             setShowBody(true);
             setShowWidget(true);
+            setShowValueLadder(true);
             setShowInsight(true);
             setShowFooter(true);
+            setShowSourceEnhancement(true);
             setShowFollowUps(true);
             return;
         }
@@ -197,6 +221,11 @@ export const AIResponse = ({
             setShowWidget(true);
         }, ANIMATION_TIMING.thinkingDuration + ANIMATION_TIMING.widgetDelay);
 
+        // Value Ladder actions appear
+        const valueLadderTimer = setTimeout(() => {
+            setShowValueLadder(true);
+        }, ANIMATION_TIMING.thinkingDuration + ANIMATION_TIMING.valueLadderDelay);
+
         // Insight appears
         const insightTimer = setTimeout(() => {
             setShowInsight(true);
@@ -207,6 +236,11 @@ export const AIResponse = ({
             setShowFooter(true);
         }, ANIMATION_TIMING.thinkingDuration + ANIMATION_TIMING.footerDelay);
 
+        // Source enhancement chips appear
+        const sourceEnhanceTimer = setTimeout(() => {
+            setShowSourceEnhancement(true);
+        }, ANIMATION_TIMING.thinkingDuration + ANIMATION_TIMING.sourceEnhanceDelay);
+
         // Follow-ups appear
         const followUpsTimer = setTimeout(() => {
             setShowFollowUps(true);
@@ -216,8 +250,10 @@ export const AIResponse = ({
         return () => {
             clearTimeout(bodyTimer);
             clearTimeout(widgetTimer);
+            clearTimeout(valueLadderTimer);
             clearTimeout(insightTimer);
             clearTimeout(footerTimer);
+            clearTimeout(sourceEnhanceTimer);
             clearTimeout(followUpsTimer);
         };
     }, [isAnimating]);
@@ -506,6 +542,18 @@ export const AIResponse = ({
                 )}
             </AnimatePresence>
 
+            {/* 3.6 Value Ladder Fallback (when no widget - appears after narrative/summary) */}
+            <AnimatePresence>
+                {showValueLadder && valueLadder && !widget && !widgetContext && (
+                    <ValueLadderActions
+                        valueLadder={valueLadder}
+                        onAnalystConnect={onAnalystConnect}
+                        onCommunity={onCommunity}
+                        onExpertDeepDive={onExpertDeepDive}
+                    />
+                )}
+            </AnimatePresence>
+
             {/* 4. Information Widget (Conditional) */}
             <AnimatePresence>
                 {showWidget && (widget || widgetContext) && (
@@ -517,6 +565,19 @@ export const AIResponse = ({
                     >
                         {renderWidget()}
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 4.5 Value Ladder Actions (Layer 2, 3, 4 access) */}
+            {/* Shown after widget if present, or after body content if no widget */}
+            <AnimatePresence>
+                {showValueLadder && valueLadder && (widget || widgetContext) && (
+                    <ValueLadderActions
+                        valueLadder={valueLadder}
+                        onAnalystConnect={onAnalystConnect}
+                        onCommunity={onCommunity}
+                        onExpertDeepDive={onExpertDeepDive}
+                    />
                 )}
             </AnimatePresence>
 
@@ -553,6 +614,8 @@ export const AIResponse = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* 6.5 Source Enhancement Chips - HIDDEN for now */}
 
             {/* 7. Follow Ups - with stagger */}
             <AnimatePresence>

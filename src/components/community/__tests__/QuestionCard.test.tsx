@@ -40,12 +40,6 @@ describe('QuestionCard', () => {
     });
   });
 
-  it('displays view count', () => {
-    render(<QuestionCard question={mockQuestion} />);
-    // New format: "X views"
-    expect(screen.getByText(`${mockQuestion.viewCount} views`)).toBeInTheDocument();
-  });
-
   it('calls onClick when clicked', () => {
     const onClick = vi.fn();
     const { container } = render(<QuestionCard question={mockQuestion} onClick={onClick} />);

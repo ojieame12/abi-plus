@@ -11,10 +11,16 @@ import type { ChatMessage } from '../types/chat';
 import { generateId } from '../types/chat';
 import type { Supplier } from '../types/supplier';
 import { buildResponseSources } from '../utils/sources';
+import { ResponseBody } from '../components/response';
 
 interface LiveChatViewProps {
   initialQuestion?: string;
   onArtifactChange?: (artifact: AIResponseType['artifact'], suppliers?: Supplier[], portfolio?: any) => void;
+  // Value Ladder callbacks
+  onAnalystConnect?: (response: AIResponseType) => void;
+  onCommunity?: (response: AIResponseType) => void;
+  onExpertDeepDive?: (response: AIResponseType) => void;
+  onSourceEnhancement?: (type: string, response: AIResponseType) => void;
 }
 
 interface Message {
@@ -24,7 +30,14 @@ interface Message {
   response?: AIResponseType;
 }
 
-export const LiveChatView = ({ initialQuestion, onArtifactChange }: LiveChatViewProps) => {
+export const LiveChatView = ({
+  initialQuestion,
+  onArtifactChange,
+  onAnalystConnect,
+  onCommunity,
+  onExpertDeepDive,
+  onSourceEnhancement,
+}: LiveChatViewProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [mode, setMode] = useState<ThinkingMode>('fast');
@@ -136,6 +149,8 @@ export const LiveChatView = ({ initialQuestion, onArtifactChange }: LiveChatView
                         } : undefined,
                       },
                     } : undefined}
+                    // Acknowledgement header
+                    acknowledgement={msg.response?.acknowledgement}
                     // Widget context for WidgetRenderer - enables context-based widget selection
                     widgetContext={msg.response ? {
                       intent: msg.response.intent?.category || 'general',
@@ -164,11 +179,27 @@ export const LiveChatView = ({ initialQuestion, onArtifactChange }: LiveChatView
                       icon: mapIcon(s.icon),
                     }))}
                     onFollowUpClick={handleSuggestionClick}
+                    // Value Ladder (4-layer system)
+                    valueLadder={msg.response?.canonical?.valueLadder}
+                    onAnalystConnect={() => msg.response && onAnalystConnect?.(msg.response)}
+                    onCommunity={() => msg.response && onCommunity?.(msg.response)}
+                    onExpertDeepDive={() => msg.response && onExpertDeepDive?.(msg.response)}
+                    // Source Enhancement
+                    sourceEnhancement={msg.response?.canonical?.sourceEnhancement}
+                    onSourceEnhancement={(type) => msg.response && onSourceEnhancement?.(type, msg.response)}
                   >
-                    <div
-                      className="prose prose-slate max-w-none"
-                      dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }}
-                    />
+                    {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
+                    {msg.response?.canonical ? (
+                      <ResponseBody
+                        canonical={msg.response.canonical}
+                        hasWidget={!!msg.response?.widget || !!msg.response?.portfolio || !!msg.response?.suppliers?.length}
+                      />
+                    ) : (
+                      <div
+                        className="prose prose-slate max-w-none"
+                        dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }}
+                      />
+                    )}
 
                     {/* Handoff card if needed */}
                     {msg.response?.handoff?.required && (

@@ -3,6 +3,7 @@
 
 import type { WidgetType, WidgetData } from './widgets';
 import type { DetectedIntent } from './intents';
+import type { CanonicalResponse } from './responseSchema';
 
 // ============================================
 // INSIGHT STRUCTURE
@@ -134,6 +135,86 @@ export interface DashboardHandoff {
 }
 
 // ============================================
+// VALUE LADDER (4-Layer System)
+// ============================================
+
+/** Layer 2: Analyst Connect - Quick validation from Beroe analysts */
+export interface AnalystConnectAction {
+  available: boolean;
+  analyst?: {
+    id: string;
+    name: string;
+    title: string;
+    specialty: string;
+    photo?: string;
+    availability: 'available' | 'busy' | 'offline';
+    responseTime: string; // "~2 hours"
+  };
+  cta: string; // "Ask Sarah about this"
+  context?: {
+    queryId: string;
+    relevantSection?: string;
+  };
+}
+
+/** Layer 4: Community - Related discussions and peer insights */
+export interface CommunityAction {
+  available: boolean;
+  relatedThreadCount: number;
+  topThread?: {
+    id: string;
+    title: string;
+    replyCount: number;
+    category: string;
+  };
+  cta: string; // "3 related discussions"
+}
+
+/** Layer 3: Expert Network - Premium bespoke research */
+export interface ExpertDeepDiveAction {
+  available: boolean;
+  matchedExpert?: {
+    id: string;
+    name: string;
+    title: string;
+    formerCompany: string;
+    expertise: string;
+    isTopVoice: boolean;
+  };
+  isPremium: true;
+  cta: string; // "Request expert intro"
+  recommendedBy?: {
+    analystName: string;
+    reason: string;
+  };
+}
+
+/** Value Ladder - Actions shown under AI response widget */
+export interface ValueLadder {
+  analystConnect?: AnalystConnectAction;
+  community?: CommunityAction;
+  expertDeepDive?: ExpertDeepDiveAction;
+}
+
+// ============================================
+// SOURCE ENHANCEMENT SUGGESTIONS
+// ============================================
+
+export type SourceEnhancementType = 'add_web' | 'deep_research' | 'analyst' | 'expert';
+
+export interface SourceEnhancementSuggestion {
+  type: SourceEnhancementType;
+  text: string;
+  description?: string;
+  icon: 'globe' | 'search' | 'user' | 'sparkles';
+}
+
+export interface SourceEnhancement {
+  currentSourceType: 'beroe_only' | 'beroe_plus_partners' | 'beroe_plus_web' | 'all';
+  suggestions: SourceEnhancementSuggestion[];
+}
+
+// ============================================
 // MAIN STRUCTURED RESPONSE
 // ============================================
 
@@ -173,6 +254,10 @@ export interface StructuredAIResponse {
 
   // Dashboard handoff (if needed)
   handoff?: DashboardHandoff;
+
+  // Canonical response layer (added alongside existing fields for backward compatibility)
+  // This normalized format is used by the new response rendering system
+  canonical?: CanonicalResponse;
 }
 
 // ============================================

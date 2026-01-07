@@ -24,6 +24,7 @@ import { buildArtifactPayload, resolveArtifactType } from './services/artifactBu
 import { ArtifactRenderer } from './components/artifacts/ArtifactRenderer';
 import type { ArtifactType, ArtifactPayload } from './components/artifacts/registry';
 import { getArtifactTitle, getArtifactMeta } from './components/artifacts/registry';
+import { ResponseBody } from './components/response';
 import './App.css';
 
 type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail' | 'ask-question';
@@ -298,9 +299,84 @@ function App() {
           console.log('Copied share link:', data);
         }
         break;
+      // Value Ladder actions
+      case 'schedule_call':
+        console.log('Schedule call:', data);
+        // Could integrate with calendar API
+        break;
+      case 'send_question':
+        console.log('Send question to analyst:', data);
+        // Could trigger message send
+        break;
+      case 'request_expert_intro':
+        console.log('Request expert introduction:', data);
+        // Could trigger expert network flow
+        break;
+      case 'view_thread':
+        console.log('View community thread:', data);
+        // Could navigate to community view
+        break;
+      case 'start_discussion':
+        console.log('Start community discussion:', data);
+        // Could create new thread
+        break;
       default:
         console.log('Unhandled action:', action);
     }
+  };
+
+  // Helper to get the user message that triggered a specific AI response
+  const getUserMessageForResponse = (responseId: string): string | undefined => {
+    const responseIndex = messages.findIndex(m => m.id === responseId);
+    if (responseIndex <= 0) return undefined;
+    // Look backwards from the AI response to find the preceding user message
+    for (let i = responseIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        return messages[i].content;
+      }
+    }
+    return undefined;
+  };
+
+  // Value Ladder Handlers - open appropriate artifact panels
+  const handleAnalystConnect = (response: AIResponseType) => {
+    const valueLadder = response.canonical?.valueLadder;
+    if (!valueLadder?.analystConnect) return;
+
+    openArtifact('analyst_connect', {
+      analystConnect: valueLadder.analystConnect,
+      queryContext: {
+        queryId: response.id,
+        queryText: getUserMessageForResponse(response.id),
+      },
+    });
+  };
+
+  const handleCommunity = (response: AIResponseType) => {
+    const valueLadder = response.canonical?.valueLadder;
+    if (!valueLadder?.community) return;
+
+    openArtifact('community_embed', {
+      community: valueLadder.community,
+      queryContext: {
+        queryId: response.id,
+        queryText: getUserMessageForResponse(response.id),
+      },
+    });
+  };
+
+  const handleExpertDeepDive = (response: AIResponseType) => {
+    const valueLadder = response.canonical?.valueLadder;
+    if (!valueLadder?.expertDeepDive) return;
+
+    openArtifact('expert_request', {
+      expertDeepDive: valueLadder.expertDeepDive,
+      queryContext: {
+        queryId: response.id,
+        queryText: getUserMessageForResponse(response.id),
+        topic: response.intent?.extractedEntities?.commodity || response.intent?.extractedEntities?.category,
+      },
+    });
   };
 
   // Handle starting a chat from home
@@ -397,6 +473,8 @@ function App() {
           riskChanges: response.riskChanges,
           // AI-generated artifact panel content
           artifactContent: response.artifactContent,
+          // Canonical response for consistent formatting
+          canonical: response.canonical,
         }).catch(err => console.error('[App] Failed to save AI message:', err));
 
         // Auto-detect and update category from intent (only on first message)
@@ -564,6 +642,8 @@ function App() {
           riskChanges: m.metadata.riskChanges,
           // AI-generated artifact panel content
           artifactContent: m.metadata.artifactContent,
+          // Canonical response for consistent formatting
+          canonical: m.metadata.canonical,
         } : undefined,
         isNew: false,
       }));
@@ -828,10 +908,48 @@ function App() {
                           isAnimating={msg.isNew}
                           // 8. Insight click - open in artifact panel
                           onInsightClick={openInsightPanel}
+                          // 9. Value Ladder (4-layer system)
+                          valueLadder={hasResponse ? msg.response?.canonical?.valueLadder : undefined}
+                          onAnalystConnect={() => msg.response && handleAnalystConnect(msg.response)}
+                          onCommunity={() => msg.response && handleCommunity(msg.response)}
+                          onExpertDeepDive={() => msg.response && handleExpertDeepDive(msg.response)}
+                          // 10. Source Enhancement
+                          sourceEnhancement={hasResponse ? msg.response?.canonical?.sourceEnhancement : undefined}
+                          onSourceEnhancement={(type) => {
+                            if (!msg.response) return;
+                            switch (type) {
+                              case 'add_web':
+                                // Enable web search and re-query
+                                setWebSearchEnabled(true);
+                                console.log('[App] Web search enabled for future queries');
+                                break;
+                              case 'deep_research':
+                                // Switch to reasoning mode for deeper analysis
+                                setMode('reasoning');
+                                console.log('[App] Switched to reasoning mode');
+                                break;
+                              case 'analyst':
+                                // Open analyst connect artifact
+                                handleAnalystConnect(msg.response);
+                                break;
+                              case 'expert':
+                                // Open expert request artifact
+                                handleExpertDeepDive(msg.response);
+                                break;
+                            }
+                          }}
                         >
-                          <div dangerouslySetInnerHTML={{
-                            __html: formatMarkdown(msg.content, !!msg.response?.widget || !!msg.response?.portfolio || !!msg.response?.suppliers?.length)
-                          }} />
+                          {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
+                          {msg.response?.canonical ? (
+                            <ResponseBody
+                              canonical={msg.response.canonical}
+                              hasWidget={!!msg.response?.widget || !!msg.response?.portfolio || !!msg.response?.suppliers?.length}
+                            />
+                          ) : (
+                            <div dangerouslySetInnerHTML={{
+                              __html: formatMarkdown(msg.content, !!msg.response?.widget || !!msg.response?.portfolio || !!msg.response?.suppliers?.length)
+                            }} />
+                          )}
 
                           {/* Handoff card */}
                           {msg.response?.handoff?.required && (

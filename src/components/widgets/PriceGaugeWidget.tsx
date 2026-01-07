@@ -63,12 +63,12 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
         unit = `/${data.unit}`;
         lastChecked = data.lastUpdated;
         change24h = {
-            value: `$${Math.abs(data.change24h.value)}`,
+            value: `$${Math.abs(data.change24h.value).toFixed(2)}`,
             percent: `${Math.abs(data.change24h.percent).toFixed(2)}%`,
             direction: data.change24h.value >= 0 ? 'up' : 'down',
         };
         change30d = {
-            value: `$${Math.abs(data.change30d.value)}`,
+            value: `$${Math.abs(data.change30d.value).toFixed(2)}`,
             percent: `${Math.abs(data.change30d.percent).toFixed(2)}%`,
             direction: data.change30d.value >= 0 ? 'up' : 'down',
         };

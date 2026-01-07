@@ -47,7 +47,11 @@ export type ArtifactType =
   | 'impact_analysis'
   | 'justification_report'
   | 'scenario_planner'
-  | 'executive_presentation';
+  | 'executive_presentation'
+  // Value Ladder (4-Layer System)
+  | 'analyst_connect'
+  | 'expert_request'
+  | 'community_embed';
 
 // ============================================
 // ARTIFACT METADATA
@@ -247,6 +251,32 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     defaultWidth: '45%',
     allowExpand: true,
   },
+
+  // Value Ladder (4-Layer System)
+  analyst_connect: {
+    id: 'analyst_connect',
+    title: 'Connect with Analyst',
+    category: 'action',
+    description: 'Schedule a call or send a question to a Beroe analyst',
+    defaultWidth: '40%',
+    allowExpand: false,
+  },
+  expert_request: {
+    id: 'expert_request',
+    title: 'Expert Network',
+    category: 'action',
+    description: 'Request introduction to an industry expert for bespoke research',
+    defaultWidth: '45%',
+    allowExpand: false,
+  },
+  community_embed: {
+    id: 'community_embed',
+    title: 'Community Discussions',
+    category: 'discovery',
+    description: 'Browse related discussions or start a new conversation',
+    defaultWidth: '45%',
+    allowExpand: true,
+  },
 };
 
 // ============================================
@@ -343,6 +373,79 @@ export interface WatchlistPayload extends BaseArtifactPayload {
   supplierName?: string;
 }
 
+// Value Ladder Payloads
+export interface AnalystConnectPayload extends BaseArtifactPayload {
+  type: 'analyst_connect';
+  analystConnect: {
+    available: boolean;
+    analyst?: {
+      id: string;
+      name: string;
+      title: string;
+      specialty: string;
+      photo?: string;
+      availability: 'available' | 'busy' | 'offline';
+      responseTime: string;
+    };
+    cta: string;
+    context?: {
+      queryId: string;
+      relevantSection?: string;
+    };
+  };
+  queryContext?: {
+    queryId?: string;
+    queryText?: string;
+    relevantSection?: string;
+  };
+}
+
+export interface ExpertRequestPayload extends BaseArtifactPayload {
+  type: 'expert_request';
+  expertDeepDive: {
+    available: boolean;
+    matchedExpert?: {
+      id: string;
+      name: string;
+      title: string;
+      formerCompany: string;
+      expertise: string;
+      isTopVoice: boolean;
+    };
+    isPremium: true;
+    cta: string;
+    recommendedBy?: {
+      analystName: string;
+      reason: string;
+    };
+  };
+  queryContext?: {
+    queryId?: string;
+    queryText?: string;
+    topic?: string;
+  };
+}
+
+export interface CommunityEmbedPayload extends BaseArtifactPayload {
+  type: 'community_embed';
+  community: {
+    available: boolean;
+    relatedThreadCount: number;
+    topThread?: {
+      id: string;
+      title: string;
+      replyCount: number;
+      category: string;
+    };
+    cta: string;
+  };
+  queryContext?: {
+    queryId?: string;
+    queryText?: string;
+    topic?: string;
+  };
+}
+
 // Union of all payload types
 export type ArtifactPayload =
   | InsightDetailPayload
@@ -353,6 +456,9 @@ export type ArtifactPayload =
   | AlertConfigPayload
   | ExportBuilderPayload
   | WatchlistPayload
+  | AnalystConnectPayload
+  | ExpertRequestPayload
+  | CommunityEmbedPayload
   | (BaseArtifactPayload & { [key: string]: unknown });
 
 // ============================================

@@ -21,6 +21,10 @@ import {
   getScenarioData,
   generateSpendExposureData,
   getCategoryBreakdown,
+  getMarketEvents,
+  generateValueLadder,
+  generateSourceEnhancement,
+  determineSourceMix,
 } from './mockData';
 import { formatSpend } from '../types/supplier';
 import {
@@ -30,6 +34,10 @@ import {
 } from './widgetTransformers';
 import { generateSuggestions, suggestionEngine } from './suggestionEngine';
 import { getWidgetRouteFromRegistry } from './widgetRouter';
+// Canonical response transform
+import { transformToCanonical } from '../utils/responseTransform';
+import { validateAndRepair } from '../utils/responseValidator';
+import type { CanonicalResponse } from '../types/responseSchema';
 
 export type ThinkingMode = 'fast' | 'reasoning';
 
@@ -106,6 +114,8 @@ export interface AIResponse {
   }>;
   // Real milestones captured during processing
   milestones?: Milestone[];
+  // Canonical response layer (added alongside existing fields for backward compatibility)
+  canonical?: CanonicalResponse;
 }
 
 // Response escalation thresholds
@@ -298,6 +308,21 @@ export const sendMessage = async (
     emitMilestone('intent_classified', `Intent: ${formatIntentName(intent.category)}`, intent.category);
   }
 
+  // Check if this is a price/commodity query that should use Gemini instead of Perplexity
+  // Even if builder says requiresResearch, price data queries should use our data + Gemini
+  const PRICE_DATA_PATTERNS = [
+    /price\s*(movement|impact|trend|change|forecast|outlook)/i,
+    /(lithium|rare\s*earth|cobalt|nickel|battery|steel|aluminum|copper)\s*(price|cost|movement|impact)/i,
+    /how\s*(does|do|will|would).*price.*impact/i,
+    /analyze.*price.*movement/i,
+    /commodity\s*(price|cost).*impact/i,
+  ];
+  const isPriceDataQuery = PRICE_DATA_PATTERNS.some(p => p.test(message));
+  if (isPriceDataQuery && intent.requiresResearch) {
+    console.log('[AI] Price data query detected - using Gemini instead of Perplexity');
+    intent.requiresResearch = false;
+  }
+
   // Determine which provider to use:
   // 1. User explicitly chose reasoning mode
   // 2. User enabled web search
@@ -375,23 +400,31 @@ export const sendMessage = async (
       ? `${totalTime}ms`
       : `${(totalTime / 1000).toFixed(1)}s`;
 
+    // Build canonical layer for unified rendering
+    const canonical = buildCanonicalResponse(response, provider, intent);
+
     return {
       ...response,
       id: generateId(),
       provider,
       thinkingDuration: actualDuration, // Real duration!
       milestones,
+      canonical, // Add canonical layer
     };
   } catch (error) {
     console.error('[AI] Orchestration error:', error);
     emitMilestone('response_ready', 'Fallback response', Date.now() - startTime);
 
+    const localResponse = generateLocalResponse(message, intent);
+    const canonical = buildCanonicalResponse(localResponse, 'local', intent);
+
     return {
-      ...generateLocalResponse(message, intent),
+      ...localResponse,
       id: generateId(),
       provider: 'local',
       thinkingDuration: `${Date.now() - startTime}ms`,
       milestones,
+      canonical, // Add canonical layer
     };
   }
 };
@@ -432,6 +465,63 @@ const formatWidgetName = (widget: string): string => {
   return names[widget] || widget;
 };
 
+// Build canonical response from AIResponse
+// This is added alongside existing fields for backward compatibility
+const buildCanonicalResponse = (
+  response: Omit<AIResponse, 'id' | 'provider' | 'thinkingDuration' | 'thinkingSteps' | 'canonical'>,
+  provider: AIResponse['provider'],
+  intent: DetectedIntent
+): CanonicalResponse => {
+  // Build input for transformer based on provider
+  const transformInput = {
+    id: generateId(),
+    content: response.content,
+    acknowledgement: response.acknowledgement,
+    responseType: response.responseType,
+    insight: typeof response.insight === 'string'
+      ? { headline: response.insight, sentiment: 'neutral' as const }
+      : response.insight as any,
+    widget: response.widget,
+    artifact: response.artifact,
+    sources: response.sources,
+    suggestions: response.suggestions?.map(s => ({
+      id: s.id,
+      text: s.text,
+      icon: s.icon,
+    })),
+  };
+
+  // Transform to canonical format
+  const { response: canonical } = validateAndRepair(
+    transformToCanonical(transformInput, intent, provider),
+    intent
+  );
+
+  // Generate Value Ladder based on intent context
+  // Use intent.category for complex intent detection (not subIntent)
+  const valueLadderContext = {
+    commodity: intent.extractedEntities?.commodity,
+    supplier: intent.extractedEntities?.supplierName,
+    category: intent.extractedEntities?.category,
+    queryId: canonical.id,
+  };
+  const valueLadder = generateValueLadder(valueLadderContext, intent.category);
+
+  // Determine source mix from response sources (pass full array for proper classification)
+  const sourceMix = determineSourceMix(response.sources);
+
+  // Generate source enhancement suggestions (use intent.category for complex intent detection)
+  const sourceEnhancement = generateSourceEnhancement(sourceMix, intent.category);
+
+  // Add value ladder and source enhancement to canonical response
+  return {
+    ...canonical,
+    valueLadder,
+    sourceEnhancement,
+    sourceMix,
+  };
+};
+
 // Transform Gemini response to unified format
 const transformGeminiResponse = (
   response: GeminiResponse,
@@ -460,6 +550,205 @@ const transformGeminiResponse = (
   };
 };
 
+// Generate acknowledgement based on intent
+const generateAcknowledgement = (intent: DetectedIntent): string => {
+  const commodity = intent.extractedEntities?.commodity;
+  const supplier = intent.extractedEntities?.supplierName;
+
+  switch (intent.category) {
+    case 'market_context':
+      return commodity
+        ? `Researching ${commodity} market trends.`
+        : 'Analyzing market conditions.';
+    case 'supplier_deep_dive':
+      return supplier
+        ? `Researching ${supplier}.`
+        : 'Analyzing supplier data.';
+    case 'inflation_summary':
+    case 'inflation_drivers':
+    case 'inflation_impact':
+      return 'Analyzing inflation impacts.';
+    case 'portfolio_overview':
+      return 'Reviewing your portfolio.';
+    default:
+      return 'Here\'s what I found.';
+  }
+};
+
+// Clean up markdown formatting from Perplexity content
+const cleanMarkdownContent = (content: string): string => {
+  return content
+    // Remove bold markers but keep text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    // Remove italic markers
+    .replace(/\*([^*]+)\*/g, '$1')
+    // Remove heading markers
+    .replace(/^#{1,6}\s+/gm, '')
+    // Clean up excessive newlines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
+// Build widget for Perplexity research responses based on intent
+const buildPerplexityWidget = (
+  intent: DetectedIntent,
+  route: { widgetType: string }
+): AIResponse['widget'] | undefined => {
+  const commodity = intent.extractedEntities?.commodity;
+
+  // For market_context, build a price_gauge or events_feed widget
+  if (intent.category === 'market_context' && commodity) {
+    // Try to get commodity data from mock
+    const commodityData = getCommodity(commodity);
+    if (commodityData) {
+      // Transform to PriceGaugeData format (matches gemini.ts buildWidgetData)
+      const currentPrice = commodityData.currentPrice || 8245;
+      const percent30d = commodityData.priceChange?.percent || 0;
+      const percent24h = percent30d / 30;
+      const priceChange24h = currentPrice * (percent24h / 100);
+      const priceChange30d = currentPrice * (percent30d / 100);
+      const rawPosition = 50 + (percent30d * 2);
+      const gaugePosition = Math.max(0, Math.min(100, rawPosition));
+
+      // Use commodity's currency, default to USD
+      const currency = commodityData.currency || 'USD';
+
+      // Determine market based on region and currency
+      const market = commodityData.currency === 'CNY' ? 'Shanghai' :
+                     commodityData.region === 'europe' ? 'EU Market' :
+                     commodityData.region === 'global' ? 'LME' :
+                     commodityData.region?.toUpperCase() || 'Global';
+
+      return {
+        type: 'price_gauge',
+        title: `${commodityData.name} Price Trends`,
+        data: {
+          commodity: commodityData.name,
+          currentPrice: currentPrice,
+          unit: commodityData.unit || 'mt',
+          currency,
+          lastUpdated: 'Beroe today',
+          gaugeMin: currentPrice * 0.7,
+          gaugeMax: currentPrice * 1.3,
+          gaugePosition,
+          change24h: {
+            value: priceChange24h,
+            percent: percent24h,
+          },
+          change30d: {
+            value: priceChange30d,
+            percent: percent30d,
+          },
+          market,
+          tags: commodityData.priceChange?.direction === 'up'
+            ? ['Rising Trend', 'Supply Pressure']
+            : commodityData.priceChange?.direction === 'down'
+              ? ['Softening', 'Demand Weak']
+              : ['Stable'],
+        },
+      };
+    }
+
+    // Fallback: build events_feed from market events (matching EventsFeedData schema)
+    const events = getMarketEvents(commodity);
+    if (events && events.length > 0) {
+      return {
+        type: 'events_feed',
+        title: `${commodity} Market Events`,
+        data: {
+          events: events.slice(0, 5).map(e => ({
+            id: e.id,
+            title: e.title,
+            summary: e.description,
+            timestamp: e.date,
+            type: (e.type === 'price_movement' ? 'news' :
+                  e.type === 'supply_disruption' ? 'alert' :
+                  e.type === 'policy_change' ? 'update' : 'news') as 'news' | 'risk_change' | 'alert' | 'update',
+            impact: e.impact as 'positive' | 'negative' | 'neutral',
+            source: e.source,
+          })),
+        },
+      };
+    }
+  }
+
+  // For portfolio_overview, build risk_distribution widget
+  if (intent.category === 'portfolio_overview') {
+    const portfolio = getPortfolioSummary();
+    return {
+      type: 'risk_distribution',
+      title: 'Portfolio Risk Overview',
+      data: {
+        distribution: {
+          high: { count: portfolio.distribution.high },
+          mediumHigh: { count: portfolio.distribution.mediumHigh },
+          medium: { count: portfolio.distribution.medium },
+          low: { count: portfolio.distribution.low },
+          unrated: { count: portfolio.distribution.unrated },
+        },
+        totalSuppliers: portfolio.totalSuppliers,
+        totalSpendFormatted: portfolio.totalSpendFormatted,
+      },
+    };
+  }
+
+  // For inflation queries, build spend impact or summary widget
+  if (intent.category.startsWith('inflation_')) {
+    const inflationSummary = getInflationSummary();
+    return {
+      type: 'inflation_summary_card',
+      title: 'Inflation Impact Summary',
+      data: inflationSummary,
+    };
+  }
+
+  // For supplier_deep_dive, build supplier_risk_card widget
+  if (intent.category === 'supplier_deep_dive') {
+    const supplierName = intent.extractedEntities?.supplierName;
+    if (supplierName) {
+      // Try to find supplier in database (using sync MOCK_SUPPLIERS)
+      const supplier = MOCK_SUPPLIERS.find(s =>
+        s.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+        supplierName.toLowerCase().includes(s.name.toLowerCase())
+      );
+
+      if (supplier) {
+        return {
+          type: 'supplier_risk_card',
+          title: `${supplier.name} Risk Profile`,
+          data: transformSupplierToRiskCardData(supplier),
+        };
+      }
+
+      // External supplier - create synthetic data matching SupplierRiskCardData shape
+      return {
+        type: 'supplier_risk_card',
+        title: `${supplierName} Overview`,
+        data: {
+          supplierId: `research-${supplierName.toLowerCase().replace(/\s+/g, '-')}`,
+          supplierName: supplierName,
+          category: intent.extractedEntities?.category || 'Technology',
+          location: {
+            city: 'Unknown',
+            country: intent.extractedEntities?.region || 'Global',
+            region: 'Global' as const,
+          },
+          riskScore: 0,
+          riskLevel: 'medium' as const,
+          trend: 'stable' as const,
+          spend: 0,
+          spendFormatted: 'Not in portfolio',
+          lastUpdated: new Date().toISOString(),
+          keyFactors: [],
+          isResearched: true,
+        },
+      };
+    }
+  }
+
+  return undefined;
+};
+
 // Transform Perplexity response to unified format
 const transformPerplexityResponse = (
   response: PerplexityResponse,
@@ -468,9 +757,64 @@ const transformPerplexityResponse = (
   // Use registry-based widget router to get proper artifact type
   const route = getWidgetRouteFromRegistry(intent.category, intent.subIntent);
 
-  // Perplexity responses are typically research/summary - use 0 count for inline display
+  // Clean up markdown and structure the content
+  const cleanedContent = cleanMarkdownContent(response.content);
+
+  // Generate acknowledgement
+  const acknowledgement = generateAcknowledgement(intent);
+
+  // Extract first paragraph as headline for insight
+  const paragraphs = cleanedContent.split(/\n\n+/);
+  const firstParagraph = paragraphs[0] || '';
+  const headline = firstParagraph.length > 80
+    ? firstParagraph.slice(0, 77) + '...'
+    : firstParagraph;
+
+  // Build insight from content
+  const insight: RichInsight = {
+    headline: headline || 'Research Results',
+    summary: paragraphs.slice(0, 2).join(' ').slice(0, 300),
+    type: 'info',
+    sentiment: 'neutral',
+    factors: [],
+  };
+
+  // Build widget based on intent using mock data
+  const widget = buildPerplexityWidget(intent, route);
+
+  // Attach portfolio and suppliers data for artifact expansion
+  // This ensures "View Details" works for Perplexity responses too
+  const portfolio = route.requiresPortfolio ? getPortfolioSummary() : undefined;
+
+  // Get suppliers based on intent
+  let suppliers: Supplier[] | undefined;
+  if (route.requiresSuppliers) {
+    const supplierName = intent.extractedEntities?.supplierName;
+    if (supplierName) {
+      // Try to find the specific supplier
+      const supplier = MOCK_SUPPLIERS.find(s =>
+        s.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+        supplierName.toLowerCase().includes(s.name.toLowerCase())
+      );
+      if (supplier) {
+        suppliers = [supplier];
+      }
+    }
+    // If no specific supplier or not found, get followed suppliers
+    if (!suppliers) {
+      suppliers = MOCK_SUPPLIERS.filter(s => s.isFollowed);
+    }
+  }
+
+  // Get risk changes for trend detection
+  const riskChanges = route.requiresRiskChanges ? MOCK_RISK_CHANGES : undefined;
+
+  // Determine result count for escalation
+  const resultCount = suppliers?.length || (portfolio ? portfolio.totalSuppliers : 0);
+
   return {
-    content: response.content,
+    acknowledgement,
+    content: cleanedContent,
     responseType: response.responseType,
     suggestions: response.suggestions,
     sources: response.sources,
@@ -479,9 +823,16 @@ const transformPerplexityResponse = (
       type: route.artifactType,
       title: 'Research Results',
     },
-    insight: response.insight,
-    escalation: determineEscalation(0, intent.category),
-    intent: response.intent || intent,
+    widget,
+    insight,
+    // Attach supporting data for artifact expansion
+    portfolio,
+    suppliers,
+    riskChanges,
+    escalation: determineEscalation(resultCount, intent.category),
+    // Always use the original classified intent - don't let Perplexity response override
+    // This prevents intent drift where Perplexity might misclassify the query
+    intent,
     thinkingSteps: response.thinkingSteps,
   };
 };
@@ -1119,13 +1470,23 @@ const generateLocalResponse = (
           const pricePercent = commodityData.priceChange?.percent || 0;
           const forecastTrend = pricePercent > 0 ? 'upward' : pricePercent < 0 ? 'downward' : 'stable';
 
+          // Use commodity's currency, default to USD
+          const currency = commodityData.currency || 'USD';
+          const currencySymbol = currency === 'CNY' ? '¥' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
+
+          // Determine market based on region and currency
+          const market = currency === 'CNY' ? 'Shanghai' :
+                         commodityData.region === 'europe' ? 'EU Market' :
+                         commodityData.region === 'global' ? 'LME' :
+                         commodityData.region?.toUpperCase() || 'Global';
+
           return {
-            content: `**${commodityData.name} Price Forecast (Q1 2025)**\n\nCurrent price: $${commodityData.currentPrice?.toLocaleString() || '2,380'} per ${commodityData.unit || 'metric ton'}. The market is showing ${forecastTrend} momentum with ${Math.abs(pricePercent)}% change over the past 30 days.\n\n**Key Drivers:**\n${drivers.drivers.slice(0, 3).map(d => `- **${d.name}** (${d.contribution}% impact): ${d.description}`).join('\n')}\n\n**Outlook:** ${drivers.marketContext}`,
+            content: `**${commodityData.name} Price Forecast (Q1 2025)**\n\nCurrent price: ${currencySymbol}${commodityData.currentPrice?.toLocaleString() || '2,380'} per ${commodityData.unit || 'metric ton'}. The market is showing ${forecastTrend} momentum with ${Math.abs(pricePercent)}% change over the past 30 days.\n\n**Key Drivers:**\n${drivers.drivers.slice(0, 3).map(d => `- **${d.name}** (${d.contribution}% impact): ${d.description}`).join('\n')}\n\n**Outlook:** ${drivers.marketContext}`,
             responseType: 'widget',
             suggestions: generateSuggestions(intent, {}),
             sources: [
               { name: 'Beroe Price Analytics', type: 'beroe' as const },
-              { name: 'LME Market Data', type: 'web' as const, url: 'https://www.lme.com' },
+              { name: currency === 'CNY' ? 'Shanghai Metals Market' : 'LME Market Data', type: 'web' as const, url: currency === 'CNY' ? 'https://www.smm.cn' : 'https://www.lme.com' },
               { name: 'CRU Group', type: 'web' as const, url: 'https://www.crugroup.com' },
             ],
             widget: {
@@ -1136,7 +1497,7 @@ const generateLocalResponse = (
                 commodity: commodityData.name,
                 currentPrice: commodityData.currentPrice || 0,
                 unit: commodityData.unit || 'mt',
-                currency: 'USD',
+                currency,
                 lastUpdated: 'Beroe today',
                 gaugeMin: (commodityData.currentPrice || 0) * 0.7,
                 gaugeMax: (commodityData.currentPrice || 0) * 1.3,
@@ -1150,7 +1511,7 @@ const generateLocalResponse = (
                   value: Math.abs((commodityData.currentPrice || 0) * pricePercent / 100),
                   percent: pricePercent,
                 },
-                market: commodityData.region === 'global' ? 'LME' : commodityData.region?.toUpperCase() || 'Global',
+                market,
                 tags: priceDirection === 'up'
                   ? ['Rising Trend', 'Supply Pressure']
                   : priceDirection === 'down'

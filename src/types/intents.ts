@@ -407,6 +407,12 @@ const PRICE_DATA_PATTERNS = [
   /price\s*(forecast|outlook|projection|prediction)/i,
   /(steel|aluminum|copper|corrugated|packaging|commodity|metal)\s*(forecast|outlook|projection|prediction|price)/i,
   /(forecast|outlook|projection|prediction)\s*(for|of)\s*(steel|aluminum|copper|corrugated|packaging|commodity|metal)/i,
+  // Price movement/impact patterns - should use Gemini with widget routing
+  /price\s*(movement|impact|trend|change)/i,
+  /(lithium|rare\s*earth|cobalt|nickel|battery)\s*(price|cost|movement|impact)/i,
+  /how\s*(does|do|will|would).*price.*impact/i,
+  /analyze.*price.*movement/i,
+  /commodity\s*(price|cost).*impact/i,
 ];
 
 // Check if query should trigger deep research

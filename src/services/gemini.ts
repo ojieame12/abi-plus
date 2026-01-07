@@ -1172,6 +1172,15 @@ function buildWidgetData(
       const rawPosition = 50 + (percent30d * 2);
       const gaugePosition = Math.max(0, Math.min(100, rawPosition));
 
+      // Use commodity's currency, default to USD
+      const currency = data.commodityData.currency || 'USD';
+
+      // Determine market based on region and currency
+      const market = data.commodityData.currency === 'CNY' ? 'Shanghai' :
+                     data.commodityData.region === 'europe' ? 'EU Market' :
+                     data.commodityData.region === 'global' ? 'LME' :
+                     data.commodityData.region?.toUpperCase() || 'Global';
+
       return {
         type: 'price_gauge',
         title: data.commodityData.name,
@@ -1179,7 +1188,7 @@ function buildWidgetData(
           commodity: data.commodityData.name,
           currentPrice: currentPrice,
           unit: data.commodityData.unit || 'mt',
-          currency: 'USD',
+          currency,
           lastUpdated: 'Beroe today',
           gaugeMin: currentPrice * 0.7,
           gaugeMax: currentPrice * 1.3,
@@ -1192,7 +1201,7 @@ function buildWidgetData(
             value: priceChange30d,
             percent: percent30d,
           },
-          market: data.commodityData.region === 'global' ? 'LME' : data.commodityData.region?.toUpperCase() || 'Global',
+          market,
           tags: data.commodityData.priceChange?.direction === 'up'
             ? ['Rising Trend', 'Supply Pressure']
             : data.commodityData.priceChange?.direction === 'down'

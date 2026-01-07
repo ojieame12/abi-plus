@@ -30,6 +30,11 @@ import { JustificationReportArtifact } from './views/JustificationReportArtifact
 import { ExecutivePresentationArtifact } from './views/ExecutivePresentationArtifact';
 import { CommodityDashboardArtifact } from './views/CommodityDashboardArtifact';
 
+// Import value ladder artifacts
+import { AnalystConnectArtifact } from '../panel/AnalystConnectArtifact';
+import { ExpertRequestArtifact } from '../panel/ExpertRequestArtifact';
+import { CommunityEmbedArtifact } from '../panel/CommunityEmbedArtifact';
+
 // ============================================
 // TYPES
 // ============================================
@@ -536,6 +541,38 @@ export const ArtifactRenderer = ({
           </div>
         );
       }
+
+    // Value Ladder (4-Layer System)
+    case 'analyst_connect':
+      return (
+        <AnalystConnectArtifact
+          analystConnect={(payload as any).analystConnect}
+          queryContext={(payload as any).queryContext}
+          onScheduleCall={(analystId, slot) => onAction?.('schedule_call', { analystId, slot })}
+          onSendQuestion={(analystId, question) => onAction?.('send_question', { analystId, question })}
+        />
+      );
+
+    case 'expert_request':
+      return (
+        <ExpertRequestArtifact
+          expertDeepDive={(payload as any).expertDeepDive}
+          queryContext={(payload as any).queryContext}
+          onRequestIntro={(expertId, briefing, projectType) =>
+            onAction?.('request_expert_intro', { expertId, briefing, projectType })
+          }
+        />
+      );
+
+    case 'community_embed':
+      return (
+        <CommunityEmbedArtifact
+          community={(payload as any).community}
+          queryContext={(payload as any).queryContext}
+          onViewThread={(threadId) => onAction?.('view_thread', { threadId })}
+          onStartDiscussion={(title, body) => onAction?.('start_discussion', { title, body })}
+        />
+      );
 
     default:
       {
