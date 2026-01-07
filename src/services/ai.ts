@@ -29,6 +29,7 @@ import {
   transformSupplierToRiskCardData,
 } from './widgetTransformers';
 import { generateSuggestions, suggestionEngine } from './suggestionEngine';
+import { getWidgetRouteFromRegistry } from './widgetRouter';
 
 export type ThinkingMode = 'fast' | 'reasoning';
 
@@ -456,7 +457,6 @@ const transformPerplexityResponse = (
   intent: DetectedIntent
 ): Omit<AIResponse, 'id' | 'provider' | 'thinkingDuration'> => {
   // Use registry-based widget router to get proper artifact type
-  const { getWidgetRouteFromRegistry } = require('./widgetRouter');
   const route = getWidgetRouteFromRegistry(intent.category, intent.subIntent);
 
   // Perplexity responses are typically research/summary - use 0 count for inline display
