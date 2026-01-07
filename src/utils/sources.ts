@@ -44,7 +44,17 @@ const mapInternalType = (type?: Source['type']): InternalSource['type'] | null =
   }
 };
 
-export const buildResponseSources = (sources: Source[] = []): ResponseSources => {
+export const buildResponseSources = (sources: Source[] | ResponseSources | undefined | null): ResponseSources => {
+  // Guard: if sources is already a ResponseSources object, return it directly
+  if (sources && typeof sources === 'object' && 'web' in sources && 'internal' in sources) {
+    return sources as ResponseSources;
+  }
+
+  // Guard: if sources is not an array, return empty
+  if (!Array.isArray(sources)) {
+    return { web: [], internal: [], totalWebCount: 0, totalInternalCount: 0 };
+  }
+
   const web: WebSource[] = [];
   const internal: InternalSource[] = [];
   const seenWeb = new Set<string>();

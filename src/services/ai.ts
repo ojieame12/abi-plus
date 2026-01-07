@@ -271,6 +271,8 @@ export const sendMessage = async (
 
   if (builderMeta) {
     // Builder provided pre-classified intent - use it directly
+    // Still run entity extraction to preserve supplier/commodity context
+    const baseIntent = classifyIntent(message);
     console.log('[AI] Using builder metadata for intent:', builderMeta.intent, builderMeta.subIntent);
     intent = {
       category: builderMeta.intent as IntentCategory,
@@ -278,7 +280,8 @@ export const sendMessage = async (
       confidence: 1.0, // Deterministic from builder
       responseType: 'widget',
       artifactType: 'none',
-      extractedEntities: {},
+      // Preserve entity extraction from message even when intent is forced
+      extractedEntities: baseIntent.extractedEntities,
       requiresHandoff: false,
       requiresResearch: builderMeta.requiresResearch || false,
       requiresDiscovery: false,
@@ -502,9 +505,16 @@ const generateLocalResponse = (
           type: 'risk_distribution',
           title: 'Risk Portfolio Overview',
           data: {
-            distribution: portfolio.distribution,
+            // Widget expects {count} objects and totalSpendFormatted
+            distribution: {
+              high: { count: portfolio.distribution.high },
+              mediumHigh: { count: portfolio.distribution.mediumHigh },
+              medium: { count: portfolio.distribution.medium },
+              low: { count: portfolio.distribution.low },
+              unrated: { count: portfolio.distribution.unrated },
+            },
             totalSuppliers: portfolio.totalSuppliers,
-            totalSpend: portfolio.totalSpendFormatted,
+            totalSpendFormatted: portfolio.totalSpendFormatted,
           },
         },
         acknowledgement: "Here's your portfolio at a glance.",
@@ -872,7 +882,8 @@ const generateLocalResponse = (
                 lastUpdated: 'Beroe today',
                 gaugeMin: (commodityData.currentPrice || 0) * 0.7,
                 gaugeMax: (commodityData.currentPrice || 0) * 1.3,
-                gaugePosition: Math.round(50 + (pricePercent * 2)),
+                // Clamp to [0, 100] to prevent rendering outside the arc
+                gaugePosition: Math.max(0, Math.min(100, Math.round(50 + (pricePercent * 2)))),
                 change24h: {
                   value: Math.abs((commodityData.currentPrice || 0) * (pricePercent / 30) / 100),
                   percent: pricePercent / 30,

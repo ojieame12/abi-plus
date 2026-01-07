@@ -694,14 +694,17 @@ async function fetchDataForIntent(
     data.commodityDrivers = getCommodityDrivers(intent.extractedEntities.commodity);
     // Fetch market events for news sub-intent
     data.marketEvents = getMarketEvents(intent.extractedEntities.commodity);
-    // Get specific commodity data for price_gauge
+    // Get specific commodity data for price_gauge ONLY if:
+    // 1. A commodity is explicitly mentioned, OR
+    // 2. SubIntent is commodity_drivers (user asked about prices/trends)
     if (intent.extractedEntities.commodity) {
       data.commodityData = getCommodity(intent.extractedEntities.commodity);
-    }
-    // Default to copper if no specific commodity
-    if (!data.commodityData) {
+    } else if (intent.subIntent === 'commodity_drivers') {
+      // Only default to copper when user explicitly asked about prices/trends
+      // without specifying a commodity - generic market questions get no price gauge
       data.commodityData = getCommodity('copper');
     }
+    // Note: news_events subIntent without commodity → no commodityData → no price gauge
   }
 
   // Fetch breakdown data for by_dimension sub-intents
@@ -820,6 +823,18 @@ Scenario Analysis:
 - Delta: ${sc.delta.amount} (${sc.delta.direction})`);
   }
 
+  // Commodity data for price/forecast queries - enables specific narratives
+  if (data.commodityData) {
+    const cd = data.commodityData;
+    const priceChange = cd.priceChange;
+    parts.push(`
+Commodity Data (${cd.name}):
+- Current Price: $${cd.currentPrice?.toLocaleString() || 'N/A'} per ${cd.unit || 'unit'}
+- Price Change: ${priceChange?.percent ? (priceChange.percent > 0 ? '+' : '') + priceChange.percent.toFixed(1) + '%' : 'N/A'} (${priceChange?.direction || 'stable'})
+- Region: ${cd.region || 'Global'}
+- Category: ${cd.category || 'Commodity'}`);
+  }
+
   // Include extracted entities for context
   if (intent.extractedEntities) {
     const ent = intent.extractedEntities;
@@ -903,13 +918,21 @@ function buildWidgetData(
   switch (widgetType) {
     case 'risk_distribution':
       if (!data.portfolio) return undefined;
+      // Widget expects distribution with {count} objects and totalSpendFormatted
+      const dist = data.portfolio.distribution;
       return {
         type: 'risk_distribution',
         title: aiContent?.widgetContent?.headline || 'Portfolio Risk Overview',
         data: {
-          distribution: data.portfolio.distribution,
+          distribution: {
+            high: { count: dist.high },
+            mediumHigh: { count: dist.mediumHigh },
+            medium: { count: dist.medium },
+            low: { count: dist.low },
+            unrated: { count: dist.unrated },
+          },
           totalSuppliers: data.portfolio.totalSuppliers,
-          totalSpend: data.portfolio.totalSpendFormatted,
+          totalSpendFormatted: data.portfolio.totalSpendFormatted,
         },
       };
 
@@ -955,6 +978,9 @@ function buildWidgetData(
             trend: s.srs?.trend || 'stable',
             spend: s.spendFormatted,
             category: s.category,
+            // UI requires strengths/weaknesses arrays for .slice() calls
+            strengths: generateStrengths(s),
+            weaknesses: generateWeaknesses(s),
           })),
           comparisonDimensions: ['riskScore', 'riskLevel', 'trend', 'spend', 'category'],
         },
@@ -1051,6 +1077,10 @@ function buildWidgetData(
       const priceChange30d = currentPrice * (percent30d / 100);
 
       // Return PriceGaugeData format (not legacy format)
+      // Clamp gaugePosition to [0, 100] to prevent rendering outside the arc
+      const rawPosition = 50 + (percent30d * 2);
+      const gaugePosition = Math.max(0, Math.min(100, rawPosition));
+
       return {
         type: 'price_gauge',
         title: data.commodityData.name,
@@ -1062,7 +1092,7 @@ function buildWidgetData(
           lastUpdated: 'Beroe today',
           gaugeMin: currentPrice * 0.7,
           gaugeMax: currentPrice * 1.3,
-          gaugePosition: 50 + (percent30d * 2), // Scale percent to 0-100 gauge position
+          gaugePosition,
           change24h: {
             value: priceChange24h,
             percent: percent24h,
@@ -1123,11 +1153,12 @@ function buildWidgetData(
         data: {
           events: data.marketEvents.map(e => ({
             id: e.id,
+            // UI requires type for eventTypeStyles lookup
+            type: mapEventType(e.category, e.impact),
             title: e.title,
             summary: e.summary,
             source: e.source,
             timestamp: e.timestamp,
-            category: e.category,
             impact: e.impact,
           })),
           totalEvents: data.marketEvents.length,
@@ -1154,6 +1185,53 @@ function calculateMatchScore(current: Supplier, alternative: Supplier): number {
   if ((alternative.srs?.score ?? 100) < (current.srs?.score ?? 0)) score += 5;
 
   return Math.min(score, 98); // Cap at 98%
+}
+
+// Helper to generate strengths based on supplier data
+function generateStrengths(s: Supplier): string[] {
+  const strengths: string[] = [];
+  const level = s.srs?.level;
+  const trend = s.srs?.trend;
+
+  if (level === 'low') strengths.push('Low Risk');
+  else if (level === 'medium') strengths.push('Moderate Risk');
+
+  if (trend === 'improving') strengths.push('Improving Trend');
+  else if (trend === 'stable') strengths.push('Stable Performance');
+
+  if (s.location?.region) strengths.push(s.location.region);
+
+  // Ensure at least one strength
+  if (strengths.length === 0) strengths.push('Established Supplier');
+
+  return strengths.slice(0, 3);
+}
+
+// Helper to generate weaknesses based on supplier data
+function generateWeaknesses(s: Supplier): string[] {
+  const weaknesses: string[] = [];
+  const level = s.srs?.level;
+  const trend = s.srs?.trend;
+
+  if (level === 'high') weaknesses.push('High Risk');
+  else if (level === 'medium-high') weaknesses.push('Elevated Risk');
+
+  if (trend === 'worsening') weaknesses.push('Declining Trend');
+
+  if (!s.srs?.score) weaknesses.push('Unrated');
+
+  // Ensure at least one item (empty array causes .slice() issues)
+  if (weaknesses.length === 0) weaknesses.push('Limited Data');
+
+  return weaknesses.slice(0, 3);
+}
+
+// Helper to map category/impact to event type for EventsFeedWidget
+function mapEventType(category?: string, impact?: string): 'news' | 'risk_change' | 'alert' | 'update' {
+  if (impact === 'negative' || category === 'risk') return 'alert';
+  if (category === 'price' || category === 'market') return 'risk_change';
+  if (category === 'supply' || category === 'regulatory') return 'update';
+  return 'news';
 }
 
 // Build source attribution in ResponseSources format for UI rendering
