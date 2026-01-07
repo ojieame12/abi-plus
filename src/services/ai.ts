@@ -898,12 +898,82 @@ const generateLocalResponse = (
     }
 
     case 'market_context': {
-      // This would ideally trigger Perplexity, but fallback for local
+      // Provide actual market context from available data
+      const followedSuppliers = MOCK_SUPPLIERS.filter(s => s.isFollowed);
+      const highRiskSuppliers = followedSuppliers.filter(s => s.srs?.level === 'high' || s.srs?.level === 'medium-high');
+      const worseningSuppliers = followedSuppliers.filter(s => s.srs?.trend === 'worsening');
+      const categoryBreakdown = getCategoryBreakdown(portfolio, followedSuppliers);
+
+      // Build actual market briefing from available data
+      const sections: string[] = [];
+
+      sections.push('## Portfolio Risk Summary\n');
+      sections.push(`Monitoring ${portfolio.totalSuppliers} suppliers across ${categoryBreakdown.length} categories with ${portfolio.totalSpendFormatted} total spend.\n`);
+
+      sections.push('## Risk Signals\n');
+      if (highRiskSuppliers.length > 0) {
+        sections.push(`**${highRiskSuppliers.length} High-Risk Suppliers:**`);
+        highRiskSuppliers.slice(0, 5).forEach(s => {
+          sections.push(`- ${s.name} (${s.category}): Score ${s.srs?.score}, ${s.srs?.trend} trend`);
+        });
+      }
+      if (worseningSuppliers.length > 0) {
+        sections.push(`\n**${worseningSuppliers.length} Suppliers with Worsening Trends:**`);
+        worseningSuppliers.slice(0, 3).forEach(s => {
+          sections.push(`- ${s.name}: ${s.srs?.score} (was improving, now worsening)`);
+        });
+      }
+
+      sections.push('\n## Category Exposure\n');
+      const sortedCats = [...categoryBreakdown].sort((a, b) => b.highRisk - a.highRisk);
+      sortedCats.slice(0, 4).forEach(cat => {
+        const riskNote = cat.highRisk > 0 ? ` ⚠️ ${cat.highRisk} high-risk` : '';
+        sections.push(`- **${cat.category}**: ${cat.count} suppliers, ${formatSpend(cat.spend)}${riskNote}`);
+      });
+
+      sections.push('\n## Recommended Actions\n');
+      if (highRiskSuppliers.length > 0) {
+        sections.push(`1. Review the ${highRiskSuppliers.length} high-risk suppliers for mitigation opportunities`);
+      }
+      if (worseningSuppliers.length > 0) {
+        sections.push(`2. Investigate root causes for ${worseningSuppliers.length} suppliers with worsening trends`);
+      }
+      sections.push(`3. Address visibility gaps: ${portfolio.distribution.unrated} suppliers remain unrated`);
+
+      sections.push('\n*For real-time market news and external intelligence, enable web search mode.*');
+
       return {
-        content: `I can research market conditions for you. This includes industry trends affecting your suppliers, regional risk factors, supply chain disruptions, and commodity price impacts. Let me search for the latest information.`,
-        responseType: 'summary',
-        suggestions: generateSuggestions(intent, {}),
-        escalation: determineEscalation(0, 'market_context'),
+        content: sections.join('\n'),
+        responseType: 'widget',
+        suggestions: generateSuggestions(intent, { portfolio }),
+        sources: [
+          { name: 'Beroe Risk Analytics', type: 'beroe' as const },
+          { name: 'Portfolio Intelligence', type: 'beroe' as const },
+        ],
+        portfolio,
+        widget: {
+          type: 'risk_distribution',
+          title: 'Portfolio Risk Overview',
+          data: {
+            distribution: {
+              high: { count: portfolio.distribution.high },
+              mediumHigh: { count: portfolio.distribution.mediumHigh },
+              medium: { count: portfolio.distribution.medium },
+              low: { count: portfolio.distribution.low },
+              unrated: { count: portfolio.distribution.unrated },
+            },
+            totalSuppliers: portfolio.totalSuppliers,
+            totalSpendFormatted: portfolio.totalSpendFormatted,
+          },
+        },
+        acknowledgement: "Here's your portfolio risk briefing.",
+        insight: {
+          headline: highRiskSuppliers.length > 0 ? `${highRiskSuppliers.length} High-Risk Suppliers` : 'Portfolio Status',
+          summary: `${portfolio.totalSuppliers} suppliers monitored. ${highRiskSuppliers.length} at elevated risk, ${worseningSuppliers.length} trending worse.`,
+          detail: `Top concern: ${highRiskSuppliers[0]?.name || 'None'} in ${highRiskSuppliers[0]?.category || 'N/A'}`,
+          sentiment: highRiskSuppliers.length > 2 ? 'negative' : 'neutral',
+        },
+        escalation: determineEscalation(portfolio.totalSuppliers, 'market_context'),
         intent,
       };
     }
