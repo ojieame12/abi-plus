@@ -24,6 +24,7 @@ import {
   getMarketEvents,
   getCategoryBreakdown,
   getRegionBreakdown,
+  generateSpendExposureData,
   type InflationSummaryData,
   type CommodityDriverData,
   type SpendImpactData,
@@ -34,7 +35,7 @@ import {
 } from './mockData';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
-import type { WidgetData, WidgetType } from '../types/widgets';
+import type { WidgetData, WidgetType, SpendExposureData } from '../types/widgets';
 import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from './widgetTransformers';
 import { getWidgetRouteFromRegistry, type AIContentSlots } from './widgetRouter';
 
@@ -514,6 +515,8 @@ interface FetchedData {
   // Breakdown data
   categoryBreakdown?: Array<{ category: string; count: number; spend: number; highRisk: number; avgScore: number }>;
   regionBreakdown?: Array<{ region: string; count: number; spend: number; highRisk: number; avgScore: number }>;
+  // Spend exposure data
+  spendExposureData?: SpendExposureData;
 }
 
 // Step 1: Fetch data based on intent requirements
@@ -552,21 +555,51 @@ async function fetchDataForIntent(
       case 'supplier_deep_dive': {
         // Find specific supplier
         const supplierName = intent.extractedEntities.supplierName;
+        let foundSupplier: Supplier | undefined;
+
         if (supplierName) {
-          const supplier = await getSupplierByName(supplierName);
-          if (supplier) {
-            data.targetSupplier = supplier;
-            data.suppliers = [supplier];
-          }
-        } else {
+          foundSupplier = await getSupplierByName(supplierName);
+        }
+
+        if (!foundSupplier) {
           // Try to find supplier name in query
-          const matched = allSuppliers.find(s =>
+          foundSupplier = allSuppliers.find(s =>
             query.toLowerCase().includes(s.name.toLowerCase())
           );
-          if (matched) {
-            data.targetSupplier = matched;
-            data.suppliers = [matched];
-          }
+        }
+
+        if (foundSupplier) {
+          data.targetSupplier = foundSupplier;
+          data.suppliers = [foundSupplier];
+        } else if (supplierName) {
+          // Create synthetic supplier for external research queries
+          // This allows widgets to render even when supplier isn't in our database
+          const syntheticSupplier: Supplier = {
+            id: `synthetic-${supplierName.toLowerCase().replace(/\s+/g, '-')}`,
+            name: supplierName,
+            duns: 'N/A',
+            category: intent.extractedEntities.category || 'Technology',
+            industry: intent.extractedEntities.industry || 'Manufacturing',
+            location: {
+              city: 'Unknown',
+              country: intent.extractedEntities.region || 'Global',
+              region: 'Asia Pacific',
+            },
+            spend: 0,
+            spendFormatted: 'Not in portfolio',
+            criticality: 'medium',
+            isFollowed: false,
+            srs: {
+              score: 0, // Will be populated by research
+              level: 'unrated',
+              trend: 'stable',
+              lastUpdated: new Date().toISOString(),
+              factors: [],
+            },
+          };
+          data.targetSupplier = syntheticSupplier;
+          data.suppliers = [syntheticSupplier];
+          data.isSyntheticSupplier = true; // Flag for AI to know this is external research
         }
         break;
       }
@@ -715,6 +748,14 @@ async function fetchDataForIntent(
     data.regionBreakdown = getRegionBreakdown(portfolio, allSuppliers);
     // Include all suppliers in context for detailed category analysis
     data.suppliers = allSuppliers;
+  }
+
+  // Fetch spend exposure data for spend_weighted sub-intent
+  if (intent.subIntent === 'spend_weighted' ||
+      (intent.category === 'portfolio_overview' && route.widgetType === 'spend_exposure')) {
+    const portfolio = data.portfolio || await getPortfolioSummary();
+    const allSuppliers = data.suppliers || await getAllSuppliers();
+    data.spendExposureData = generateSpendExposureData(portfolio, allSuppliers);
   }
 
   return data;
@@ -1185,6 +1226,14 @@ function buildWidgetData(
           })),
           totalEvents: data.marketEvents.length,
         },
+      };
+
+    case 'spend_exposure':
+      if (!data.spendExposureData) return undefined;
+      return {
+        type: 'spend_exposure',
+        title: aiContent?.widgetContent?.headline || 'Spend Exposure Analysis',
+        data: data.spendExposureData,
       };
 
     default:

@@ -84,6 +84,26 @@ interface SelectionRule {
 
 const SELECTION_RULES: SelectionRule[] = [
   // ==========================================
+  // WIDGET TYPE OVERRIDES (Honor router decisions)
+  // These rules check widget.type and have highest priority
+  // ==========================================
+  {
+    id: 'spend_exposure_by_widget_type',
+    matches: (ctx, renderCtx) =>
+      ctx.widget?.type === 'spend_exposure' &&
+      (renderCtx === 'chat' || renderCtx === 'panel'),
+    priority: 200, // Higher than all intent-based rules
+    getConfig: (ctx, renderCtx) => ({
+      componentType: 'SpendExposureWidget',
+      size: renderCtx === 'panel' ? 'lg' : 'md',
+      props: {
+        data: ctx.widget?.data || {},
+      },
+      expandsTo: 'PortfolioDashboardArtifact',
+    }),
+  },
+
+  // ==========================================
   // PORTFOLIO OVERVIEW
   // ==========================================
   {

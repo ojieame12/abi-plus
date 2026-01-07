@@ -76,6 +76,16 @@ body {
   background-color: rgb(248 250 252);
 }
 
+/* Hide all scrollbars but keep scroll functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* Typography utilities */
 .text-primary {
   color: #242F47;

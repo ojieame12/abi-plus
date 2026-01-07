@@ -37,10 +37,17 @@ You have access to:
 // Widget type is predetermined - AI only generates content
 // ============================================
 
+export interface BuilderMeta {
+  promptTemplate?: string;  // The detailed prompt template from builder
+  routePath?: string;       // e.g., 'risk:portfolio-health:executive-summary'
+  requiresResearch?: boolean;
+}
+
 export const buildContentGenerationPrompt = (
   widgetType: WidgetType,
   intentCategory: string,
-  dataContext: string
+  dataContext: string,
+  builderMeta?: BuilderMeta
 ): string => {
   const widgetDescriptions: Record<string, string> = {
     risk_distribution: 'a donut chart showing risk level breakdown (High/Medium-High/Medium/Low/Unrated)',
@@ -51,26 +58,40 @@ export const buildContentGenerationPrompt = (
     price_gauge: 'a gauge showing commodity price levels and trends',
     events_feed: 'a timeline of recent news and events',
     handoff_card: 'a card directing user to the dashboard for more details',
+    spend_exposure: 'a chart showing spend distribution by risk level with exposure analysis',
     none: 'no widget - text response only',
   };
 
   const widgetDesc = widgetDescriptions[widgetType] || 'a data visualization widget';
 
+  // Determine narrative depth based on builder context
+  // Builder templates are detailed - honor that depth expectation
+  const hasDetailedBuilder = builderMeta?.promptTemplate && builderMeta.promptTemplate.length > 200;
+  const narrativeGuidance = hasDetailedBuilder
+    ? '4-8 sentences providing comprehensive context, analysis, and specific data points. Cover the key areas outlined in the user\'s detailed request.'
+    : '3-5 sentences with context, key data points, and analysis. Use plain text, no markdown formatting.';
+
+  // Include builder template context if present
+  const builderContext = builderMeta?.promptTemplate
+    ? `\n## User's Detailed Request\nThe user has made a structured query using the prompt builder. Address these specific areas:\n${builderMeta.promptTemplate}\n`
+    : '';
+
   return `You are generating content for an AI response. The widget type is ALREADY DETERMINED to be: ${widgetType}
 ${widgetType !== 'none' ? `\nThis widget displays: ${widgetDesc}` : ''}
 
 ## Intent: ${intentCategory}
-
+${builderContext}
 ## Available Data
 ${dataContext}
 
 ## Your Task
 Generate the content to accompany this widget. You are NOT choosing the widget - it's already selected.
+${hasDetailedBuilder ? 'The user has made a detailed structured request - provide a comprehensive response that addresses their specific requirements.' : ''}
 
 ## Required Output (JSON only, no markdown fences)
 {
   "acknowledgement": "Brief 5-10 word greeting that acknowledges the query (e.g., 'Analyzing your portfolio risk.' or 'Looking at Steel price trends.')",
-  "narrative": "3-5 sentences with context, key data points, and analysis. Use plain text, no markdown formatting.",
+  "narrative": "${narrativeGuidance}",
   "widgetContent": {
     "headline": "Key insight in 5-10 words (e.g., '8 Suppliers Need Risk Assessment')",
     "summary": "2-3 sentence explanation of what this means and recommended action",
@@ -82,9 +103,9 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
   },
   "artifactContent": {
     "title": "Expanded Panel Title",
-    "overview": "1-2 paragraph deep-dive explanation",
-    "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
-    "recommendations": ["Recommended action 1", "Recommended action 2"]
+    "overview": "${hasDetailedBuilder ? '2-4 paragraphs with deep-dive analysis addressing the user\'s specific areas of interest' : '1-2 paragraph deep-dive explanation'}",
+    "keyPoints": ["Key point 1", "Key point 2", "Key point 3"${hasDetailedBuilder ? ', "Key point 4", "Key point 5"' : ''}],
+    "recommendations": ["Recommended action 1", "Recommended action 2"${hasDetailedBuilder ? ', "Recommended action 3"' : ''}]
   },
   "followUps": ["Contextual follow-up question 1?", "Follow-up question 2?", "Follow-up question 3?"]
 }
@@ -97,7 +118,7 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
   - BAD: "I'd be happy to help you with that!" (too generic)
 - **narrative**: Clean, readable prose with specific data:
   - Lead with the key finding or summary
-  - Include 2-4 sentences with specific numbers and context
+  - Include ${hasDetailedBuilder ? '4-6' : '2-4'} sentences with specific numbers and context
   - Use plain text only - NO markdown, NO bold, NO formatting
   - GOOD: "Your portfolio includes 14 suppliers with $10B total spend. The 8 unrated suppliers represent a visibility gap that may impact risk oversight. Prioritizing assessments for high-spend vendors would improve coverage."
   - GOOD: "Corrugated Boxes prices are up 5.8% this period, driven by pulp cost increases contributing 40% of the movement. European e-commerce demand continues driving packaging consumption higher."
@@ -105,7 +126,7 @@ Generate the content to accompany this widget. You are NOT choosing the widget -
   - BAD: "Here is your portfolio overview." (too generic, no data)
 - **headline**: The single most important takeaway
 - **summary**: What it means for the user and what they should consider doing
-- **factors**: 2-4 contributing factors explaining WHY this situation exists
+- **factors**: ${hasDetailedBuilder ? '3-5' : '2-4'} contributing factors explaining WHY this situation exists
 - **artifactContent**: Deeper analysis shown when user expands the panel
 - **followUps**: 3 natural next questions the user might ask
 
