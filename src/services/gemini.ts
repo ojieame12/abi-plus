@@ -713,6 +713,8 @@ async function fetchDataForIntent(
     const portfolio = data.portfolio || await getPortfolioSummary();
     data.categoryBreakdown = getCategoryBreakdown(portfolio, allSuppliers);
     data.regionBreakdown = getRegionBreakdown(portfolio, allSuppliers);
+    // Include all suppliers in context for detailed category analysis
+    data.suppliers = allSuppliers;
   }
 
   return data;
@@ -833,6 +835,26 @@ Commodity Data (${cd.name}):
 - Price Change: ${priceChange?.percent ? (priceChange.percent > 0 ? '+' : '') + priceChange.percent.toFixed(1) + '%' : 'N/A'} (${priceChange?.direction || 'stable'})
 - Region: ${cd.region || 'Global'}
 - Category: ${cd.category || 'Commodity'}`);
+  }
+
+  // Category breakdown for by_dimension analysis - provides detailed category-level data
+  if (data.categoryBreakdown && data.categoryBreakdown.length > 0) {
+    const categoryList = data.categoryBreakdown.map(c =>
+      `- ${c.category}: ${c.count} suppliers, $${(c.spend / 1e9).toFixed(1)}B spend, ${c.highRisk} high-risk, avg score ${c.avgScore}`
+    ).join('\n');
+    parts.push(`
+Category Breakdown (${data.categoryBreakdown.length} categories):
+${categoryList}`);
+  }
+
+  // Region breakdown for geographic analysis
+  if (data.regionBreakdown && data.regionBreakdown.length > 0) {
+    const regionList = data.regionBreakdown.map(r =>
+      `- ${r.region}: ${r.count} suppliers, $${(r.spend / 1e9).toFixed(1)}B spend, ${r.highRisk} high-risk, avg score ${r.avgScore}`
+    ).join('\n');
+    parts.push(`
+Region Breakdown (${data.regionBreakdown.length} regions):
+${regionList}`);
   }
 
   // Include extracted entities for context
