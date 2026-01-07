@@ -175,6 +175,7 @@ export interface BuilderMeta {
   subIntent: string;
   widgets: string[];
   requiresResearch?: boolean;
+  promptTemplate?: string;  // Detailed prompt template from builder config
 }
 
 export interface SendMessageOptions {
@@ -334,7 +335,15 @@ export const sendMessage = async (
       }
     } else if (isGeminiConfigured()) {
       console.log('[AI] Calling GeminiV2...');
-      const geminiResponse = await callGeminiV2(message, conversationHistory, intent);
+      const geminiResponse = await callGeminiV2(
+        message,
+        conversationHistory,
+        intent,
+        builderMeta?.promptTemplate ? {
+          promptTemplate: builderMeta.promptTemplate,
+          routePath: builderMeta.path,
+        } : undefined
+      );
       response = transformGeminiResponse(geminiResponse, intent);
       provider = 'gemini';
     } else {

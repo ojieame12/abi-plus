@@ -922,15 +922,27 @@ async function generateAIContent(
   widgetType: WidgetType,
   intentCategory: string,
   dataContext: string,
-  options?: { isSyntheticSupplier?: boolean; supplierName?: string }
+  options?: {
+    isSyntheticSupplier?: boolean;
+    supplierName?: string;
+    promptTemplate?: string;  // From prompt builder
+    routePath?: string;       // Builder route path
+  }
 ): Promise<AIContentSlots | null> {
-  const builderMeta = options?.isSyntheticSupplier
-    ? {
-        isExternalSupplierResearch: true,
-        supplierName: options.supplierName,
-      }
-    : undefined;
-  const prompt = buildContentGenerationPrompt(widgetType, intentCategory, dataContext, builderMeta);
+  // Build meta from options - merge synthetic supplier and builder template info
+  const builderMeta = {
+    ...(options?.isSyntheticSupplier && {
+      isExternalSupplierResearch: true,
+      supplierName: options.supplierName,
+    }),
+    ...(options?.promptTemplate && {
+      promptTemplate: options.promptTemplate,
+      routePath: options.routePath,
+    }),
+  };
+  // Only pass builderMeta if it has content
+  const hasBuilderMeta = Object.keys(builderMeta).length > 0;
+  const prompt = buildContentGenerationPrompt(widgetType, intentCategory, dataContext, hasBuilderMeta ? builderMeta : undefined);
 
   const requestBody = {
     contents: [
@@ -1407,7 +1419,8 @@ function buildDataSources(
 export async function callGeminiV2(
   userMessage: string,
   _conversationHistory: ChatMessage[] = [],
-  intentOverride?: DetectedIntent
+  intentOverride?: DetectedIntent,
+  builderOptions?: { promptTemplate?: string; routePath?: string }
 ): Promise<GeminiResponse> {
   console.log('[GeminiV2] Processing:', userMessage);
 
@@ -1450,14 +1463,21 @@ export async function callGeminiV2(
   // 4. Build data context for AI
   const dataContext = buildDataContext(intent, data, userMessage);
 
-  // 5. Call AI for content generation (pass synthetic supplier flag for external research)
+  // 5. Call AI for content generation (pass synthetic supplier flag and builder template)
   const aiContent = await generateAIContent(
     route.widgetType,
     intent.category,
     dataContext,
-    data.isSyntheticSupplier
-      ? { isSyntheticSupplier: true, supplierName: data.targetSupplier?.name }
-      : undefined
+    {
+      ...(data.isSyntheticSupplier && {
+        isSyntheticSupplier: true,
+        supplierName: data.targetSupplier?.name,
+      }),
+      ...(builderOptions?.promptTemplate && {
+        promptTemplate: builderOptions.promptTemplate,
+        routePath: builderOptions.routePath,
+      }),
+    }
   );
 
   // 5b. If AI returned researched company data, enrich the synthetic supplier
