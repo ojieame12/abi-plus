@@ -633,12 +633,12 @@ const extractEntities = (query: string): DetectedIntent['extractedEntities'] => 
   const riskMatch = query.match(/(high|medium-high|medium|low)\s*risk/i);
   if (riskMatch) entities.riskLevel = riskMatch[1].toLowerCase();
 
-  // Extract region
+  // Extract region - use word boundaries to avoid false positives (e.g., "us" in "status")
   const regionPatterns = {
-    'North America': /north america|usa|us|united states|canada|mexico/i,
-    'Europe': /europe|eu|uk|germany|france|belgium/i,
-    'Asia Pacific': /asia|apac|china|japan|india|singapore|thailand|vietnam/i,
-    'Latin America': /latin america|south america|brazil|chile/i,
+    'North America': /\b(north\s+america|usa|united\s+states|canada|mexico)\b/i,
+    'Europe': /\b(europe|european|eu|uk|united\s+kingdom|germany|france|belgium|netherlands)\b/i,
+    'Asia Pacific': /\b(asia|asia\s+pacific|apac|china|japan|india|singapore|thailand|vietnam|korea)\b/i,
+    'Latin America': /\b(latin\s+america|south\s+america|brazil|chile|argentina|colombia)\b/i,
   };
   for (const [region, pattern] of Object.entries(regionPatterns)) {
     if (pattern.test(query)) {
@@ -664,20 +664,48 @@ const extractEntities = (query: string): DetectedIntent['extractedEntities'] => 
     }
   }
 
-  // Extract commodity name
-  const commodityPatterns = [
-    // "price trend for X" patterns
-    /(?:price|trend|prices?)\s+(?:for|of|on)\s+([A-Za-z][A-Za-z\s&]+?)(?:\s+in\s+|\s*$|\s*[.,?!])/i,
-    // Direct commodity mentions
-    /\b(corrugated\s*boxes?|steel|aluminum|copper|plastics?|rubber|paper|pulp|resins?|silicones?|natural\s+gas|packaging|freight)\b/i,
-    // "X prices" or "X price trend"
-    /\b([A-Za-z][A-Za-z\s&]+?)\s+(?:price|prices|cost|costs)\b/i,
+  // Extract commodity name - prioritize exact matches over greedy patterns
+  // Known commodities list (check first for accurate extraction)
+  const knownCommodities = [
+    'lithium carbonate', 'lithium', 'corrugated boxes', 'corrugated', 'steel',
+    'aluminum', 'aluminium', 'copper', 'plastics', 'plastic', 'rubber', 'paper',
+    'pulp', 'resins', 'resin', 'silicones', 'silicone', 'natural gas', 'oil',
+    'packaging', 'freight', 'zinc', 'nickel', 'cobalt', 'rare earth', 'polyethylene',
+    'polypropylene', 'pvc', 'hdpe', 'ldpe', 'pet', 'abs', 'nylon', 'titanium',
+    'tin', 'lead', 'palladium', 'platinum', 'gold', 'silver', 'iron ore', 'coal',
+    'lumber', 'cotton', 'wool', 'crude oil', 'gasoline', 'diesel', 'ethanol'
   ];
-  for (const pattern of commodityPatterns) {
-    const match = query.match(pattern);
-    if (match) {
-      entities.commodity = match[1].trim();
+
+  const lowerQuery = query.toLowerCase();
+  for (const commodity of knownCommodities) {
+    if (lowerQuery.includes(commodity)) {
+      // Return proper casing
+      entities.commodity = commodity.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       break;
+    }
+  }
+
+  // If no known commodity found, try pattern extraction with stricter rules
+  if (!entities.commodity) {
+    const commodityPatterns = [
+      // "price/forecast for X" - extract only noun phrases (no verbs)
+      /(?:price|forecast|trend|prices?|outlook)\s+(?:for|of|on)\s+([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)?)\b/i,
+      // "X prices" or "X price" - single/double word commodity before price
+      /\b([A-Z][a-z]+(?:\s+[a-z]+)?)\s+(?:price|prices|cost|costs|forecast)\b/i,
+    ];
+
+    // Stop words that shouldn't be extracted as commodities
+    const stopWords = ['the', 'this', 'that', 'what', 'how', 'analyze', 'show', 'get', 'tell', 'give', 'find'];
+
+    for (const pattern of commodityPatterns) {
+      const match = query.match(pattern);
+      if (match) {
+        const candidate = match[1].trim().toLowerCase();
+        if (!stopWords.includes(candidate) && candidate.length > 2) {
+          entities.commodity = match[1].trim();
+          break;
+        }
+      }
     }
   }
 

@@ -42,6 +42,103 @@ const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.0-flash-exp'; // Gemini 2.0 Flash (free tier, stable)
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+// ============================================
+// JSON PARSING UTILITIES (robust parsing)
+// ============================================
+
+/**
+ * Attempts to parse JSON with multiple repair strategies
+ * LLMs sometimes produce malformed JSON - this tries to fix common issues
+ */
+function tryParseJSON(text: string): unknown | null {
+  // Strategy 1: Direct parse
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Continue to repairs
+  }
+
+  // Strategy 2: Extract JSON from markdown fences
+  let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Strategy 3: Find JSON object/array boundaries
+  const jsonStart = cleaned.indexOf('{');
+  const arrayStart = cleaned.indexOf('[');
+  const startIdx = jsonStart === -1 ? arrayStart :
+                   arrayStart === -1 ? jsonStart :
+                   Math.min(jsonStart, arrayStart);
+
+  if (startIdx > 0) {
+    cleaned = cleaned.slice(startIdx);
+  }
+
+  // Find matching end brace/bracket
+  const isObject = cleaned.startsWith('{');
+  const openChar = isObject ? '{' : '[';
+  const closeChar = isObject ? '}' : ']';
+  let depth = 0;
+  let endIdx = -1;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === openChar) depth++;
+    else if (char === closeChar) {
+      depth--;
+      if (depth === 0) {
+        endIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (endIdx > 0) {
+    cleaned = cleaned.slice(0, endIdx + 1);
+  }
+
+  // Strategy 4: Try parse extracted JSON
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Continue to more aggressive repairs
+  }
+
+  // Strategy 5: Fix common LLM JSON issues
+  let repaired = cleaned
+    // Remove trailing commas before } or ]
+    .replace(/,\s*([\]}])/g, '$1')
+    // Fix unquoted keys (simple cases)
+    .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+    // Fix single quotes to double quotes (risky, but LLMs do this)
+    .replace(/'/g, '"');
+
+  try {
+    return JSON.parse(repaired);
+  } catch {
+    // Final failure
+    return null;
+  }
+}
+
 // Rich insight structure for InsightDetailArtifact
 export interface RichInsight {
   headline: string;
@@ -781,15 +878,14 @@ async function generateAIContent(
     const result = await response.json();
     const textContent = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Parse JSON response
-    try {
-      // Remove markdown fences if present
-      const jsonStr = textContent.replace(/```json\s*|\s*```/g, '').trim();
-      return JSON.parse(jsonStr) as AIContentSlots;
-    } catch {
-      console.error('[GeminiV2] Failed to parse JSON:', textContent.slice(0, 200));
-      return null;
+    // Parse JSON response with repair attempts
+    const parsed = tryParseJSON(textContent);
+    if (parsed) {
+      return parsed as AIContentSlots;
     }
+
+    console.error('[GeminiV2] Failed to parse JSON after repair attempts:', textContent.slice(0, 200));
+    return null;
   } catch (error) {
     console.error('[GeminiV2] Request failed:', error);
     return null;

@@ -432,16 +432,31 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
 
   // Pass onViewDetails for widgets that render an internal details CTA
   const VIEW_DETAILS_COMPONENTS = new Set([
+    // Inflation widgets
     'InflationSummaryCard',
     'DriverBreakdownCard',
     'SpendImpactCard',
     'JustificationCard',
     'ScenarioCard',
     'ExecutiveBriefCard',
+    // Portfolio/Risk widgets
     'HealthScorecardWidget',
     'ConcentrationWarningCard',
     'SpendExposureWidget',
     'FactorBreakdownCard',
+    'RiskDistributionWidget',
+    'RiskDistributionChart',
+    // Supplier widgets
+    'SupplierRiskCardWidget',
+    'SupplierRiskCard',
+    // Market/Price widgets
+    'PriceGaugeWidget',
+    'CommodityGaugeCard',
+    'TrendChartWidget',
+    // Alert/Event widgets
+    'AlertCardWidget',
+    'EventTimelineWidget',
+    'EventsFeedWidget',
   ]);
 
   if (handleExpand && !artifactHandlers.onViewDetails && VIEW_DETAILS_COMPONENTS.has(config.componentType)) {

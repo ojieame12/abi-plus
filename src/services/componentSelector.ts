@@ -730,15 +730,18 @@ export const buildDataContext = (
     subIntent?: string;
     resultCount?: number;
     hasHandoff?: boolean;
+    commodityData?: unknown;
+    commodityDrivers?: unknown;
   } = {}
 ): DataContext => {
   // Extract inflation data from widget if present
   const widget = options.widget;
   let inflationSummary: unknown;
-  let commodityDrivers: unknown;
+  let commodityDrivers: unknown = options.commodityDrivers;
   let portfolioExposure: unknown;
   let justificationData: unknown;
   let scenarioData: unknown;
+  let commodityData: unknown = options.commodityData;
 
   if (widget?.data) {
     switch (widget.type) {
@@ -757,6 +760,10 @@ export const buildDataContext = (
       case 'scenario_card':
         scenarioData = widget.data;
         break;
+      case 'price_gauge':
+      case 'commodity_gauge':
+        commodityData = widget.data;
+        break;
     }
   }
 
@@ -770,6 +777,7 @@ export const buildDataContext = (
     widget: options.widget,
     // Inflation data extracted from widget
     inflationSummary,
+    commodityData,
     commodityDrivers,
     portfolioExposure,
     justificationData,
@@ -894,6 +902,7 @@ function getAvailableData(ctx: DataContext): RequiredData[] {
   if (ctx.riskChanges && ctx.riskChanges.length > 0) available.push('riskChanges');
   if (ctx.events && ctx.events.length > 0) available.push('events');
   if (ctx.inflationSummary) available.push('inflationSummary');
+  if (ctx.commodityData) available.push('commodityData');
   if (ctx.commodityDrivers) available.push('commodityDrivers');
   if (ctx.portfolioExposure) available.push('portfolioExposure');
   if (ctx.justificationData) available.push('justificationData');
