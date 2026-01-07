@@ -477,6 +477,45 @@ const transformPerplexityResponse = (
   };
 };
 
+// Helper to generate strengths based on supplier data (for comparison widget)
+const generateStrengths = (s: Supplier): string[] => {
+  const strengths: string[] = [];
+  const level = s.srs?.level;
+  const trend = s.srs?.trend;
+
+  if (level === 'low') strengths.push('Low Risk');
+  else if (level === 'medium') strengths.push('Moderate Risk');
+
+  if (trend === 'improving') strengths.push('Improving Trend');
+  else if (trend === 'stable') strengths.push('Stable Performance');
+
+  if (s.location?.region) strengths.push(s.location.region);
+
+  // Ensure at least one strength
+  if (strengths.length === 0) strengths.push('Established Supplier');
+
+  return strengths.slice(0, 3);
+};
+
+// Helper to generate weaknesses based on supplier data (for comparison widget)
+const generateWeaknesses = (s: Supplier): string[] => {
+  const weaknesses: string[] = [];
+  const level = s.srs?.level;
+  const trend = s.srs?.trend;
+
+  if (level === 'high') weaknesses.push('High Risk');
+  else if (level === 'medium-high') weaknesses.push('Elevated Risk');
+
+  if (trend === 'worsening') weaknesses.push('Declining Trend');
+
+  if (!s.srs?.score) weaknesses.push('Unrated');
+
+  // Ensure at least one item (empty array causes .slice() issues)
+  if (weaknesses.length === 0) weaknesses.push('Limited Data');
+
+  return weaknesses.slice(0, 3);
+};
+
 // Generate fully local response when APIs are unavailable
 const generateLocalResponse = (
   message: string,
@@ -734,7 +773,21 @@ const generateLocalResponse = (
         widget: {
           type: 'comparison_table',
           title: 'Supplier Comparison',
-          data: { suppliers: toCompare },
+          data: {
+            suppliers: toCompare.map(s => ({
+              id: s.id,
+              name: s.name,
+              riskScore: s.srs?.score ?? 0,
+              riskLevel: s.srs?.level || 'unrated',
+              category: s.category,
+              location: s.location?.region || 'Unknown',
+              spend: s.spendFormatted || formatSpend(s.spend),
+              trend: s.srs?.trend || 'stable',
+              strengths: generateStrengths(s),
+              weaknesses: generateWeaknesses(s),
+            })),
+            comparisonDimensions: ['riskScore', 'riskLevel', 'trend', 'spend', 'category'],
+          },
         },
         acknowledgement: "Here's how they stack up.",
         artifact: { type: 'supplier_comparison', title: 'Supplier Comparison' },

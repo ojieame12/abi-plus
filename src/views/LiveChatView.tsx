@@ -148,8 +148,12 @@ export const LiveChatView = ({ initialQuestion, onArtifactChange }: LiveChatView
                     } : undefined}
                     insight={msg.response?.insight}
                     sources={(() => {
-                      if (!msg.response?.sources?.length) return undefined;
-                      const responseSources = buildResponseSources(msg.response.sources);
+                      const sources = msg.response?.sources;
+                      if (!sources) return undefined;
+                      // Handle both array format (Source[]) and object format (ResponseSources)
+                      const isArray = Array.isArray(sources);
+                      if (isArray && sources.length === 0) return undefined;
+                      const responseSources = isArray ? buildResponseSources(sources) : sources;
                       return responseSources.totalWebCount > 0 || responseSources.totalInternalCount > 0
                         ? responseSources
                         : undefined;
