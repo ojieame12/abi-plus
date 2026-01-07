@@ -530,34 +530,61 @@ const generateLocalResponse = (
       const mediumHighCount = portfolio.distribution.mediumHigh;
       const needsAttention = highRiskCount + mediumHighCount;
 
-      // Handle by_dimension subIntent - spend exposure and concentration analysis
+      // Handle by_dimension subIntent - detailed category analysis with named suppliers
       if (intent.subIntent === 'by_dimension') {
-        const spendExposure = generateSpendExposureData(MOCK_SUPPLIERS.filter(s => s.isFollowed));
-        const categoryBreakdown = getCategoryBreakdown(portfolio, MOCK_SUPPLIERS.filter(s => s.isFollowed));
+        const followedSuppliers = MOCK_SUPPLIERS.filter(s => s.isFollowed);
+        const categoryBreakdown = getCategoryBreakdown(portfolio, followedSuppliers);
+        const spendExposure = generateSpendExposureData(followedSuppliers);
 
-        // Find concentration risks
-        const topCategory = categoryBreakdown.sort((a, b) => b.spend - a.spend)[0];
-        const highRiskSpend = spendExposure.breakdown.find(b => b.level === 'high');
-        const highRiskExposurePercent = highRiskSpend?.percent || 0;
+        // Sort categories by risk (high risk count + avg score)
+        const sortedCategories = [...categoryBreakdown].sort((a, b) => {
+          const aRisk = a.highRisk * 100 + a.avgScore;
+          const bRisk = b.highRisk * 100 + b.avgScore;
+          return bRisk - aRisk;
+        });
 
-        // Build analytical content
-        const concentrationRisk = topCategory && topCategory.spend > portfolio.totalSpend * 0.4
-          ? `${topCategory.category} represents ${Math.round((topCategory.spend / portfolio.totalSpend) * 100)}% of spend—a concentration risk.`
-          : null;
+        // Identify hot spots (categories with high risk suppliers or high avg scores)
+        const hotSpots = sortedCategories.filter(c => c.highRisk > 0 || c.avgScore > 60);
 
-        const riskExposure = highRiskExposurePercent > 15
-          ? `${Math.round(highRiskExposurePercent)}% of spend is with high-risk suppliers.`
-          : highRiskExposurePercent > 0
-          ? `High-risk exposure is manageable at ${Math.round(highRiskExposurePercent)}% of spend.`
-          : 'No spend is currently at high risk.';
+        // Get top concerning categories with their suppliers
+        const topConcerns = hotSpots.slice(0, 3).map(cat => {
+          const catSuppliers = followedSuppliers
+            .filter(s => s.category === cat.category)
+            .sort((a, b) => (b.srs?.score ?? 0) - (a.srs?.score ?? 0));
+          const highRiskInCat = catSuppliers.filter(s => s.srs?.level === 'high' || s.srs?.level === 'medium-high');
+          return {
+            category: cat.category,
+            supplierCount: cat.count,
+            spend: formatSpend(cat.spend),
+            avgScore: cat.avgScore,
+            highRiskSuppliers: highRiskInCat.map(s => s.name),
+            topRiskSupplier: catSuppliers[0]?.name,
+          };
+        });
+
+        // Build comprehensive analytical content
+        const hotSpotSummary = hotSpots.length > 0
+          ? `${hotSpots.length} categories show elevated risk: ${hotSpots.slice(0, 2).map(h => h.category).join(', ')}.`
+          : 'No category-level hot spots identified.';
+
+        const topConcernDetail = topConcerns[0]
+          ? `${topConcerns[0].category} has ${topConcerns[0].highRiskSuppliers.length} high-risk supplier(s)${topConcerns[0].highRiskSuppliers.length > 0 ? ` including ${topConcerns[0].highRiskSuppliers[0]}` : ''}.`
+          : '';
+
+        // Strategic recommendation based on data
+        const recommendation = hotSpots.length > 2
+          ? 'Consider diversifying supply base in high-concentration categories and conducting supplier development programs for critical high-risk vendors.'
+          : hotSpots.length > 0
+          ? `Focus risk mitigation on ${hotSpots[0].category} category—evaluate alternative suppliers and negotiate risk-sharing terms.`
+          : 'Portfolio risk is well-distributed. Continue monitoring for emerging risks.';
 
         return {
-          content: `Your ${portfolio.totalSpendFormatted} portfolio has ${needsAttention} suppliers requiring attention. ${concentrationRisk || ''} ${riskExposure}`.trim(),
+          content: `**Category Analysis:** Your ${portfolio.totalSpendFormatted} portfolio spans ${categoryBreakdown.length} categories with ${portfolio.totalSuppliers} suppliers. ${hotSpotSummary} ${topConcernDetail}\n\n**Recommendation:** ${recommendation}`,
           responseType: 'widget',
           suggestions: generateSuggestions(intent, { portfolio }),
           sources: [
             { name: 'Beroe Risk Analytics', type: 'beroe' as const },
-            { name: 'Spend Analytics', type: 'beroe' as const },
+            { name: 'Category Intelligence', type: 'beroe' as const },
           ],
           portfolio,
           widget: {
@@ -565,16 +592,16 @@ const generateLocalResponse = (
             title: 'Spend Exposure by Risk Level',
             data: spendExposure,
           },
-          acknowledgement: "Here's your spend exposure analysis.",
+          acknowledgement: "Here's your category risk analysis.",
           insight: {
-            headline: concentrationRisk ? 'Concentration Risk Detected' : `${needsAttention} Suppliers Need Attention`,
-            summary: `Across ${categoryBreakdown.length} categories, ${formatSpend(highRiskSpend?.amount || 0)} (${Math.round(highRiskExposurePercent)}%) is exposed to high-risk suppliers. ${concentrationRisk || `Your spend is reasonably diversified across categories.`}`,
-            detail: spendExposure.highestExposure
-              ? `Highest risk exposure: ${spendExposure.highestExposure.supplierName} (${spendExposure.highestExposure.amount})`
-              : `${categoryBreakdown.length} active categories monitored`,
-            sentiment: highRiskExposurePercent > 20 || concentrationRisk ? 'negative' : 'neutral',
+            headline: hotSpots.length > 0 ? `${hotSpots.length} High-Risk Categories` : 'Portfolio Well-Balanced',
+            summary: topConcerns.length > 0
+              ? `Top concern: **${topConcerns[0].category}** (${topConcerns[0].supplierCount} suppliers, ${topConcerns[0].spend}, avg score ${topConcerns[0].avgScore}). ${topConcerns[0].highRiskSuppliers.length > 0 ? `High-risk suppliers: ${topConcerns[0].highRiskSuppliers.join(', ')}.` : ''}`
+              : `All ${categoryBreakdown.length} categories show acceptable risk levels.`,
+            detail: `${needsAttention} suppliers need attention across ${hotSpots.length} concerning categories`,
+            sentiment: hotSpots.length > 2 ? 'negative' : hotSpots.length > 0 ? 'neutral' : 'positive',
           },
-          artifact: { type: 'portfolio_dashboard', title: 'Spend & Risk Analysis' },
+          artifact: { type: 'portfolio_dashboard', title: 'Category Risk Analysis' },
           escalation: determineEscalation(portfolio.totalSuppliers, 'portfolio_overview'),
           intent,
         };
