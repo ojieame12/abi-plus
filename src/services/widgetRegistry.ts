@@ -351,7 +351,7 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     category: 'supplier',
     description: 'Sortable table of suppliers with risk scores and key metrics.',
     intents: ['filtered_discovery', 'action_trigger', 'explanation_why'],
-    subIntents: ['by_risk_level', 'by_risk_factor', 'by_attribute', 'compound_filter'],
+    // Default widget for filtered_discovery (no subIntents = available for all filter modes)
     priority: 100,
     requiredData: ['suppliers'],
     renderContexts: ['chat', 'panel'],

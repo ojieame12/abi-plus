@@ -287,19 +287,22 @@ export function getWidgetRouteFromRegistry(
   }
 
   // Fall back to highest priority widget for this intent
-  // When no subIntent is specified (or 'none'), just use highest priority
+  // When no subIntent is specified (or 'none'), prefer widgets without subIntent restrictions
   if (!selectedWidget) {
-    // If no subIntent, consider ALL widgets for this intent by priority
-    // If subIntent is specified, prefer widgets that match it or have no subIntent restrictions
-    const compatibleWidgets = (!subIntent || subIntent === 'none')
-      ? widgets // No subIntent filter - use all widgets
-      : widgets.filter(w =>
-          !w.subIntents || w.subIntents.length === 0 || w.subIntents.includes(subIntent)
-        );
+    // Filter to compatible widgets based on subIntent
+    const compatibleWidgets = widgets.filter(w => {
+      // If widget has specific subIntent requirements
+      if (w.subIntents && w.subIntents.length > 0) {
+        // Only include if the subIntent matches one of its requirements
+        return subIntent && subIntent !== 'none' && w.subIntents.includes(subIntent);
+      }
+      // Widget has no subIntent restrictions - it's a default option for this intent
+      return true;
+    });
 
     selectedWidget = compatibleWidgets.sort((a, b) => b.priority - a.priority)[0];
 
-    // If still no match, fall back to any widget (shouldn't happen with good registry)
+    // If still no match (all widgets had subIntent requirements), fall back to any widget
     if (!selectedWidget) {
       selectedWidget = widgets.sort((a, b) => b.priority - a.priority)[0];
     }

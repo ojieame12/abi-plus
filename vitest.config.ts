@@ -7,10 +7,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'api/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       reporter: ['text', 'json', 'html'],
-      include: ['src/services/**', 'src/components/widgets/**'],
+      include: ['src/services/**', 'src/components/widgets/**', 'api/**'],
     },
   },
 });

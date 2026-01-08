@@ -1,7 +1,7 @@
 // CommunityEmbedArtifact - Layer 4: Community Q&A and Discussions
 // Shows related community threads and allows starting new discussions
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -11,11 +11,13 @@ import {
   ChevronRight,
   Plus,
   TrendingUp,
-  Award,
   Search,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import type { CommunityAction } from '../../types/aiResponse';
+import type { Question } from '../../types/community';
+import { useCommunityQuestions } from '../../hooks/useCommunityQuestions';
 
 interface CommunityEmbedArtifactProps {
   community: CommunityAction;
@@ -28,8 +30,21 @@ interface CommunityEmbedArtifactProps {
   onStartDiscussion?: (title: string, body: string) => void;
 }
 
-// Mock community threads
-const MOCK_THREADS = [
+// Thread display format (internal to this component)
+interface ThreadDisplay {
+  id: string;
+  title: string;
+  excerpt: string;
+  replyCount: number;
+  upvotes: number;
+  category: string;
+  author: { name: string; company: string; badge: string | null };
+  timeAgo: string;
+  isHot: boolean;
+}
+
+// Fallback mock threads for when API has no results
+const MOCK_THREADS: ThreadDisplay[] = [
   {
     id: 'thread_001',
     title: 'Steel price increases - how are you handling supplier negotiations?',
@@ -76,6 +91,50 @@ const MOCK_THREADS = [
   },
 ];
 
+// Format date to "X ago" format
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffWeeks = Math.floor(diffDays / 7);
+
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString();
+}
+
+// Determine badge from reputation
+function getBadgeFromReputation(reputation: number): string | null {
+  if (reputation >= 1000) return 'expert';
+  if (reputation >= 500) return 'top_contributor';
+  return null;
+}
+
+// Transform Question to ThreadDisplay format
+function questionToThread(question: Question): ThreadDisplay {
+  const author = question.author;
+  return {
+    id: question.id,
+    title: question.title,
+    excerpt: question.body.slice(0, 150) + (question.body.length > 150 ? '...' : ''),
+    replyCount: question.answerCount,
+    upvotes: question.score,
+    category: question.tags[0]?.name || 'General',
+    author: {
+      name: author?.displayName || 'Community Member',
+      company: author?.company || '',
+      badge: author ? getBadgeFromReputation(author.reputation) : null,
+    },
+    timeAgo: formatTimeAgo(question.createdAt),
+    isHot: question.score > 20 || question.answerCount > 10,
+  };
+}
+
 const getBadgeStyle = (badge: string | null) => {
   switch (badge) {
     case 'top_contributor':
@@ -109,6 +168,34 @@ export const CommunityEmbedArtifact = ({
   const [newBody, setNewBody] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Fetch real community questions, using topic or queryText for context-aware search
+  const searchTerm = queryContext?.topic || queryContext?.queryText || '';
+  // Derive category tag from query context if available (e.g., "IT Software" -> "it-software")
+  const categoryTag = (queryContext as { category?: string })?.category
+    ?.toLowerCase()
+    .replace(/\s+/g, '-') || undefined;
+
+  const { questions, isLoading, totalCount, notice } = useCommunityQuestions({
+    search: searchTerm,
+    tag: categoryTag,
+    pageSize: 5,
+    sortBy: 'votes', // Show most relevant/popular first
+  });
+
+  // Transform real questions to thread display format
+  const realThreads = useMemo(() =>
+    questions.map(questionToThread),
+    [questions]
+  );
+
+  // Track if we're showing fallback mock data (API failed) vs no results (API succeeded)
+  // notice is set when API failed or using mock mode explicitly
+  const isUsingFallback = notice !== null;
+  // Only show mock threads when API failed, not when API succeeded with 0 results
+  const shouldShowMockThreads = isUsingFallback && realThreads.length === 0;
+  // API succeeded but no matching discussions
+  const hasNoResults = !isUsingFallback && realThreads.length === 0 && !isLoading;
+
   // Pre-populate new discussion with context
   const handleStartNew = () => {
     setActiveTab('new');
@@ -123,19 +210,22 @@ export const CommunityEmbedArtifact = ({
     }
   };
 
-  // Filter threads based on search
+  // Use real threads if available, fall back to mock data only when API failed
+  const baseThreads = realThreads.length > 0 ? realThreads : (shouldShowMockThreads ? MOCK_THREADS : []);
+
+  // Filter threads based on local search query
   const filteredThreads = searchQuery
-    ? MOCK_THREADS.filter(t =>
+    ? baseThreads.filter(t =>
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.category.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : MOCK_THREADS;
+    : baseThreads;
 
   // Highlight the top thread if provided
   const topThread = community.topThread;
   const displayThreads = topThread
     ? [
-        MOCK_THREADS.find(t => t.id === topThread.id) || {
+        filteredThreads.find(t => t.id === topThread.id) || {
           id: topThread.id,
           title: topThread.title,
           excerpt: 'Click to view this discussion...',
@@ -150,6 +240,9 @@ export const CommunityEmbedArtifact = ({
       ]
     : filteredThreads;
 
+  // Use real total count when available, otherwise show mock count
+  const relatedCount = totalCount > 0 ? totalCount : community.relatedThreadCount;
+
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
@@ -158,7 +251,7 @@ export const CommunityEmbedArtifact = ({
           <Users className="w-5 h-5 text-slate-600" />
           <h3 className="font-medium text-slate-900">Beroe Community</h3>
           <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
-            {community.relatedThreadCount} related
+            {isLoading ? '...' : relatedCount} related
           </span>
         </div>
         <button
@@ -169,6 +262,16 @@ export const CommunityEmbedArtifact = ({
           New Discussion
         </button>
       </div>
+
+      {/* Notice for fallback/mock data or no results */}
+      {notice && (
+        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{notice}</span>
+        </div>
+      )}
 
       {/* Tab Selector */}
       <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
@@ -212,7 +315,28 @@ export const CommunityEmbedArtifact = ({
 
           {/* Thread List */}
           <div className="space-y-3">
-            {displayThreads.map((thread, index) => (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+                <span className="ml-2 text-sm text-slate-500">Loading discussions...</span>
+              </div>
+            ) : displayThreads.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-500 mb-3">
+                  {hasNoResults
+                    ? 'No discussions found for this topic yet.'
+                    : searchQuery
+                      ? 'No discussions match your search.'
+                      : 'No discussions found.'}
+                </p>
+                <button
+                  onClick={handleStartNew}
+                  className="text-sm text-slate-700 hover:text-slate-900 font-medium underline underline-offset-2"
+                >
+                  Be the first to start a discussion
+                </button>
+              </div>
+            ) : displayThreads.map((thread, index) => (
               <motion.button
                 key={thread.id}
                 initial={{ opacity: 0, y: 10 }}

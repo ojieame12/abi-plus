@@ -314,11 +314,18 @@ function App() {
         break;
       case 'view_thread':
         console.log('View community thread:', data);
-        // Could navigate to community view
+        if (data && typeof data === 'object' && 'threadId' in data) {
+          const threadId = (data as { threadId: string }).threadId;
+          handleClosePanel();
+          setSelectedQuestionId(threadId);
+          setViewState('community-detail');
+        }
         break;
       case 'start_discussion':
         console.log('Start community discussion:', data);
-        // Could create new thread
+        handleClosePanel();
+        setViewState('ask-question');
+        // Pre-fill form data could be stored in state if needed
         break;
       default:
         console.log('Unhandled action:', action);
@@ -356,11 +363,18 @@ function App() {
     const valueLadder = response.canonical?.valueLadder;
     if (!valueLadder?.community) return;
 
+    // Extract topic and category from intent for context-aware community search
+    const entities = response.intent?.extractedEntities;
+    const topic = entities?.commodity || entities?.supplierName || entities?.category;
+    const category = entities?.category || response.intent?.category;
+
     openArtifact('community_embed', {
       community: valueLadder.community,
       queryContext: {
         queryId: response.id,
         queryText: getUserMessageForResponse(response.id),
+        topic,
+        category,
       },
     });
   };
