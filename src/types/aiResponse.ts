@@ -210,7 +210,7 @@ export interface SourceEnhancementSuggestion {
 }
 
 export interface SourceEnhancement {
-  currentSourceType: 'beroe_only' | 'beroe_plus_partners' | 'beroe_plus_web' | 'all';
+  currentSourceType: 'beroe_only' | 'beroe_plus_partners' | 'beroe_plus_web' | 'web_only' | 'all';
   suggestions: SourceEnhancementSuggestion[];
 }
 

@@ -1308,7 +1308,7 @@ export const generateValueLadder = (
  * @returns SourceEnhancement with suggestions
  */
 export const generateSourceEnhancement = (
-  sourceMix: 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'all',
+  sourceMix: 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'web_only' | 'all',
   intent?: string
 ): SourceEnhancement => {
   const suggestions: SourceEnhancementSuggestion[] = [];
@@ -1317,7 +1317,8 @@ export const generateSourceEnhancement = (
   const currentSourceType: SourceEnhancement['currentSourceType'] =
     sourceMix === 'internal_only' ? 'beroe_only' :
     sourceMix === 'internal_plus_partners' ? 'beroe_plus_partners' :
-    sourceMix === 'internal_plus_web' ? 'beroe_plus_web' : 'all';
+    sourceMix === 'internal_plus_web' ? 'beroe_plus_web' :
+    sourceMix === 'web_only' ? 'web_only' : 'all';
 
   // If using only internal/Beroe data, suggest adding web sources
   if (sourceMix === 'internal_only') {
@@ -1372,7 +1373,7 @@ export const generateSourceEnhancement = (
  */
 export const determineSourceMix = (
   sources: Array<{ type?: string }> | { web?: unknown[]; internal?: unknown[] } | undefined
-): 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'all' => {
+): 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'web_only' | 'all' => {
   // Handle undefined/null
   if (!sources) {
     return 'internal_only';
@@ -1386,8 +1387,8 @@ export const determineSourceMix = (
     if (hasWeb && hasInternal) {
       return 'internal_plus_web';
     }
-    if (hasWeb) {
-      return 'internal_plus_web';
+    if (hasWeb && !hasInternal) {
+      return 'web_only';
     }
     if (hasInternal) {
       return 'internal_only';
@@ -1439,7 +1440,7 @@ export const determineSourceMix = (
     return 'all';
   }
   if (hasWeb) {
-    return 'internal_plus_web';
+    return 'web_only';
   }
   if (hasPartner) {
     return 'internal_plus_partners';

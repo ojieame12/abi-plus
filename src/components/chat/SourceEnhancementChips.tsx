@@ -68,7 +68,9 @@ export const SourceEnhancementChips = ({
             ? 'Results from Beroe data only'
             : currentSourceType === 'beroe_plus_partners'
             ? 'Results from Beroe + trusted partners'
-            : 'Results from Beroe + limited web sources'}
+            : currentSourceType === 'web_only'
+            ? 'Results from web sources only'
+            : 'Results from Beroe + web sources'}
         </span>
       </div>
 

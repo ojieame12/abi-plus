@@ -96,7 +96,7 @@ export interface CanonicalResponse {
   sourceEnhancement?: SourceEnhancement;
 
   // Source mix metadata - determines what sources were used
-  sourceMix?: 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'all';
+  sourceMix?: 'internal_only' | 'internal_plus_partners' | 'internal_plus_web' | 'web_only' | 'all';
 
   // Metadata
   intent?: DetectedIntent;
