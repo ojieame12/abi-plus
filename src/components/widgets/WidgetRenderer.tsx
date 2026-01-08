@@ -553,7 +553,8 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
       {shouldUseUnifiedFooter && (
         <WidgetFooter
           sources={sources}
-          beroeSourceCount={config.props?.beroeSourceCount || 3}
+          beroeSourceCount={config.props?.beroeSourceCount}
+          hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
           onViewDetails={viewDetailsHandler}
         />
       )}

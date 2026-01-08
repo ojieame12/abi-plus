@@ -19,9 +19,10 @@ interface Props {
   onRowClick?: (supplier: SupplierRow) => void;
   onViewDetails?: () => void;
   beroeSourceCount?: number;
+  hideFooter?: boolean;
 }
 
-export const SupplierTableWidget = ({ data, onViewAll, onRowClick, onViewDetails, beroeSourceCount = 3 }: Props) => {
+export const SupplierTableWidget = ({ data, onViewAll, onRowClick, onViewDetails, beroeSourceCount = 3, hideFooter = false }: Props) => {
   // Defensive: ensure data exists
   if (!data || !data.suppliers) {
     return (
@@ -139,28 +140,30 @@ export const SupplierTableWidget = ({ data, onViewAll, onRowClick, onViewDetails
         </div>
       )}
 
-      {/* Data Attribution Footer */}
-      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/30">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-            <span className="text-[8px] font-bold text-white">B</span>
+      {/* Data Attribution Footer - hidden when WidgetRenderer handles it */}
+      {!hideFooter && (
+        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/30">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+              <span className="text-[8px] font-bold text-white">B</span>
+            </div>
+            <span>{beroeSourceCount} Beroe Data Sources</span>
           </div>
-          <span>{beroeSourceCount} Beroe Data Sources</span>
+          {onViewDetails && (
+            <button
+              onClick={onViewDetails}
+              className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
+            >
+              <span>View Details</span>
+              <ChevronRight
+                size={16}
+                strokeWidth={1.5}
+                className="group-hover:translate-x-0.5 transition-transform"
+              />
+            </button>
+          )}
         </div>
-        {onViewDetails && (
-          <button
-            onClick={onViewDetails}
-            className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
-          >
-            <span>View Details</span>
-            <ChevronRight
-              size={16}
-              strokeWidth={1.5}
-              className="group-hover:translate-x-0.5 transition-transform"
-            />
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 };

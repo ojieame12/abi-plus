@@ -8,7 +8,8 @@ import type { ResponseSources, WebSource, InternalSource } from '../../types/aiR
 
 export interface WidgetFooterProps {
   sources?: ResponseSources;
-  beroeSourceCount?: number; // Legacy fallback
+  beroeSourceCount?: number; // Legacy fallback - only shown if explicitly set
+  hasBeroeSourceCount?: boolean; // Whether beroeSourceCount was explicitly set (not default)
   onViewDetails?: () => void;
   className?: string;
 }
@@ -29,17 +30,20 @@ const SOURCE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export const WidgetFooter = ({
   sources,
-  beroeSourceCount = 3,
+  beroeSourceCount = 0,
+  hasBeroeSourceCount = false,
   onViewDetails,
   className = '',
 }: WidgetFooterProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'web' | 'internal'>('internal');
 
-  // Use sources if provided, otherwise fall back to legacy beroeSourceCount
+  // Use sources if provided, otherwise fall back to legacy beroeSourceCount only if explicitly set
   const hasFullSources = sources && (sources.totalWebCount > 0 || sources.totalInternalCount > 0);
   const webCount = sources?.totalWebCount ?? 0;
-  const internalCount = sources?.totalInternalCount ?? beroeSourceCount;
+
+  // For internal count: prefer sources.totalInternalCount, fall back to beroeSourceCount only if explicitly set
+  const internalCount = sources?.totalInternalCount ?? (hasBeroeSourceCount ? beroeSourceCount : 0);
   const webSources = sources?.web ?? [];
   const internalSources = sources?.internal ?? [];
 
