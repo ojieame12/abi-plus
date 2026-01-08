@@ -7,7 +7,7 @@ import { SourcesDisplay } from './SourcesDisplay';
 import { SourceAttribution } from './SourceAttribution';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
-import { ValueLadderActions } from './ValueLadderActions';
+import { ValueLadderActionsInline } from './ValueLadderActions';
 import { SourceEnhancementChips } from './SourceEnhancementChips';
 import { WidgetRenderer } from '../widgets/WidgetRenderer';
 import { buildInsightFromSupplier, buildInsightFromPortfolio, findSupplierFromContext } from '../../utils/insightBuilder';
@@ -558,18 +558,6 @@ export const AIResponse = ({
                 )}
             </AnimatePresence>
 
-            {/* 3.6 Value Ladder Fallback (when no widget - appears after narrative/summary) */}
-            <AnimatePresence>
-                {showValueLadder && valueLadder && !widget && !widgetContext && (
-                    <ValueLadderActions
-                        valueLadder={valueLadder}
-                        onAnalystConnect={onAnalystConnect}
-                        onCommunity={onCommunity}
-                        onExpertDeepDive={onExpertDeepDive}
-                    />
-                )}
-            </AnimatePresence>
-
             {/* 4. Information Widget (Conditional) */}
             <AnimatePresence>
                 {showWidget && (widget || widgetContext) && (
@@ -581,19 +569,6 @@ export const AIResponse = ({
                     >
                         {renderWidget()}
                     </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* 4.5 Value Ladder Actions (Layer 2, 3, 4 access) */}
-            {/* Shown after widget if present, or after body content if no widget */}
-            <AnimatePresence>
-                {showValueLadder && valueLadder && (widget || widgetContext) && (
-                    <ValueLadderActions
-                        valueLadder={valueLadder}
-                        onAnalystConnect={onAnalystConnect}
-                        onCommunity={onCommunity}
-                        onExpertDeepDive={onExpertDeepDive}
-                    />
                 )}
             </AnimatePresence>
 
@@ -610,8 +585,7 @@ export const AIResponse = ({
                 )}
             </AnimatePresence>
 
-            {/* 6. Response Feedback + Sources - Same row: feedback left, sources right */}
-            {/* Sources hidden when unified footer is active (shown inside widget) */}
+            {/* 6. Response Feedback + Value Ladder Actions - Same row: feedback left, launchers right */}
             <AnimatePresence>
                 {showFooter && hasFooter && (
                     <motion.div
@@ -626,12 +600,17 @@ export const AIResponse = ({
                             onThumbsDown={() => onFeedback?.('down')}
                             onRefresh={onRefresh}
                         />
-                        {/* Only show sources here if NOT using unified footer */}
-                        {!showUnifiedFooter && (
-                            <div className="flex-shrink-0">
-                                {renderSources()}
-                            </div>
-                        )}
+                        {/* Right side: Value Ladder Actions (Ask Analyst, Discussion) */}
+                        <div className="flex items-center gap-3">
+                            {showValueLadder && valueLadder && (
+                                <ValueLadderActionsInline
+                                    valueLadder={valueLadder}
+                                    onAnalystConnect={onAnalystConnect}
+                                    onCommunity={onCommunity}
+                                    onExpertDeepDive={onExpertDeepDive}
+                                />
+                            )}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

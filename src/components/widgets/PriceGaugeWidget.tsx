@@ -41,7 +41,7 @@ const isNewFormat = (props: PriceGaugeWidgetProps): props is NewPriceGaugeWidget
 export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
     // Extract common props
     const onViewDetails = 'onViewDetails' in props ? props.onViewDetails : undefined;
-    const beroeSourceCount = 'beroeSourceCount' in props ? props.beroeSourceCount : 3;
+    const beroeSourceCount = 'beroeSourceCount' in props ? props.beroeSourceCount : 0;
     const hideFooter = 'hideFooter' in props ? props.hideFooter : false;
 
     // Normalize to common format
@@ -85,8 +85,13 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
     // Calculate gauge position (0-32 scale, displayed as arc)
     const gaugePercent = (gaugeValue / 32) * 100;
 
+    // When hideFooter is true, WidgetRenderer provides the container
+    const containerClasses = hideFooter
+        ? 'overflow-hidden'
+        : 'bg-white/80 backdrop-blur-xl border border-white/60 rounded-[1.25rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/[0.02]';
+
     return (
-        <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-[1.25rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/[0.02]">
+        <div className={containerClasses}>
             {/* Header */}
             <div className="px-4 py-3 border-b border-slate-100">
                 <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
@@ -226,14 +231,16 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
             </div>
 
             {/* Data Attribution Footer - hidden when WidgetRenderer handles it */}
-            {!hideFooter && (
+            {!hideFooter && (beroeSourceCount > 0 || onViewDetails) && (
                 <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/30">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-white">B</span>
+                    {beroeSourceCount > 0 ? (
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+                                <span className="text-[8px] font-bold text-white">B</span>
+                            </div>
+                            <span>{beroeSourceCount} Beroe Data Sources</span>
                         </div>
-                        <span>{beroeSourceCount} Beroe Data Sources</span>
-                    </div>
+                    ) : <div />}
                     {onViewDetails && (
                         <button
                             onClick={onViewDetails}

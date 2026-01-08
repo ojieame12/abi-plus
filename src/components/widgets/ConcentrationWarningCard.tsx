@@ -133,6 +133,11 @@ export const ConcentrationWarningCard = ({
   const styles = SEVERITY_STYLES[severity];
   const isOverThreshold = concentration > threshold;
 
+  // When hideFooter is true, WidgetRenderer provides the container
+  const containerClasses = hideFooter
+    ? 'p-5'
+    : `${styles.bg} backdrop-blur-xl border ${styles.border} rounded-[1.25rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -142,7 +147,7 @@ export const ConcentrationWarningCard = ({
         delay,
         ease: [0.25, 0.46, 0.45, 0.94],
       }}
-      className={`${styles.bg} backdrop-blur-xl border ${styles.border} rounded-[1.25rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]`}
+      className={containerClasses}
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">

@@ -178,4 +178,83 @@ export const ValueLadderActionsCompact = ({
   );
 };
 
+// Inline variant - sits in same row as feedback actions (no "Go deeper" label)
+export const ValueLadderActionsInline = ({
+  valueLadder,
+  onAnalystConnect,
+  onCommunity,
+  onExpertDeepDive,
+}: ValueLadderActionsProps) => {
+  const { analystConnect, community, expertDeepDive } = valueLadder;
+
+  const hasActions =
+    analystConnect?.available ||
+    community?.available ||
+    expertDeepDive?.available;
+
+  if (!hasActions) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Layer 2: Analyst Connect - Compact teal */}
+      {analystConnect?.available && (
+        <button
+          onClick={onAnalystConnect}
+          className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                     bg-teal-50 hover:bg-teal-100 border border-teal-200
+                     text-teal-700 text-xs font-medium transition-all"
+          title={analystConnect.cta}
+        >
+          {analystConnect.analyst?.photo ? (
+            <img
+              src={analystConnect.analyst.photo}
+              alt={analystConnect.analyst.name}
+              className="w-4 h-4 rounded-full object-cover"
+            />
+          ) : (
+            <UserCircle className="w-3.5 h-3.5" />
+          )}
+          <span className="max-w-[100px] truncate">
+            {analystConnect.analyst?.name ? `Ask ${analystConnect.analyst.name.split(' ')[0]}` : 'Ask Analyst'}
+          </span>
+        </button>
+      )}
+
+      {/* Layer 4: Community - Compact slate */}
+      {community?.available && (
+        <button
+          onClick={onCommunity}
+          className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                     bg-slate-50 hover:bg-slate-100 border border-slate-200
+                     text-slate-600 text-xs font-medium transition-all"
+          title={community.cta}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Discussion</span>
+          {community.relatedThreadCount > 0 && (
+            <span className="px-1 py-0.5 bg-slate-200 text-slate-500 text-[10px]
+                            rounded-full font-medium leading-none">
+              {community.relatedThreadCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Layer 3: Expert - Compact gold (rarely shown) */}
+      {expertDeepDive?.available && (
+        <button
+          onClick={onExpertDeepDive}
+          className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                     bg-amber-50 hover:bg-amber-100 border border-amber-200
+                     text-amber-700 text-xs font-medium transition-all"
+          title={expertDeepDive.cta}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Expert</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
 export default ValueLadderActions;

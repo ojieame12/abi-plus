@@ -8,6 +8,7 @@ interface ExecutiveBriefCardProps extends ExecutiveBriefCardData {
   onCopy?: () => void;
   onViewDetails?: () => void;
   delay?: number;
+  hideFooter?: boolean;
 }
 
 const highlightIcons: Record<string, typeof AlertTriangle> = {
@@ -39,20 +40,26 @@ export const ExecutiveBriefCard = ({
   onCopy,
   onViewDetails,
   delay = 0,
+  hideFooter = false,
 }: ExecutiveBriefCardProps) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="
+  // When hideFooter is true, WidgetRenderer provides the container
+  const containerClasses = hideFooter
+    ? ''
+    : `
         bg-white/80
         rounded-[1.25rem] border border-slate-100/60
         shadow-[0_8px_30px_rgb(0,0,0,0.04)]
         ring-1 ring-black/[0.02]
         backdrop-blur-sm
         overflow-hidden
-      "
+      `;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className={containerClasses}
     >
       {/* Header */}
       <div className="p-4 pb-3">

@@ -524,6 +524,16 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   // Extract sources for unified footer
   const sources = isContextProps(props) ? props.sources : undefined;
 
+  // Unified container styling when insight is present
+  const unifiedContainerClasses = `
+    bg-white/80
+    rounded-[1.25rem] border border-slate-100/60
+    shadow-[0_8px_30px_rgb(0,0,0,0.04)]
+    ring-1 ring-black/[0.02]
+    backdrop-blur-sm
+    overflow-hidden
+  `;
+
   return (
     <div className={`widget-container ${className}`}>
       {title && (
@@ -532,41 +542,53 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         </div>
       )}
 
-      {/* Widget component - tell it to hide footer when we render unified footer */}
-      <Component
-        {...config.props}
-        {...artifactHandlers}
-        hideFooter={shouldUseUnifiedFooter}
-      />
+      {/* When using unified footer, wrap everything in a single card container */}
+      {shouldUseUnifiedFooter ? (
+        <div className={unifiedContainerClasses}>
+          {/* Widget content - no container styling since we provide it */}
+          <Component
+            {...config.props}
+            {...artifactHandlers}
+            hideFooter={true}
+          />
 
-      {/* Unified Insight Banner - renders after widget content, before footer */}
-      {insight && (
-        <div className="px-4 pt-3">
-          <InsightBanner
-            insight={insight}
-            onClick={onInsightClick ? handleInsightClick : undefined}
+          {/* Insight Banner - inside the unified card */}
+          {insight && (
+            <div className="px-5 pt-3 pb-1">
+              <InsightBanner
+                insight={insight}
+                onClick={onInsightClick ? handleInsightClick : undefined}
+              />
+            </div>
+          )}
+
+          {/* Unified footer - inside the card */}
+          <WidgetFooter
+            sources={sources}
+            beroeSourceCount={config.props?.beroeSourceCount}
+            hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
+            onViewDetails={viewDetailsHandler}
           />
         </div>
-      )}
+      ) : (
+        <>
+          {/* Widget component renders its own container */}
+          <Component
+            {...config.props}
+            {...artifactHandlers}
+            hideFooter={false}
+          />
 
-      {/* Unified footer - only when we have insight (widget hides its own) */}
-      {shouldUseUnifiedFooter && (
-        <WidgetFooter
-          sources={sources}
-          beroeSourceCount={config.props?.beroeSourceCount}
-          hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
-          onViewDetails={viewDetailsHandler}
-        />
-      )}
-
-      {/* Fallback expand button for widgets without unified footer */}
-      {!shouldUseUnifiedFooter && handleExpand && !hasInternalExpandHandler && (
-        <button
-          onClick={handleExpand}
-          className="mt-2 text-xs text-violet-600 hover:text-violet-700 font-medium"
-        >
-          View full details →
-        </button>
+          {/* Fallback expand button for widgets without unified footer */}
+          {handleExpand && !hasInternalExpandHandler && (
+            <button
+              onClick={handleExpand}
+              className="mt-2 text-xs text-violet-600 hover:text-violet-700 font-medium"
+            >
+              View full details →
+            </button>
+          )}
+        </>
       )}
     </div>
   );

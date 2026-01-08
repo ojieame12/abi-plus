@@ -41,24 +41,30 @@ export const DriverBreakdownCard = ({
   sources,
   onViewDetails,
   delay = 0,
-  beroeSourceCount = 3,
+  beroeSourceCount = 0,
   hideFooter = false,
 }: DriverBreakdownCardProps) => {
   const isUp = priceChange.direction === 'up';
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="
+  // When hideFooter is true, we're using unified container from WidgetRenderer
+  // so don't render our own container styling
+  const containerClasses = hideFooter
+    ? '' // No container - WidgetRenderer provides it
+    : `
         bg-white/80
         rounded-[1.25rem] border border-slate-100/60
         shadow-[0_8px_30px_rgb(0,0,0,0.04)]
         ring-1 ring-black/[0.02]
         backdrop-blur-sm
         overflow-hidden
-      "
+      `;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className={containerClasses}
     >
       {/* Header */}
       <div className="p-5 pb-4">
@@ -148,8 +154,8 @@ export const DriverBreakdownCard = ({
         </div>
       </div>
 
-      {/* Web Sources */}
-      {sources && sources.length > 0 && (
+      {/* Web Sources - hidden when using unified footer */}
+      {!hideFooter && sources && sources.length > 0 && (
         <div className="px-5 pb-5">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Sources</p>
           <div className="flex flex-wrap gap-2">
@@ -170,14 +176,16 @@ export const DriverBreakdownCard = ({
       )}
 
       {/* Data Attribution Footer - hidden when WidgetRenderer handles it */}
-      {!hideFooter && (
+      {!hideFooter && (beroeSourceCount > 0 || onViewDetails) && (
         <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/60 bg-slate-50/30">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-              <span className="text-[8px] font-bold text-white">B</span>
+          {beroeSourceCount > 0 ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+                <span className="text-[8px] font-bold text-white">B</span>
+              </div>
+              <span>{beroeSourceCount} Beroe Data Sources</span>
             </div>
-            <span>{beroeSourceCount} Beroe Data Sources</span>
-          </div>
+          ) : <div />}
           {onViewDetails && (
             <button
               onClick={onViewDetails}
