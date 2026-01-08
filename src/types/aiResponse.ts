@@ -65,6 +65,11 @@ export interface InternalSource {
   type: 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' | 'supplier_data';
   dataPoints?: number;
   lastUpdated?: string;
+  // Report data for clickable Beroe sources
+  reportId?: string;
+  category?: string;
+  summary?: string;
+  url?: string;
 }
 
 export interface ResponseSources {

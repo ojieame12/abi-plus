@@ -1,6 +1,58 @@
 import type { Source } from '../types/chat';
 import type { ResponseSources, InternalSource, WebSource } from '../types/aiResponse';
 
+// ============================================
+// MOCK BEROE REPORT DATA
+// ============================================
+
+const MOCK_BEROE_REPORTS: Record<string, Partial<InternalSource>> = {
+  'Beroe Risk Intelligence': {
+    reportId: 'beroe-risk-2024-q4',
+    category: 'Risk Analytics',
+    summary: 'Comprehensive supplier risk assessment covering financial stability, operational resilience, and compliance factors.',
+  },
+  'Portfolio Analytics': {
+    reportId: 'beroe-portfolio-2024',
+    category: 'Portfolio Management',
+    summary: 'Portfolio-wide risk distribution and trend analysis with actionable recommendations.',
+  },
+  'Supplier Performance Data': {
+    reportId: 'beroe-performance-metrics',
+    category: 'Performance Metrics',
+    summary: 'Historical supplier performance trends including delivery, quality, and responsiveness scores.',
+  },
+  'Industry Benchmarks': {
+    reportId: 'beroe-industry-benchmark-2024',
+    category: 'Market Intelligence',
+    summary: 'Industry-wide benchmarking data for supplier evaluation and comparison.',
+  },
+  'D&B Financial Data': {
+    reportId: 'dnb-financial-report',
+    category: 'Financial Analysis',
+    summary: 'Dun & Bradstreet credit and financial health indicators for supplier evaluation.',
+  },
+  'EcoVadis Sustainability': {
+    reportId: 'ecovadis-sustainability-2024',
+    category: 'ESG & Sustainability',
+    summary: 'Environmental, social, and governance performance ratings and improvement areas.',
+  },
+  'Risk Change Alerts': {
+    reportId: 'beroe-alerts-digest',
+    category: 'Alerts & Monitoring',
+    summary: 'Recent risk score changes and triggering events across your monitored suppliers.',
+  },
+  'Category Intelligence Report': {
+    reportId: 'beroe-category-q4-2024',
+    category: 'Category Insights',
+    summary: 'Deep-dive analysis into category trends, pricing dynamics, and market outlook.',
+  },
+  'Aluminum Market Report 2024': {
+    reportId: 'beroe-aluminum-2024',
+    category: 'Commodity Intelligence',
+    summary: 'Global aluminum market analysis including supply-demand dynamics, pricing forecasts, and regional trends.',
+  },
+};
+
 export const normalizeUrl = (url: string): string => {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;
@@ -82,9 +134,17 @@ export const buildResponseSources = (sources: Source[] | ResponseSources | undef
     const key = `${internalType}:${source.name}`.toLowerCase();
     if (seenInternal.has(key)) continue;
     seenInternal.add(key);
+
+    // Enrich with mock report data if available
+    const mockData = MOCK_BEROE_REPORTS[source.name];
     internal.push({
       name: source.name,
       type: internalType,
+      ...(mockData && {
+        reportId: mockData.reportId,
+        category: mockData.category,
+        summary: mockData.summary,
+      }),
     });
   }
 
@@ -94,4 +154,41 @@ export const buildResponseSources = (sources: Source[] | ResponseSources | undef
     totalWebCount: web.length,
     totalInternalCount: internal.length,
   };
+};
+
+/**
+ * Create enriched Beroe internal sources with report metadata
+ */
+export const createEnrichedBeroeSources = (
+  sourceNames: string[]
+): InternalSource[] => {
+  return sourceNames.map(name => {
+    const mockData = MOCK_BEROE_REPORTS[name];
+    return {
+      name,
+      type: 'beroe' as const,
+      ...(mockData && {
+        reportId: mockData.reportId,
+        category: mockData.category,
+        summary: mockData.summary,
+      }),
+    };
+  });
+};
+
+/**
+ * Create a standard set of Beroe sources for a given context
+ */
+export const getDefaultBeroeSources = (
+  context: 'risk' | 'portfolio' | 'supplier' | 'category' | 'inflation'
+): InternalSource[] => {
+  const sourcesByContext: Record<string, string[]> = {
+    risk: ['Beroe Risk Intelligence', 'Industry Benchmarks'],
+    portfolio: ['Beroe Risk Intelligence', 'Portfolio Analytics'],
+    supplier: ['Beroe Risk Intelligence', 'D&B Financial Data', 'EcoVadis Sustainability'],
+    category: ['Category Intelligence Report', 'Industry Benchmarks'],
+    inflation: ['Aluminum Market Report 2024', 'Category Intelligence Report'],
+  };
+
+  return createEnrichedBeroeSources(sourcesByContext[context] || sourcesByContext.risk);
 };

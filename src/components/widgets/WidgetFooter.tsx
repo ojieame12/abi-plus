@@ -11,6 +11,7 @@ export interface WidgetFooterProps {
   beroeSourceCount?: number; // Legacy fallback - only shown if explicitly set
   hasBeroeSourceCount?: boolean; // Whether beroeSourceCount was explicitly set (not default)
   onViewDetails?: () => void;
+  onSourceClick?: (source: InternalSource) => void; // Opens report viewer for Beroe sources
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export const WidgetFooter = ({
   beroeSourceCount = 0,
   hasBeroeSourceCount = false,
   onViewDetails,
+  onSourceClick,
   className = '',
 }: WidgetFooterProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -205,7 +207,14 @@ export const WidgetFooter = ({
                     <div className="space-y-2">
                       {internalSources.length > 0 ? (
                         internalSources.map((source, i) => (
-                          <InternalSourceItem key={i} source={source} />
+                          <InternalSourceItem
+                            key={i}
+                            source={source}
+                            onClick={onSourceClick ? (src) => {
+                              setIsModalOpen(false);
+                              onSourceClick(src);
+                            } : undefined}
+                          />
                         ))
                       ) : (
                         <div className="text-center py-8 text-slate-400 text-sm">
@@ -267,17 +276,33 @@ const WebSourceItem = ({ source }: { source: WebSource }) => (
 );
 
 // Internal source item for modal
-const InternalSourceItem = ({ source }: { source: InternalSource }) => {
+const InternalSourceItem = ({
+  source,
+  onClick,
+}: {
+  source: InternalSource;
+  onClick?: (source: InternalSource) => void;
+}) => {
   const colors = SOURCE_TYPE_COLORS[source.type] || SOURCE_TYPE_COLORS.internal_data;
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+  const isClickable = onClick && (source.type === 'beroe' || source.reportId);
+
+  const content = (
+    <>
       <div className={`w-8 h-8 rounded-lg ${colors.bg} flex items-center justify-center`}>
         <Database size={14} className={colors.text} />
       </div>
-      <div className="flex-1">
-        <span className="text-sm font-medium text-slate-800">
-          {source.name}
-        </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-800 truncate">
+            {source.name}
+          </span>
+          {isClickable && (
+            <ChevronRight
+              size={14}
+              className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            />
+          )}
+        </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span className="capitalize">{source.type.replace('_', ' ')}</span>
           {source.dataPoints && (
@@ -286,8 +311,34 @@ const InternalSourceItem = ({ source }: { source: InternalSource }) => {
               <span>{source.dataPoints} data points</span>
             </>
           )}
+          {source.category && (
+            <>
+              <span>•</span>
+              <span>{source.category}</span>
+            </>
+          )}
         </div>
+        {source.summary && (
+          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{source.summary}</p>
+        )}
       </div>
+    </>
+  );
+
+  if (isClickable) {
+    return (
+      <button
+        onClick={() => onClick(source)}
+        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors w-full text-left group"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+      {content}
     </div>
   );
 };

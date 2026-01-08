@@ -524,6 +524,25 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   // Extract sources for unified footer
   const sources = isContextProps(props) ? props.sources : undefined;
 
+  // Handler for clicking internal sources (opens report viewer)
+  const handleSourceClick = isContextProps(props) && props.onOpenArtifact
+    ? (source: import('../../types/aiResponse').InternalSource) => {
+        props.onOpenArtifact!('report_viewer', {
+          report: {
+            id: source.reportId || `report-${source.name.toLowerCase().replace(/\s+/g, '-')}`,
+            title: source.name,
+            category: source.category || (source.type === 'beroe' ? 'Beroe Intelligence' : 'Data Source'),
+            publishedDate: source.lastUpdated || new Date().toISOString(),
+            summary: source.summary,
+            url: source.url,
+          },
+          queryContext: {
+            highlightTerms: [],
+          },
+        });
+      }
+    : undefined;
+
   // Unified container styling when insight is present
   const unifiedContainerClasses = `
     bg-white/80
@@ -569,6 +588,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
               beroeSourceCount={config.props?.beroeSourceCount}
               hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
               onViewDetails={viewDetailsHandler}
+              onSourceClick={handleSourceClick}
             />
           )}
         </div>
