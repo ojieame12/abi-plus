@@ -1238,9 +1238,10 @@ export const generateValueLadder = (
     if (matchedSpecialty) break;
   }
 
+  // Deterministic analyst selection - first matched by specialty, or first in list
   const matchedAnalyst = matchedSpecialty
     ? MOCK_ANALYSTS.find(a => a.specialty === matchedSpecialty)
-    : MOCK_ANALYSTS[Math.floor(Math.random() * MOCK_ANALYSTS.length)];
+    : MOCK_ANALYSTS[0];
 
   if (matchedAnalyst) {
     valueLadder.analystConnect = {

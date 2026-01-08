@@ -51,7 +51,9 @@ export type ArtifactType =
   // Value Ladder (4-Layer System)
   | 'analyst_connect'
   | 'expert_request'
-  | 'community_embed';
+  | 'community_embed'
+  // Content Viewer
+  | 'report_viewer';
 
 // ============================================
 // ARTIFACT METADATA
@@ -277,6 +279,16 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     defaultWidth: '45%',
     allowExpand: true,
   },
+
+  // Content Viewer
+  report_viewer: {
+    id: 'report_viewer',
+    title: 'Beroe Report',
+    category: 'insight',
+    description: 'View Beroe research report in the sidebar',
+    defaultWidth: '50%',
+    allowExpand: true,
+  },
 };
 
 // ============================================
@@ -446,6 +458,28 @@ export interface CommunityEmbedPayload extends BaseArtifactPayload {
   };
 }
 
+export interface ReportViewerPayload extends BaseArtifactPayload {
+  type: 'report_viewer';
+  report: {
+    id: string;
+    title: string;
+    category: string;
+    publishedDate: string;
+    author?: string;
+    summary?: string;
+    url?: string; // External URL or internal path
+    pdfUrl?: string;
+    sections?: Array<{
+      title: string;
+      content: string;
+    }>;
+  };
+  queryContext?: {
+    queryText?: string;
+    highlightTerms?: string[];
+  };
+}
+
 // Union of all payload types
 export type ArtifactPayload =
   | InsightDetailPayload
@@ -459,6 +493,7 @@ export type ArtifactPayload =
   | AnalystConnectPayload
   | ExpertRequestPayload
   | CommunityEmbedPayload
+  | ReportViewerPayload
   | (BaseArtifactPayload & { [key: string]: unknown });
 
 // ============================================

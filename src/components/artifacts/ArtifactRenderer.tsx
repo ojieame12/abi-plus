@@ -35,6 +35,9 @@ import { AnalystConnectArtifact } from '../panel/AnalystConnectArtifact';
 import { ExpertRequestArtifact } from '../panel/ExpertRequestArtifact';
 import { CommunityEmbedArtifact } from '../panel/CommunityEmbedArtifact';
 
+// Import content viewer artifacts
+import { ReportViewerArtifact } from '../panel/ReportViewerArtifact';
+
 // ============================================
 // TYPES
 // ============================================
@@ -571,6 +574,14 @@ export const ArtifactRenderer = ({
           queryContext={(payload as any).queryContext}
           onViewThread={(threadId) => onAction?.('view_thread', { threadId })}
           onStartDiscussion={(title, body) => onAction?.('start_discussion', { title, body })}
+        />
+      );
+
+    case 'report_viewer':
+      return (
+        <ReportViewerArtifact
+          report={(payload as any).report}
+          queryContext={(payload as any).queryContext}
         />
       );
 
