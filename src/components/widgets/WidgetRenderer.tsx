@@ -699,9 +699,18 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
       };
 
     case 'concentration_warning':
+      // Transform registry data shape to component props
       return {
         componentType: 'ConcentrationWarningCard',
-        props: { ...widget.data },
+        props: {
+          type: widget.data.type || 'category',
+          entity: widget.data.name || widget.data.entity || 'Unknown',
+          concentration: widget.data.percentage || widget.data.concentration || 0,
+          threshold: widget.data.threshold || 30,
+          spend: widget.data.affectedSpend || widget.data.spend || '$0',
+          recommendation: widget.data.recommendation || `Consider diversifying to reduce concentration risk in this ${widget.data.type || 'area'}.`,
+          severity: widget.data.severity || (widget.data.percentage > 40 ? 'high' : widget.data.percentage > 25 ? 'medium' : 'low'),
+        },
       };
 
     // Market & Context widgets
