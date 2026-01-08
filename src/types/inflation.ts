@@ -467,7 +467,7 @@ export interface JustificationCardData {
     point: string;
     supports: boolean;               // Supports supplier or buyer
   }>;
-  recommendation: string;
+  recommendation?: string;  // Optional - insight now unified via WidgetRenderer
   negotiationLeverage: 'strong' | 'moderate' | 'weak';
 }
 

@@ -5,6 +5,7 @@ import type { Supplier, Portfolio, RiskChange } from '../../types/data';
 import type { RiskPortfolio } from '../../types/supplier';
 import type { ResponseInsight } from '../../types/aiResponse';
 import { InsightBanner } from '../chat/InsightBanner';
+import { WidgetFooter } from './WidgetFooter';
 import {
   selectComponent,
   buildDataContext,
@@ -511,6 +512,13 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     onInsightClick(insightData);
   };
 
+  // When we have insight, we want unified footer rendering:
+  // Widget content → Insight → Footer (all inside widget container)
+  const shouldUseUnifiedFooter = !!insight;
+
+  // Get view details handler - either from artifact handlers or expand handler
+  const viewDetailsHandler = artifactHandlers.onViewDetails || handleExpand;
+
   return (
     <div className={`widget-container ${className}`}>
       {title && (
@@ -518,11 +526,17 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
           {title}
         </div>
       )}
-      <Component {...config.props} {...artifactHandlers} />
 
-      {/* Unified Insight Banner - renders inside widget before footer */}
+      {/* Widget component - tell it to hide footer when we render unified footer */}
+      <Component
+        {...config.props}
+        {...artifactHandlers}
+        hideFooter={shouldUseUnifiedFooter}
+      />
+
+      {/* Unified Insight Banner - renders after widget content, before footer */}
       {insight && (
-        <div className="mt-3">
+        <div className="px-4 pt-3">
           <InsightBanner
             insight={insight}
             onClick={onInsightClick ? handleInsightClick : undefined}
@@ -530,7 +544,16 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         </div>
       )}
 
-      {handleExpand && !hasInternalExpandHandler && (
+      {/* Unified footer - only when we have insight (widget hides its own) */}
+      {shouldUseUnifiedFooter && (
+        <WidgetFooter
+          beroeSourceCount={config.props?.beroeSourceCount || 3}
+          onViewDetails={viewDetailsHandler}
+        />
+      )}
+
+      {/* Fallback expand button for widgets without unified footer */}
+      {!shouldUseUnifiedFooter && handleExpand && !hasInternalExpandHandler && (
         <button
           onClick={handleExpand}
           className="mt-2 text-xs text-violet-600 hover:text-violet-700 font-medium"

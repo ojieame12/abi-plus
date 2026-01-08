@@ -19,18 +19,16 @@ interface LegacyPriceGaugeWidgetProps {
     };
     market: string;
     gaugeValue?: number;
-    insight?: {
-        text: string;
-        detail?: string;
-    };
     onViewDetails?: () => void;
     beroeSourceCount?: number;
+    hideFooter?: boolean;
 }
 
 interface NewPriceGaugeWidgetProps {
     data: PriceGaugeData;
     onViewDetails?: () => void;
     beroeSourceCount?: number;
+    hideFooter?: boolean;
 }
 
 type PriceGaugeWidgetProps = LegacyPriceGaugeWidgetProps | NewPriceGaugeWidgetProps;
@@ -44,6 +42,7 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
     // Extract common props
     const onViewDetails = 'onViewDetails' in props ? props.onViewDetails : undefined;
     const beroeSourceCount = 'beroeSourceCount' in props ? props.beroeSourceCount : 3;
+    const hideFooter = 'hideFooter' in props ? props.hideFooter : false;
 
     // Normalize to common format
     let title: string;
@@ -54,7 +53,6 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
     let change30d: { value: string; percent: string; direction: 'up' | 'down' };
     let market: string;
     let gaugeValue: number;
-    let insight: { text: string; detail?: string } | undefined;
 
     if (isNewFormat(props)) {
         const { data } = props;
@@ -74,7 +72,6 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
         };
         market = data.market;
         gaugeValue = Math.round(data.gaugePosition * 0.32); // Convert 0-100 to 0-32
-        insight = data.tags?.length ? { text: data.tags.join(', ') } : undefined;
     } else {
         title = props.title;
         price = props.price;
@@ -84,7 +81,6 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
         change30d = props.change30d;
         market = props.market;
         gaugeValue = props.gaugeValue ?? 28;
-        insight = props.insight;
     }
     // Calculate gauge position (0-32 scale, displayed as arc)
     const gaugePercent = (gaugeValue / 32) * 100;
@@ -199,19 +195,6 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
                 </div>
             </div>
 
-            {/* Insight Bar */}
-            {insight && (
-                <div className="mx-4 mb-4 px-4 py-3 bg-violet-50 rounded-lg flex items-center gap-3">
-                    <TrendingDown size={18} strokeWidth={1.5} className="text-violet-600 flex-shrink-0" />
-                    <div>
-                        <div className="text-sm font-normal text-slate-900">{insight.text}</div>
-                        {insight.detail && (
-                            <div className="text-xs text-slate-500">{insight.detail}</div>
-                        )}
-                    </div>
-                </div>
-            )}
-
             {/* Metrics Row */}
             <div className="grid grid-cols-3 border-t border-slate-100">
                 <div className="px-4 py-4 text-center border-r border-slate-100">
@@ -242,28 +225,30 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
                 </div>
             </div>
 
-            {/* Data Attribution Footer */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/30">
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                        <span className="text-[8px] font-bold text-white">B</span>
+            {/* Data Attribution Footer - hidden when WidgetRenderer handles it */}
+            {!hideFooter && (
+                <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/30">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
+                            <span className="text-[8px] font-bold text-white">B</span>
+                        </div>
+                        <span>{beroeSourceCount} Beroe Data Sources</span>
                     </div>
-                    <span>{beroeSourceCount} Beroe Data Sources</span>
+                    {onViewDetails && (
+                        <button
+                            onClick={onViewDetails}
+                            className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
+                        >
+                            <span>View Details</span>
+                            <ChevronRight
+                                size={16}
+                                strokeWidth={1.5}
+                                className="group-hover:translate-x-0.5 transition-transform"
+                            />
+                        </button>
+                    )}
                 </div>
-                {onViewDetails && (
-                    <button
-                        onClick={onViewDetails}
-                        className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors group"
-                    >
-                        <span>View Details</span>
-                        <ChevronRight
-                            size={16}
-                            strokeWidth={1.5}
-                            className="group-hover:translate-x-0.5 transition-transform"
-                        />
-                    </button>
-                )}
-            </div>
+            )}
         </div>
     );
 };

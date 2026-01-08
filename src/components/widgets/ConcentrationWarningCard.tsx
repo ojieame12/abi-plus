@@ -20,6 +20,7 @@ export interface ConcentrationWarningCardProps {
   severity: SeverityLevel;
   onViewDetails?: () => void;
   delay?: number;
+  hideFooter?: boolean;
 }
 
 // ============================================
@@ -125,6 +126,7 @@ export const ConcentrationWarningCard = ({
   severity,
   onViewDetails,
   delay = 0,
+  hideFooter = false,
 }: ConcentrationWarningCardProps) => {
   const typeConfig = TYPE_CONFIG[type];
   const TypeIcon = typeConfig.icon;
@@ -205,8 +207,8 @@ export const ConcentrationWarningCard = ({
         )}
       </div>
 
-      {/* Footer Action */}
-      {onViewDetails && (
+      {/* Footer Action - hidden when WidgetRenderer handles it */}
+      {!hideFooter && onViewDetails && (
         <motion.button
           whileHover={{ x: 4 }}
           onClick={onViewDetails}
