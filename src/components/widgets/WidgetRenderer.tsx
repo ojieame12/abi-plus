@@ -562,13 +562,15 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
             </div>
           )}
 
-          {/* Unified footer - inside the card */}
-          <WidgetFooter
-            sources={sources}
-            beroeSourceCount={config.props?.beroeSourceCount}
-            hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
-            onViewDetails={viewDetailsHandler}
-          />
+          {/* Unified footer - inside the card, only if there's content to show */}
+          {(sources?.totalWebCount || sources?.totalInternalCount || config.props?.beroeSourceCount || viewDetailsHandler) && (
+            <WidgetFooter
+              sources={sources}
+              beroeSourceCount={config.props?.beroeSourceCount}
+              hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
+              onViewDetails={viewDetailsHandler}
+            />
+          )}
         </div>
       ) : (
         <>
