@@ -9,6 +9,7 @@ import {
 } from '../../../src/services/communityService.js';
 import { checkAndAwardBadges } from '../../../src/services/badgeService.js';
 import { updateStreak } from '../../../src/services/streakService.js';
+import { checkQuestionContent } from '../../../src/services/contentModeration.js';
 import type { QuestionSortBy, QuestionFilter } from '../../../src/types/community.js';
 
 function getDb() {
@@ -82,6 +83,16 @@ async function handler(req: AuthRequest, res: VercelResponse) {
 
       if (!Array.isArray(tagIds) || tagIds.length > 5) {
         return res.status(400).json({ error: 'Maximum 5 tags allowed' });
+      }
+
+      // Server-side profanity check (hard block)
+      const moderationResult = checkQuestionContent(title.trim(), body.trim());
+      if (moderationResult.flagged) {
+        return res.status(400).json({
+          error: 'Content violates community guidelines',
+          reason: moderationResult.reason,
+          severity: moderationResult.severity,
+        });
       }
 
       const question = await createQuestion(db, req.auth.user!.id, {

@@ -1,5 +1,8 @@
 // Thread Similarity Service
-// Finds similar community discussions to reduce duplicate questions
+// Uses existing community search API to find similar discussions
+
+import { apiFetch } from './api';
+import type { Question } from '../types/community';
 
 /**
  * A similar thread found in the community
@@ -29,147 +32,73 @@ export interface SimilaritySearchOptions {
 }
 
 /**
- * Mock thread data for development
- * In production, this would come from the community API
+ * Format relative time from ISO string
  */
-const MOCK_THREADS: SimilarThread[] = [
-  {
-    id: 'thread-1',
-    title: 'Aluminum pricing volatility in APAC region - what to expect?',
-    replyCount: 12,
-    lastActivity: '2 days ago',
-    relevanceScore: 0.92,
-    category: 'Raw Materials',
-    author: { name: 'Sarah Chen', avatar: undefined },
-    snippet: 'Looking for insights on aluminum price trends in the Asia-Pacific market...',
-  },
-  {
-    id: 'thread-2',
-    title: 'LME vs regional pricing differences for aluminum',
-    replyCount: 8,
-    lastActivity: '1 week ago',
-    relevanceScore: 0.85,
-    category: 'Raw Materials',
-    author: { name: 'Michael Torres' },
-    snippet: 'Has anyone analyzed the premium differences between LME and regional aluminum pricing?',
-  },
-  {
-    id: 'thread-3',
-    title: 'Q1 2026 cost drivers for packaging materials',
-    replyCount: 5,
-    lastActivity: '3 days ago',
-    relevanceScore: 0.78,
-    category: 'Packaging',
-    author: { name: 'Emma Wilson' },
-    snippet: 'What are the main factors affecting packaging material costs this quarter?',
-  },
-  {
-    id: 'thread-4',
-    title: 'Supplier risk assessment best practices',
-    replyCount: 23,
-    lastActivity: '1 day ago',
-    relevanceScore: 0.75,
-    category: 'Risk Management',
-    author: { name: 'David Kim' },
-    snippet: 'Sharing our framework for evaluating supplier risk across multiple dimensions...',
-  },
-  {
-    id: 'thread-5',
-    title: 'Negotiation strategies for commodity price increases',
-    replyCount: 15,
-    lastActivity: '4 days ago',
-    relevanceScore: 0.72,
-    category: 'Procurement Strategy',
-    author: { name: 'Lisa Park' },
-    snippet: 'When suppliers request price increases, what approaches have worked for you?',
-  },
-  {
-    id: 'thread-6',
-    title: 'China aluminum export policy changes - impact analysis',
-    replyCount: 19,
-    lastActivity: '5 days ago',
-    relevanceScore: 0.88,
-    category: 'Raw Materials',
-    author: { name: 'James Liu' },
-    snippet: 'Recent policy shifts in China are affecting aluminum exports. Discussing implications...',
-  },
-  {
-    id: 'thread-7',
-    title: 'Managing concentration risk in supplier portfolios',
-    replyCount: 11,
-    lastActivity: '1 week ago',
-    relevanceScore: 0.70,
-    category: 'Risk Management',
-    author: { name: 'Rachel Green' },
-    snippet: 'How do you balance supplier concentration with relationship benefits?',
-  },
-  {
-    id: 'thread-8',
-    title: 'Plastic resin price forecast for H2 2026',
-    replyCount: 7,
-    lastActivity: '6 days ago',
-    relevanceScore: 0.65,
-    category: 'Raw Materials',
-    author: { name: 'Tom Anderson' },
-    snippet: 'Looking at factors that will influence plastic resin prices in the second half...',
-  },
-];
+function formatRelativeTime(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-/**
- * Keywords and their related terms for matching
- */
-const KEYWORD_MAPPINGS: Record<string, string[]> = {
-  aluminum: ['aluminium', 'lme', 'bauxite', 'metal', 'alloy'],
-  pricing: ['price', 'cost', 'rate', 'premium', 'discount'],
-  supplier: ['vendor', 'source', 'provider', 'manufacturer'],
-  risk: ['assessment', 'evaluation', 'exposure', 'vulnerability'],
-  packaging: ['container', 'box', 'wrap', 'pallet'],
-  negotiation: ['negotiate', 'deal', 'contract', 'agreement'],
-  china: ['chinese', 'apac', 'asia', 'asian'],
-  inflation: ['increase', 'rising', 'cost increase', 'price hike'],
-};
-
-/**
- * Calculate similarity score between query and thread title
- * Uses keyword matching and related terms
- */
-function calculateSimilarity(query: string, threadTitle: string): number {
-  const normalizedQuery = query.toLowerCase();
-  const normalizedTitle = threadTitle.toLowerCase();
-
-  // Direct word overlap
-  const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length > 2);
-  const titleWords = normalizedTitle.split(/\s+/).filter(w => w.length > 2);
-
-  let matchScore = 0;
-  let totalWeight = 0;
-
-  for (const queryWord of queryWords) {
-    const weight = queryWord.length > 5 ? 2 : 1; // Longer words are more significant
-    totalWeight += weight;
-
-    // Direct match
-    if (titleWords.some(tw => tw.includes(queryWord) || queryWord.includes(tw))) {
-      matchScore += weight;
-      continue;
-    }
-
-    // Check keyword mappings for related terms
-    for (const [key, synonyms] of Object.entries(KEYWORD_MAPPINGS)) {
-      if (queryWord.includes(key) || synonyms.some(s => queryWord.includes(s))) {
-        if (normalizedTitle.includes(key) || synonyms.some(s => normalizedTitle.includes(s))) {
-          matchScore += weight * 0.8; // Slightly lower score for synonym match
-          break;
-        }
-      }
-    }
-  }
-
-  return totalWeight > 0 ? matchScore / totalWeight : 0;
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return '1 week ago';
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 60) return '1 month ago';
+  return `${Math.floor(diffDays / 30)} months ago`;
 }
 
 /**
- * Find threads similar to the given query
+ * Calculate simple relevance score based on search term matching
+ * This is a client-side approximation since the API returns ILIKE matches
+ */
+function calculateRelevance(query: string, title: string, body: string): number {
+  const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const titleLower = title.toLowerCase();
+  const bodyLower = body.toLowerCase();
+
+  let score = 0;
+  let totalWeight = queryWords.length;
+
+  for (const word of queryWords) {
+    // Title matches are worth more
+    if (titleLower.includes(word)) {
+      score += 1.5;
+    } else if (bodyLower.includes(word)) {
+      score += 0.5;
+    }
+  }
+
+  return totalWeight > 0 ? Math.min(1, score / totalWeight) : 0;
+}
+
+/**
+ * Convert Question to SimilarThread format
+ */
+function questionToSimilarThread(question: Question, query: string): SimilarThread {
+  const relevance = calculateRelevance(query, question.title, question.body);
+  const primaryTag = question.tags?.[0];
+
+  return {
+    id: question.id,
+    title: question.title,
+    replyCount: question.answerCount,
+    lastActivity: formatRelativeTime(question.updatedAt),
+    relevanceScore: relevance,
+    category: primaryTag?.name,
+    author: question.author ? {
+      name: question.author.displayName || 'Anonymous',
+      avatar: question.author.avatarUrl,
+    } : undefined,
+    snippet: question.body.length > 100
+      ? question.body.substring(0, 100) + '...'
+      : question.body,
+  };
+}
+
+/**
+ * Find threads similar to the given query using community search API
  * @param query - The question title/text to find similar threads for
  * @param options - Search options
  * @returns Array of similar threads sorted by relevance
@@ -181,30 +110,40 @@ export async function findSimilarThreads(
   const {
     limit = 5,
     minScore = 0.3,
-    categories,
     excludeIds = [],
   } = options;
-
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 200));
 
   if (!query || query.trim().length < 3) {
     return [];
   }
 
-  // Calculate similarity scores for each thread
-  const scoredThreads = MOCK_THREADS
-    .filter(thread => !excludeIds.includes(thread.id))
-    .filter(thread => !categories || categories.length === 0 || categories.includes(thread.category || ''))
-    .map(thread => ({
-      ...thread,
-      relevanceScore: calculateSimilarity(query, thread.title),
-    }))
-    .filter(thread => thread.relevanceScore >= minScore)
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, limit);
+  try {
+    // Use existing community search API
+    const params = new URLSearchParams({
+      search: query.trim(),
+      pageSize: '10', // Fetch more than limit to allow filtering
+      sortBy: 'votes', // Most relevant first
+    });
 
-  return scoredThreads;
+    const data = await apiFetch<{
+      questions: Question[];
+      totalCount: number;
+    }>(`/api/community/questions?${params}`);
+
+    // Convert to SimilarThread format and filter
+    const threads = data.questions
+      .filter(q => !excludeIds.includes(q.id))
+      .map(q => questionToSimilarThread(q, query))
+      .filter(t => t.relevanceScore >= minScore)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, limit);
+
+    return threads;
+  } catch (error) {
+    console.error('[threadSimilarity] Error fetching similar threads:', error);
+    // Return empty array on error - don't block the form
+    return [];
+  }
 }
 
 /**
@@ -220,10 +159,13 @@ export async function hasSimilarThreads(query: string, threshold = 0.5): Promise
  * Get thread by ID (for viewing details)
  */
 export async function getThreadById(id: string): Promise<SimilarThread | null> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  return MOCK_THREADS.find(thread => thread.id === id) || null;
+  try {
+    const question = await apiFetch<Question>(`/api/community/questions/${id}`);
+    return questionToSimilarThread(question, '');
+  } catch (error) {
+    console.error('[threadSimilarity] Error fetching thread:', error);
+    return null;
+  }
 }
 
 export default {

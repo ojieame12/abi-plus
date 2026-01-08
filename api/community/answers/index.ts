@@ -6,6 +6,7 @@ import { withAuthenticated, type AuthRequest } from '../../_middleware/auth.js';
 import { createAnswer } from '../../../src/services/communityService.js';
 import { checkAndAwardBadges } from '../../../src/services/badgeService.js';
 import { updateStreak } from '../../../src/services/streakService.js';
+import { checkProfanity } from '../../../src/services/contentModeration.js';
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);
@@ -40,6 +41,16 @@ async function handler(req: AuthRequest, res: VercelResponse) {
 
   if (!body || typeof body !== 'string' || body.trim().length < 30) {
     return res.status(400).json({ error: 'Answer must be at least 30 characters' });
+  }
+
+  // Server-side profanity check (hard block)
+  const moderationResult = checkProfanity(body.trim());
+  if (moderationResult.flagged) {
+    return res.status(400).json({
+      error: 'Content violates community guidelines',
+      reason: moderationResult.reason,
+      severity: moderationResult.severity,
+    });
   }
 
   const db = getDb();

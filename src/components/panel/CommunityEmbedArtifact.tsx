@@ -384,7 +384,7 @@ export const CommunityEmbedArtifact = ({
           className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          New Discussion
+          Ask a Question
         </button>
       </div>
 
@@ -409,7 +409,7 @@ export const CommunityEmbedArtifact = ({
           }`}
         >
           <TrendingUp className="w-4 h-4" />
-          Related Discussions
+          Related Questions
         </button>
         <button
           onClick={() => setActiveTab('new')}
@@ -420,7 +420,7 @@ export const CommunityEmbedArtifact = ({
           }`}
         >
           <Plus className="w-4 h-4" />
-          Start Discussion
+          Ask a Question
         </button>
       </div>
 
@@ -433,7 +433,7 @@ export const CommunityEmbedArtifact = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search discussions..."
+              placeholder="Search questions..."
               className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
@@ -443,22 +443,22 @@ export const CommunityEmbedArtifact = ({
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
-                <span className="ml-2 text-sm text-slate-500">Loading discussions...</span>
+                <span className="ml-2 text-sm text-slate-500">Loading questions...</span>
               </div>
             ) : displayThreads.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-sm text-slate-500 mb-3">
                   {hasNoResults
-                    ? 'No discussions found for this topic yet.'
+                    ? 'No questions found for this topic yet.'
                     : searchQuery
-                      ? 'No discussions match your search.'
-                      : 'No discussions found.'}
+                      ? 'No questions match your search.'
+                      : 'No questions found.'}
                 </p>
                 <button
                   onClick={handleStartNew}
                   className="text-sm text-slate-700 hover:text-slate-900 font-medium underline underline-offset-2"
                 >
-                  Be the first to start a discussion
+                  Be the first to ask a question
                 </button>
               </div>
             ) : displayThreads.map((thread, index) => (
@@ -543,7 +543,7 @@ export const CommunityEmbedArtifact = ({
           {/* Query context helper */}
           {queryContext?.queryText && (
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-              <p className="text-xs text-blue-600 mb-1">Starting discussion about:</p>
+              <p className="text-xs text-blue-600 mb-1">Asking about:</p>
               <p className="text-sm text-blue-900">{queryContext.queryText}</p>
             </div>
           )}
@@ -551,7 +551,7 @@ export const CommunityEmbedArtifact = ({
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Discussion Title
+              Question Title
             </label>
             <input
               type="text"
@@ -597,7 +597,7 @@ export const CommunityEmbedArtifact = ({
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            Post Discussion
+            Post Question
           </button>
         </div>
       )}
