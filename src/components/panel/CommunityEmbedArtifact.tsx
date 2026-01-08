@@ -28,6 +28,7 @@ interface CommunityEmbedArtifactProps {
   };
   onViewThread?: (threadId: string) => void;
   onStartDiscussion?: (title: string, body: string) => void;
+  onViewAll?: () => void;
 }
 
 // Thread display format (internal to this component)
@@ -43,53 +44,171 @@ interface ThreadDisplay {
   isHot: boolean;
 }
 
-// Fallback mock threads for when API has no results
-const MOCK_THREADS: ThreadDisplay[] = [
-  {
-    id: 'thread_001',
-    title: 'Steel price increases - how are you handling supplier negotiations?',
-    excerpt: 'With steel prices up 8.5% this quarter, I\'m curious how others are approaching renegotiations...',
-    replyCount: 23,
-    upvotes: 47,
-    category: 'Metals',
-    author: { name: 'Jennifer K.', company: 'Global Mfg', badge: 'top_contributor' },
-    timeAgo: '2 days ago',
-    isHot: true,
-  },
-  {
-    id: 'thread_002',
-    title: 'Alternative packaging suppliers in APAC region',
-    excerpt: 'Looking to diversify our packaging supply base in Asia Pacific. Any recommendations for...',
-    replyCount: 15,
-    upvotes: 32,
-    category: 'Packaging',
-    author: { name: 'Michael T.', company: 'Consumer Goods Co', badge: null },
-    timeAgo: '5 days ago',
-    isHot: false,
-  },
-  {
-    id: 'thread_003',
-    title: 'Managing lithium supply constraints for EV components',
-    excerpt: 'The lithium market is incredibly tight. We\'ve been exploring alternatives and hedging strategies...',
-    replyCount: 31,
-    upvotes: 89,
-    category: 'Chemicals',
-    author: { name: 'Sarah L.', company: 'AutoTech', badge: 'expert' },
-    timeAgo: '1 week ago',
-    isHot: true,
-  },
-  {
-    id: 'thread_004',
-    title: 'Best practices for supplier risk monitoring',
-    excerpt: 'What KPIs and monitoring frequency are you using? We currently review quarterly but considering...',
-    replyCount: 42,
-    upvotes: 156,
-    category: 'Risk Management',
-    author: { name: 'David R.', company: 'Industrial Corp', badge: 'top_contributor' },
-    timeAgo: '2 weeks ago',
-    isHot: false,
-  },
-];
+// Category-specific mock thread templates
+const MOCK_THREADS_BY_CATEGORY: Record<string, ThreadDisplay[]> = {
+  'it-software': [
+    {
+      id: 'it_001',
+      title: 'SaaS vendor consolidation strategies - what\'s working?',
+      excerpt: 'We\'re looking to reduce our software vendor count from 40+ to under 20. Has anyone successfully negotiated...',
+      replyCount: 34,
+      upvotes: 89,
+      category: 'IT Software',
+      author: { name: 'Alex M.', company: 'TechCorp', badge: 'expert' },
+      timeAgo: '3 days ago',
+      isHot: true,
+    },
+    {
+      id: 'it_002',
+      title: 'Cloud infrastructure cost optimization - AWS vs Azure vs GCP',
+      excerpt: 'Looking for insights on negotiating enterprise agreements. Our current AWS spend is growing 30% YoY...',
+      replyCount: 28,
+      upvotes: 67,
+      category: 'IT Software',
+      author: { name: 'Rachel K.', company: 'FinServ Inc', badge: 'top_contributor' },
+      timeAgo: '1 week ago',
+      isHot: true,
+    },
+    {
+      id: 'it_003',
+      title: 'Security software procurement - compliance requirements',
+      excerpt: 'What security certifications are you requiring from software vendors? SOC2, ISO27001, FedRAMP...',
+      replyCount: 19,
+      upvotes: 45,
+      category: 'IT Software',
+      author: { name: 'James P.', company: 'Healthcare Systems', badge: null },
+      timeAgo: '2 weeks ago',
+      isHot: false,
+    },
+  ],
+  'marketing': [
+    {
+      id: 'mkt_001',
+      title: 'Agency fee structures - retainer vs project-based',
+      excerpt: 'Evaluating our agency relationships. Moving from retainer to project-based has pros/cons...',
+      replyCount: 41,
+      upvotes: 92,
+      category: 'Marketing',
+      author: { name: 'Sarah T.', company: 'Consumer Brands', badge: 'expert' },
+      timeAgo: '2 days ago',
+      isHot: true,
+    },
+    {
+      id: 'mkt_002',
+      title: 'Marketing technology stack consolidation',
+      excerpt: 'Anyone successfully consolidated their martech stack? We have 15+ tools with significant overlap...',
+      replyCount: 25,
+      upvotes: 58,
+      category: 'Marketing',
+      author: { name: 'David L.', company: 'E-commerce Co', badge: 'top_contributor' },
+      timeAgo: '5 days ago',
+      isHot: false,
+    },
+    {
+      id: 'mkt_003',
+      title: 'Media buying - programmatic vs direct deals',
+      excerpt: 'Looking for benchmarks on CPM rates and transparency in programmatic buying...',
+      replyCount: 18,
+      upvotes: 34,
+      category: 'Marketing',
+      author: { name: 'Michelle R.', company: 'Retail Group', badge: null },
+      timeAgo: '1 week ago',
+      isHot: false,
+    },
+  ],
+  'logistics': [
+    {
+      id: 'log_001',
+      title: 'Freight rate negotiations in current market',
+      excerpt: 'Container rates have dropped 40% from peak. How are you renegotiating existing contracts...',
+      replyCount: 52,
+      upvotes: 124,
+      category: 'Logistics',
+      author: { name: 'Tom H.', company: 'Global Logistics', badge: 'expert' },
+      timeAgo: '1 day ago',
+      isHot: true,
+    },
+    {
+      id: 'log_002',
+      title: 'Last-mile delivery cost optimization',
+      excerpt: 'Exploring alternatives to traditional carriers. Anyone using crowdsourced delivery or micro-fulfillment...',
+      replyCount: 31,
+      upvotes: 78,
+      category: 'Logistics',
+      author: { name: 'Lisa W.', company: 'Retail Distribution', badge: 'top_contributor' },
+      timeAgo: '4 days ago',
+      isHot: true,
+    },
+    {
+      id: 'log_003',
+      title: 'Warehouse automation ROI - real numbers',
+      excerpt: 'Considering robotics investment. Looking for actual ROI data from implementations...',
+      replyCount: 22,
+      upvotes: 56,
+      category: 'Logistics',
+      author: { name: 'Mark D.', company: '3PL Services', badge: null },
+      timeAgo: '2 weeks ago',
+      isHot: false,
+    },
+  ],
+  'default': [
+    {
+      id: 'thread_001',
+      title: 'Supplier risk monitoring best practices',
+      excerpt: 'What KPIs and monitoring frequency are you using? We currently review quarterly but considering...',
+      replyCount: 42,
+      upvotes: 156,
+      category: 'Risk Management',
+      author: { name: 'David R.', company: 'Industrial Corp', badge: 'top_contributor' },
+      timeAgo: '2 days ago',
+      isHot: true,
+    },
+    {
+      id: 'thread_002',
+      title: 'Cost reduction strategies without quality compromise',
+      excerpt: 'Looking for proven approaches to reduce procurement costs while maintaining supplier quality...',
+      replyCount: 38,
+      upvotes: 94,
+      category: 'Strategy',
+      author: { name: 'Jennifer K.', company: 'Global Mfg', badge: 'expert' },
+      timeAgo: '5 days ago',
+      isHot: true,
+    },
+    {
+      id: 'thread_003',
+      title: 'Supplier consolidation - when does it make sense?',
+      excerpt: 'We\'re debating reducing our supplier base by 30%. What criteria should drive this decision...',
+      replyCount: 27,
+      upvotes: 68,
+      category: 'Strategy',
+      author: { name: 'Michael T.', company: 'Consumer Goods Co', badge: null },
+      timeAgo: '1 week ago',
+      isHot: false,
+    },
+  ],
+};
+
+// Get contextual mock threads based on category
+function getContextualMockThreads(category?: string): ThreadDisplay[] {
+  if (!category) return MOCK_THREADS_BY_CATEGORY['default'];
+
+  // Normalize category to match keys
+  const normalizedCategory = category.toLowerCase().replace(/\s+/g, '-');
+
+  // Try exact match first
+  if (MOCK_THREADS_BY_CATEGORY[normalizedCategory]) {
+    return MOCK_THREADS_BY_CATEGORY[normalizedCategory];
+  }
+
+  // Try partial match
+  for (const key of Object.keys(MOCK_THREADS_BY_CATEGORY)) {
+    if (normalizedCategory.includes(key) || key.includes(normalizedCategory)) {
+      return MOCK_THREADS_BY_CATEGORY[key];
+    }
+  }
+
+  return MOCK_THREADS_BY_CATEGORY['default'];
+}
 
 // Format date to "X ago" format
 function formatTimeAgo(dateString: string): string {
@@ -162,6 +281,7 @@ export const CommunityEmbedArtifact = ({
   queryContext,
   onViewThread,
   onStartDiscussion,
+  onViewAll,
 }: CommunityEmbedArtifactProps) => {
   const [activeTab, setActiveTab] = useState<'related' | 'new'>('related');
   const [newTitle, setNewTitle] = useState('');
@@ -210,8 +330,12 @@ export const CommunityEmbedArtifact = ({
     }
   };
 
-  // Use real threads if available, fall back to mock data only when API failed
-  const baseThreads = realThreads.length > 0 ? realThreads : (shouldShowMockThreads ? MOCK_THREADS : []);
+  // Use real threads if available, fall back to contextual mock data only when API failed
+  // Get category from queryContext for contextual fallback
+  const contextCategory = (queryContext as { category?: string })?.category;
+  const baseThreads = realThreads.length > 0
+    ? realThreads
+    : (shouldShowMockThreads ? getContextualMockThreads(contextCategory) : []);
 
   // Filter threads based on local search query
   const filteredThreads = searchQuery
@@ -405,7 +529,10 @@ export const CommunityEmbedArtifact = ({
           </div>
 
           {/* View all link */}
-          <button className="w-full flex items-center justify-center gap-2 py-3 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+          <button
+            onClick={onViewAll}
+            className="w-full flex items-center justify-center gap-2 py-3 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+          >
             <ExternalLink className="w-4 h-4" />
             View all community discussions
           </button>

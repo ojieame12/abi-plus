@@ -574,6 +574,7 @@ export const ArtifactRenderer = ({
           queryContext={(payload as any).queryContext}
           onViewThread={(threadId) => onAction?.('view_thread', { threadId })}
           onStartDiscussion={(title, body) => onAction?.('start_discussion', { title, body })}
+          onViewAll={() => onAction?.('view_all_discussions')}
         />
       );
 

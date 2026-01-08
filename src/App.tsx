@@ -327,6 +327,11 @@ function App() {
         setViewState('ask-question');
         // Pre-fill form data could be stored in state if needed
         break;
+      case 'view_all_discussions':
+        handleClosePanel();
+        setSelectedQuestionId(null);
+        setViewState('community');
+        break;
       default:
         console.log('Unhandled action:', action);
     }
