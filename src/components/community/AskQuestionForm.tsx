@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Loader2, AlertTriangle, Lightbulb, UserCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TagSelector } from './TagSelector';
+import { SimilarThreadsModule } from './SimilarThreadsModule';
+import { useQuestionGuardrails } from '../../hooks/useQuestionGuardrails';
 import type { Tag, CreateQuestionInput } from '../../types/community';
 
 interface AskQuestionFormProps {
@@ -8,6 +11,11 @@ interface AskQuestionFormProps {
   onSubmit: (input: CreateQuestionInput) => Promise<void>;
   isLoading?: boolean;
   isTagsLoading?: boolean;
+  // New props for guardrails integration
+  onViewThread?: (threadId: string) => void;
+  onAskAnalyst?: () => void;
+  showAnalystPrompt?: boolean;
+  contextMessage?: string;
 }
 
 export function AskQuestionForm({
@@ -15,11 +23,24 @@ export function AskQuestionForm({
   onSubmit,
   isLoading = false,
   isTagsLoading = false,
+  onViewThread,
+  onAskAnalyst,
+  showAnalystPrompt = true,
+  contextMessage,
 }: AskQuestionFormProps) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<{ title?: string; body?: string }>({});
+
+  // Guardrails - profanity check and similar threads
+  const {
+    isProfanityFlagged,
+    profanityMessage,
+    similarThreads,
+    isCheckingSimilar,
+    dismissSimilarThreads,
+  } = useQuestionGuardrails(title, body);
 
   const validate = (): boolean => {
     const newErrors: { title?: string; body?: string } = {};
@@ -40,6 +61,7 @@ export function AskQuestionForm({
     e.preventDefault();
 
     if (!validate()) return;
+    if (isProfanityFlagged) return; // Block submission if profanity detected
 
     await onSubmit({
       title: title.trim(),
@@ -48,12 +70,26 @@ export function AskQuestionForm({
     });
   };
 
+  const handleViewThread = useCallback((threadId: string) => {
+    if (onViewThread) {
+      onViewThread(threadId);
+    }
+  }, [onViewThread]);
+
   const titleCharCount = title.trim().length;
   const bodyCharCount = body.trim().length;
-  const isValid = titleCharCount >= 15 && bodyCharCount >= 30;
+  const isValid = titleCharCount >= 15 && bodyCharCount >= 30 && !isProfanityFlagged;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Context Message */}
+      {contextMessage && (
+        <div className="p-3 bg-violet-50 border border-violet-100 rounded-lg">
+          <p className="text-xs text-violet-600 font-medium mb-1">Related to:</p>
+          <p className="text-sm text-violet-800 line-clamp-2">{contextMessage}</p>
+        </div>
+      )}
+
       {/* Title */}
       <div className="space-y-2">
         <label htmlFor="title" className="block text-sm font-medium text-slate-700">
@@ -84,6 +120,18 @@ export function AskQuestionForm({
           </span>
         </div>
       </div>
+
+      {/* Similar Threads Module - shows after typing in title */}
+      <AnimatePresence>
+        {(similarThreads.length > 0 || isCheckingSimilar) && (
+          <SimilarThreadsModule
+            threads={similarThreads}
+            isLoading={isCheckingSimilar}
+            onViewThread={handleViewThread}
+            onDismiss={dismissSimilarThreads}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Body */}
       <div className="space-y-2">
@@ -116,6 +164,32 @@ export function AskQuestionForm({
         </div>
       </div>
 
+      {/* Profanity Warning */}
+      <AnimatePresence>
+        {isProfanityFlagged && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 bg-red-50 border border-red-200 rounded-xl"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-red-100 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800">
+                  We can't post this
+                </p>
+                <p className="text-sm text-red-600 mt-0.5">
+                  {profanityMessage || 'Please remove inappropriate language and try again.'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Tags */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-slate-700">
@@ -132,6 +206,40 @@ export function AskQuestionForm({
           Add up to 5 tags to help others find your question
         </p>
       </div>
+
+      {/* Analyst Prompt */}
+      {showAnalystPrompt && onAskAnalyst && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-teal-50 border border-teal-200 rounded-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-teal-100 rounded-lg">
+                <Lightbulb className="w-4 h-4 text-teal-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-teal-800">
+                  Need a quick answer?
+                </p>
+                <p className="text-xs text-teal-600">
+                  Connect directly with a Beroe analyst
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onAskAnalyst}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700
+                       text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <UserCircle className="w-4 h-4" />
+              Ask an Analyst
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Submit */}
       <div className="flex justify-end pt-2">

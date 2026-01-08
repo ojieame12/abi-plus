@@ -1,11 +1,11 @@
-// ValueLadderActions - Action row for 4-layer value system
+// ValueLadderActions - Action row for escalation tiers
 // Sits under the widget in AI responses, provides access to:
-// - Layer 2: Analyst Connect (Beroe internal)
-// - Layer 4: Community (peer discussions)
-// - Layer 3: Expert Network (premium external experts)
+// - Analyst Connect: Beroe analysts (DM / schedule call)
+// - Community: Peer discussions (free / open)
+// - Expert Network: Premium external experts (paid)
 
 import { motion } from 'framer-motion';
-import { UserCircle, Users, Sparkles, MessageSquare, ChevronRight } from 'lucide-react';
+import { UserCircle, Users, Sparkles, Crown, ChevronRight } from 'lucide-react';
 import type { ValueLadder } from '../../types/aiResponse';
 
 interface ValueLadderActionsProps {
@@ -40,9 +40,7 @@ export const ValueLadderActions = ({
       transition={{ duration: 0.3, delay: 0.2 }}
       className={`flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100 ${className}`}
     >
-      <span className="text-xs text-slate-500 mr-1">Go deeper:</span>
-
-      {/* Layer 2: Analyst Connect - Teal/Beroe styling */}
+      {/* Analyst Connect - Teal/Beroe styling */}
       {analystConnect?.available && (
         <button
           onClick={onAnalystConnect}
@@ -60,7 +58,7 @@ export const ValueLadderActions = ({
           ) : (
             <UserCircle className="w-4 h-4" />
           )}
-          <span className="max-w-[180px] truncate">{analystConnect.cta}</span>
+          <span>Ask an Analyst</span>
           <span className="px-1.5 py-0.5 bg-teal-600 text-white text-[10px]
                           rounded font-semibold uppercase tracking-wide">
             Beroe
@@ -70,7 +68,7 @@ export const ValueLadderActions = ({
         </button>
       )}
 
-      {/* Layer 4: Community - Standard styling */}
+      {/* Community - Standard styling */}
       {community?.available && (
         <button
           onClick={onCommunity}
@@ -80,10 +78,11 @@ export const ValueLadderActions = ({
                      hover:shadow-sm"
         >
           <Users className="w-4 h-4 text-slate-500" />
-          <span>{community.cta}</span>
+          <span>Ask the Community</span>
           {community.relatedThreadCount > 0 && (
             <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-[10px]
-                            rounded-full font-medium">
+                            rounded-full font-medium ml-0.5"
+                  title={`${community.relatedThreadCount} related discussions`}>
               {community.relatedThreadCount}
             </span>
           )}
@@ -92,7 +91,7 @@ export const ValueLadderActions = ({
         </button>
       )}
 
-      {/* Layer 3: Expert Deep-Dive - Premium Gold styling */}
+      {/* Expert Network - Premium Gold styling */}
       {expertDeepDive?.available && (
         <button
           onClick={onExpertDeepDive}
@@ -103,8 +102,8 @@ export const ValueLadderActions = ({
                      text-amber-800 text-sm font-medium transition-all
                      hover:shadow-md hover:shadow-amber-100"
         >
-          <Sparkles className="w-4 h-4 text-amber-500" />
-          <span>{expertDeepDive.cta}</span>
+          <Crown className="w-4 h-4 text-amber-500" />
+          <span>Request Expert</span>
           <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-500
                           text-white text-[10px] rounded font-semibold uppercase tracking-wide
                           shadow-sm">
@@ -142,10 +141,10 @@ export const ValueLadderActionsCompact = ({
           className="flex items-center gap-1.5 px-2 py-1 rounded-md
                      bg-teal-50 hover:bg-teal-100 border border-teal-200
                      text-teal-700 text-xs font-medium transition-colors"
-          title={analystConnect.cta}
+          title="Connect with a Beroe analyst"
         >
-          <MessageSquare className="w-3 h-3" />
-          <span>Analyst</span>
+          <UserCircle className="w-3 h-3" />
+          <span>Ask an Analyst</span>
         </button>
       )}
 
@@ -155,10 +154,10 @@ export const ValueLadderActionsCompact = ({
           className="flex items-center gap-1.5 px-2 py-1 rounded-md
                      bg-slate-50 hover:bg-slate-100 border border-slate-200
                      text-slate-600 text-xs font-medium transition-colors"
-          title={community.cta}
+          title="Post to community discussions"
         >
           <Users className="w-3 h-3" />
-          <span>Community</span>
+          <span>Ask the Community</span>
         </button>
       )}
 
@@ -168,10 +167,10 @@ export const ValueLadderActionsCompact = ({
           className="flex items-center gap-1.5 px-2 py-1 rounded-md
                      bg-amber-50 hover:bg-amber-100 border border-amber-300
                      text-amber-700 text-xs font-medium transition-colors"
-          title={expertDeepDive.cta}
+          title="Request a premium expert consultation"
         >
-          <Sparkles className="w-3 h-3" />
-          <span>Expert</span>
+          <Crown className="w-3 h-3" />
+          <span>Request Expert</span>
         </button>
       )}
     </div>
@@ -196,14 +195,14 @@ export const ValueLadderActionsInline = ({
 
   return (
     <div className="flex items-center gap-2">
-      {/* Layer 2: Analyst Connect - Compact teal */}
+      {/* Analyst Connect - Compact teal */}
       {analystConnect?.available && (
         <button
           onClick={onAnalystConnect}
           className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
                      bg-teal-50 hover:bg-teal-100 border border-teal-200
                      text-teal-700 text-xs font-medium transition-all"
-          title={analystConnect.cta}
+          title="Connect with a Beroe analyst"
         >
           {analystConnect.analyst?.photo ? (
             <img
@@ -214,43 +213,42 @@ export const ValueLadderActionsInline = ({
           ) : (
             <UserCircle className="w-3.5 h-3.5" />
           )}
-          <span className="max-w-[100px] truncate">
-            {analystConnect.analyst?.name ? `Ask ${analystConnect.analyst.name.split(' ')[0]}` : 'Ask Analyst'}
-          </span>
+          <span>Ask an Analyst</span>
         </button>
       )}
 
-      {/* Layer 4: Community - Compact slate */}
+      {/* Community - Compact slate */}
       {community?.available && (
         <button
           onClick={onCommunity}
           className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
                      bg-slate-50 hover:bg-slate-100 border border-slate-200
                      text-slate-600 text-xs font-medium transition-all"
-          title={community.cta}
+          title="Post to community discussions"
         >
           <Users className="w-3.5 h-3.5" />
-          <span>Discussion</span>
+          <span>Ask the Community</span>
           {community.relatedThreadCount > 0 && (
             <span className="px-1 py-0.5 bg-slate-200 text-slate-500 text-[10px]
-                            rounded-full font-medium leading-none">
+                            rounded-full font-medium leading-none ml-0.5"
+                  title={`${community.relatedThreadCount} related discussions`}>
               {community.relatedThreadCount}
             </span>
           )}
         </button>
       )}
 
-      {/* Layer 3: Expert - Compact gold (rarely shown) */}
+      {/* Expert Network - Compact gold */}
       {expertDeepDive?.available && (
         <button
           onClick={onExpertDeepDive}
           className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
                      bg-amber-50 hover:bg-amber-100 border border-amber-200
                      text-amber-700 text-xs font-medium transition-all"
-          title={expertDeepDive.cta}
+          title="Request a premium expert consultation"
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Expert</span>
+          <Crown className="w-3.5 h-3.5" />
+          <span>Request Expert</span>
         </button>
       )}
     </div>
