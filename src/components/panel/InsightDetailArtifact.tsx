@@ -65,7 +65,7 @@ interface InsightDetailArtifactProps {
 
 // Type badge - minimal
 const TypeBadge = ({ type }: { type: InsightDetailData['type'] }) => {
-  const configs = {
+  const configs: Record<string, { label: string; icon: typeof AlertTriangle; color: string }> = {
     risk_alert: { label: 'Risk Alert', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50 border-rose-200' },
     market_update: { label: 'Market Update', icon: BarChart3, color: 'text-blue-600 bg-blue-50 border-blue-200' },
     trend_change: { label: 'Trend Change', icon: TrendingUp, color: 'text-amber-600 bg-amber-50 border-amber-200' },
@@ -73,7 +73,8 @@ const TypeBadge = ({ type }: { type: InsightDetailData['type'] }) => {
     info: { label: 'Insight', icon: Info, color: 'text-violet-600 bg-violet-50 border-violet-200' },
   };
 
-  const config = configs[type || 'info'];
+  // Default to 'info' if type is unknown or undefined
+  const config = configs[type || 'info'] || configs.info;
   const Icon = config.icon;
 
   return (
