@@ -181,6 +181,8 @@ interface ContextWidgetProps {
   // Insight support - unified insight banner inside widget
   insight?: ResponseInsight;
   onInsightClick?: (insightData: Record<string, unknown>) => void;
+  // Sources support - unified footer shows all sources
+  sources?: import('../../types/aiResponse').ResponseSources;
 }
 
 type WidgetRendererProps = DirectWidgetProps | ContextWidgetProps;
@@ -519,6 +521,9 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   // Get view details handler - either from artifact handlers or expand handler
   const viewDetailsHandler = artifactHandlers.onViewDetails || handleExpand;
 
+  // Extract sources for unified footer
+  const sources = isContextProps(props) ? props.sources : undefined;
+
   return (
     <div className={`widget-container ${className}`}>
       {title && (
@@ -547,6 +552,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
       {/* Unified footer - only when we have insight (widget hides its own) */}
       {shouldUseUnifiedFooter && (
         <WidgetFooter
+          sources={sources}
           beroeSourceCount={config.props?.beroeSourceCount || 3}
           onViewDetails={viewDetailsHandler}
         />

@@ -289,6 +289,7 @@ export const AIResponse = ({
                     onOpenArtifact={widgetContext.onOpenArtifact}
                     insight={normalizedInsight}
                     onInsightClick={onInsightClick}
+                    sources={sources}
                 />
             );
         }
@@ -300,6 +301,9 @@ export const AIResponse = ({
 
         return null;
     };
+
+    // When unified footer is active (widgetContext + insight), sources are shown inside widget
+    const showUnifiedFooter = widgetContext && normalizedInsight;
 
     // ========================================
     // RENDER INSIGHT
@@ -607,6 +611,7 @@ export const AIResponse = ({
             </AnimatePresence>
 
             {/* 6. Response Feedback + Sources - Same row: feedback left, sources right */}
+            {/* Sources hidden when unified footer is active (shown inside widget) */}
             <AnimatePresence>
                 {showFooter && hasFooter && (
                     <motion.div
@@ -621,9 +626,12 @@ export const AIResponse = ({
                             onThumbsDown={() => onFeedback?.('down')}
                             onRefresh={onRefresh}
                         />
-                        <div className="flex-shrink-0">
-                            {renderSources()}
-                        </div>
+                        {/* Only show sources here if NOT using unified footer */}
+                        {!showUnifiedFooter && (
+                            <div className="flex-shrink-0">
+                                {renderSources()}
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
