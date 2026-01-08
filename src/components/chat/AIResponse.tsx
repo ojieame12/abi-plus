@@ -261,6 +261,16 @@ export const AIResponse = ({
     // ========================================
     // RENDER WIDGET
     // ========================================
+
+    // Convert insight prop to ResponseInsight for WidgetRenderer
+    const normalizedInsight: ResponseInsight | undefined = insight
+        ? isResponseInsight(insight)
+            ? insight
+            : typeof insight === 'string'
+                ? { headline: insight, sentiment: 'neutral' as const, type: 'info' as const }
+                : { headline: insight.text, sentiment: insight.trend === 'up' ? 'positive' as const : insight.trend === 'down' ? 'negative' as const : 'neutral' as const, explanation: insight.detail, type: 'info' as const }
+        : undefined;
+
     const renderWidget = () => {
         // Priority 1: Context-based rendering
         if (widgetContext) {
@@ -277,6 +287,8 @@ export const AIResponse = ({
                     artifactContent={widgetContext.artifactContent}
                     onExpand={onWidgetExpand}
                     onOpenArtifact={widgetContext.onOpenArtifact}
+                    insight={normalizedInsight}
+                    onInsightClick={onInsightClick}
                 />
             );
         }
@@ -581,9 +593,10 @@ export const AIResponse = ({
                 )}
             </AnimatePresence>
 
-            {/* 5. Abi Insight (Optional) - InsightBar has its own animation */}
+            {/* 5. Abi Insight - Now rendered INSIDE widget via WidgetRenderer */}
+            {/* Legacy fallback: Show standalone insight only when NO widget context */}
             <AnimatePresence>
-                {showInsight && insight && (
+                {showInsight && insight && !widgetContext && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

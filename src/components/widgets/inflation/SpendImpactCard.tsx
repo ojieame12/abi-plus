@@ -1,6 +1,6 @@
 // SpendImpactCard - Portfolio spend impact from inflation
 import { motion } from 'framer-motion';
-import { DollarSign, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, Lightbulb } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
 import type { SpendImpactCardData } from '../../../types/inflation';
 
 interface SpendImpactCardProps extends SpendImpactCardData {
@@ -16,7 +16,6 @@ export const SpendImpactCard = ({
   timeframe,
   breakdown,
   mostAffected,
-  recommendation,
   onViewDetails,
   delay = 0,
   beroeSourceCount = 3,
@@ -120,18 +119,6 @@ export const SpendImpactCard = ({
           ))}
         </div>
       </div>
-
-      {/* Recommendation */}
-      {recommendation && (
-        <div className="px-5 pb-5">
-          <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100/60">
-            <div className="flex items-start gap-2">
-              <Lightbulb size={14} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />
-              <p className="text-sm text-blue-700">{recommendation}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Data Attribution Footer */}
       <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/60 bg-slate-50/30">

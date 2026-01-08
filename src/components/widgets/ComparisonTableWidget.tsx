@@ -6,7 +6,7 @@ interface Props {
 }
 
 export const ComparisonTableWidget = ({ data }: Props) => {
-  const { suppliers, comparisonDimensions, recommendation } = data;
+  const { suppliers, comparisonDimensions } = data;
 
   const getRiskColor = (level: string) => {
     switch (level.toLowerCase()) {
@@ -175,19 +175,6 @@ export const ComparisonTableWidget = ({ data }: Props) => {
           </tbody>
         </table>
       </div>
-
-      {/* Recommendation */}
-      {recommendation && (
-        <div className="px-5 py-4 bg-violet-50 border-t border-violet-100">
-          <div className="flex items-start gap-2">
-            <span className="text-violet-600 mt-0.5">💡</span>
-            <div>
-              <div className="text-sm font-normal text-violet-900">Recommendation</div>
-              <div className="text-sm text-violet-700 mt-1">{recommendation}</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

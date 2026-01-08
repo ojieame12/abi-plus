@@ -3,6 +3,8 @@ import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
 import type { Supplier, Portfolio, RiskChange } from '../../types/data';
 import type { RiskPortfolio } from '../../types/supplier';
+import type { ResponseInsight } from '../../types/aiResponse';
+import { InsightBanner } from '../chat/InsightBanner';
 import {
   selectComponent,
   buildDataContext,
@@ -175,6 +177,9 @@ interface ContextWidgetProps {
   className?: string;
   onExpand?: (artifactComponent: string) => void;
   onOpenArtifact?: (type: string, payload: Record<string, unknown>) => void;
+  // Insight support - unified insight banner inside widget
+  insight?: ResponseInsight;
+  onInsightClick?: (insightData: Record<string, unknown>) => void;
 }
 
 type WidgetRendererProps = DirectWidgetProps | ContextWidgetProps;
@@ -474,6 +479,38 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   // Don't show external expand button if widget has its own internal handler
   const hasInternalExpandHandler = Object.keys(artifactHandlers).length > 0;
 
+  // Extract insight props if context-based
+  const insight = isContextProps(props) ? props.insight : undefined;
+  const onInsightClick = isContextProps(props) ? props.onInsightClick : undefined;
+
+  // Build rich insight data for artifact panel
+  const handleInsightClick = () => {
+    if (!onInsightClick || !insight) return;
+
+    const insightData: Record<string, unknown> = {
+      headline: insight.headline,
+      summary: insight.summary || insight.explanation,
+      sentiment: insight.sentiment,
+      type: insight.type || 'info',
+      factors: insight.factors,
+      actions: insight.actions,
+      sources: insight.sources,
+      metric: insight.metric,
+    };
+
+    // Include entity from insight or supplier context
+    if (insight.entity) {
+      insightData.entity = insight.entity;
+    } else if (isContextProps(props) && props.supplier) {
+      insightData.entity = {
+        name: props.supplier.name,
+        type: 'supplier',
+      };
+    }
+
+    onInsightClick(insightData);
+  };
+
   return (
     <div className={`widget-container ${className}`}>
       {title && (
@@ -482,6 +519,17 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         </div>
       )}
       <Component {...config.props} {...artifactHandlers} />
+
+      {/* Unified Insight Banner - renders inside widget before footer */}
+      {insight && (
+        <div className="mt-3">
+          <InsightBanner
+            insight={insight}
+            onClick={onInsightClick ? handleInsightClick : undefined}
+          />
+        </div>
+      )}
+
       {handleExpand && !hasInternalExpandHandler && (
         <button
           onClick={handleExpand}
@@ -708,7 +756,6 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
           concentration: widget.data.percentage || widget.data.concentration || 0,
           threshold: widget.data.threshold || 30,
           spend: widget.data.affectedSpend || widget.data.spend || '$0',
-          recommendation: widget.data.recommendation || `Consider diversifying to reduce concentration risk in this ${widget.data.type || 'area'}.`,
           severity: widget.data.severity || (widget.data.percentage > 40 ? 'high' : widget.data.percentage > 25 ? 'medium' : 'low'),
         },
       };

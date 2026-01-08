@@ -25,6 +25,7 @@ interface CommunityEmbedArtifactProps {
     queryId?: string;
     queryText?: string;
     topic?: string;
+    category?: string; // Category for contextual fallback (e.g., "IT Software", "Marketing", "Logistics")
   };
   onViewThread?: (threadId: string) => void;
   onStartDiscussion?: (title: string, body: string) => void;
@@ -189,7 +190,8 @@ const MOCK_THREADS_BY_CATEGORY: Record<string, ThreadDisplay[]> = {
 };
 
 // Get contextual mock threads based on category
-function getContextualMockThreads(category?: string): ThreadDisplay[] {
+// Exported for testing
+export function getContextualMockThreads(category?: string): ThreadDisplay[] {
   if (!category) return MOCK_THREADS_BY_CATEGORY['default'];
 
   // Normalize category to match keys
@@ -291,7 +293,7 @@ export const CommunityEmbedArtifact = ({
   // Fetch real community questions, using topic or queryText for context-aware search
   const searchTerm = queryContext?.topic || queryContext?.queryText || '';
   // Derive category tag from query context if available (e.g., "IT Software" -> "it-software")
-  const categoryTag = (queryContext as { category?: string })?.category
+  const categoryTag = queryContext?.category
     ?.toLowerCase()
     .replace(/\s+/g, '-') || undefined;
 
@@ -331,8 +333,7 @@ export const CommunityEmbedArtifact = ({
   };
 
   // Use real threads if available, fall back to contextual mock data only when API failed
-  // Get category from queryContext for contextual fallback
-  const contextCategory = (queryContext as { category?: string })?.category;
+  const contextCategory = queryContext?.category;
   const baseThreads = realThreads.length > 0
     ? realThreads
     : (shouldShowMockThreads ? getContextualMockThreads(contextCategory) : []);

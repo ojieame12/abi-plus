@@ -60,7 +60,6 @@ export const JustificationCard = ({
   verdict,
   verdictLabel,
   keyPoints,
-  recommendation,
   negotiationLeverage,
   onViewDetails,
   delay = 0,
@@ -177,14 +176,6 @@ export const JustificationCard = ({
             {negotiationLeverage}
           </span>
         </div>
-      </div>
-
-      {/* Recommendation */}
-      <div className="px-5 pb-5">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-          Recommendation
-        </p>
-        <p className="text-sm text-slate-700 leading-relaxed">{recommendation}</p>
       </div>
 
       {/* Data Attribution Footer */}

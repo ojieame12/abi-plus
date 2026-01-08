@@ -17,7 +17,6 @@ export interface ConcentrationWarningCardProps {
   concentration: number; // percentage
   threshold: number; // threshold percentage
   spend: string;
-  recommendation: string;
   severity: SeverityLevel;
   onViewDetails?: () => void;
   delay?: number;
@@ -123,7 +122,6 @@ export const ConcentrationWarningCard = ({
   concentration,
   threshold,
   spend,
-  recommendation,
   severity,
   onViewDetails,
   delay = 0,
@@ -206,18 +204,6 @@ export const ConcentrationWarningCard = ({
           </motion.p>
         )}
       </div>
-
-      {/* Recommendation */}
-      <motion.div
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: delay + 0.3 }}
-        className="p-3 bg-white/60 rounded-xl border border-white/80"
-      >
-        <p className="text-sm text-slate-600 leading-relaxed">
-          {recommendation}
-        </p>
-      </motion.div>
 
       {/* Footer Action */}
       {onViewDetails && (
