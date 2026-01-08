@@ -93,13 +93,21 @@ export const SupplierDetailArtifact = ({
 }: SupplierDetailArtifactProps) => {
     const [activeTab, setActiveTab] = useState<TabId>('overview');
 
+    // Defensive defaults for partial supplier data
+    const srs = supplier?.srs || { score: null, level: 'unrated' as const, trend: 'stable' as const, lastUpdated: '' };
+    const riskFactors = supplier?.riskFactors || [];
+    const events = supplier?.events || [];
+    const history = supplier?.history || [];
+    const location = supplier?.location || { city: 'Unknown', country: 'Unknown' };
+
     const getTrendIcon = () => {
-        switch (supplier.srs.trend) {
+        switch (srs.trend) {
             case 'improving':
                 return <TrendingDown size={16} className="text-green-500" />;
             case 'worsening':
                 return <TrendingUp size={16} className="text-red-500" />;
             case 'stable':
+            default:
                 return <Minus size={16} className="text-slate-400" />;
         }
     };
@@ -151,16 +159,16 @@ export const SupplierDetailArtifact = ({
             {/* Content */}
             <div className="flex-1 overflow-auto p-6 bg-slate-50/50">
                 {activeTab === 'overview' && (
-                    <OverviewTab supplier={supplier} onViewDashboard={onViewDashboard} />
+                    <OverviewTab supplier={supplier} srs={srs} location={location} riskFactors={riskFactors} onViewDashboard={onViewDashboard} />
                 )}
                 {activeTab === 'factors' && (
-                    <FactorsTab factors={supplier.riskFactors} onViewDashboard={onViewDashboard} />
+                    <FactorsTab factors={riskFactors} onViewDashboard={onViewDashboard} />
                 )}
                 {activeTab === 'events' && (
-                    <EventsTab events={supplier.events} />
+                    <EventsTab events={events} />
                 )}
                 {activeTab === 'history' && (
-                    <HistoryTab history={supplier.history} />
+                    <HistoryTab history={history} />
                 )}
             </div>
 
@@ -184,21 +192,33 @@ export const SupplierDetailArtifact = ({
 };
 
 // Overview Tab
-const OverviewTab = ({ supplier, onViewDashboard }: { supplier: Supplier; onViewDashboard?: () => void }) => (
+const OverviewTab = ({
+    supplier,
+    srs,
+    location,
+    riskFactors,
+    onViewDashboard
+}: {
+    supplier: Supplier;
+    srs: Supplier['srs'];
+    location: Supplier['location'];
+    riskFactors: RiskFactor[];
+    onViewDashboard?: () => void;
+}) => (
     <div className="space-y-6 max-w-3xl mx-auto">
         {/* Supplier Header */}
         <div className="flex items-start justify-between">
             <div>
-                <h2 className="text-2xl font-bold text-[#1d1d1f] mb-1 tracking-tight">{supplier.name}</h2>
+                <h2 className="text-2xl font-bold text-[#1d1d1f] mb-1 tracking-tight">{supplier?.name || 'Unknown Supplier'}</h2>
                 <div className="flex items-center gap-2 text-[13px] text-slate-500 font-medium">
-                    <span>{supplier.category}</span>
+                    <span>{supplier?.category || 'Unknown Category'}</span>
                     <span>·</span>
                     <div className="flex items-center gap-1">
                         <MapPin size={13} />
-                        {supplier.location.city}, {supplier.location.country}
+                        {location.city}, {location.country}
                     </div>
                 </div>
-                {supplier.duns && (
+                {supplier?.duns && (
                     <div className="text-[11px] text-slate-400 font-mono mt-1.5">
                         DUNS: {supplier.duns}
                     </div>
@@ -219,26 +239,30 @@ const OverviewTab = ({ supplier, onViewDashboard }: { supplier: Supplier; onView
             <div className="flex items-center gap-8">
                 <div className="shrink-0">
                     <RiskScoreCircle
-                        score={supplier.srs.score}
-                        level={supplier.srs.level}
-                        trend={supplier.srs.trend}
-                        lastUpdated={supplier.srs.lastUpdated}
+                        score={srs.score}
+                        level={srs.level}
+                        trend={srs.trend}
+                        lastUpdated={srs.lastUpdated}
                     />
                 </div>
                 <div className="flex-1 border-l border-slate-100 pl-8">
                     <div className="grid grid-cols-2 gap-y-6 gap-x-8">
                         <div>
                             <div className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Total Spend</div>
-                            <div className="text-xl font-medium text-[#1d1d1f] tracking-tight">{supplier.spendFormatted}</div>
+                            <div className="text-xl font-medium text-[#1d1d1f] tracking-tight">{supplier?.spendFormatted || '—'}</div>
                         </div>
                         <div>
                             <div className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Criticality</div>
-                            <div className="text-xl font-medium text-[#1d1d1f] tracking-tight capitalize">{supplier.criticality || '—'}</div>
+                            <div className="text-xl font-medium text-[#1d1d1f] tracking-tight capitalize">{supplier?.criticality || '—'}</div>
                         </div>
                         <div className="col-span-2">
                              <div className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Risk Summary</div>
                              <p className="text-[13px] text-slate-600 leading-relaxed">
-                                Score calculated from {supplier.riskFactors.length} weighted factors.
+                                {riskFactors.length > 0 ? (
+                                    <>Score calculated from {riskFactors.length} weighted factors.</>
+                                ) : (
+                                    <>Risk factor data not available.</>
+                                )}
                                 <span className="ml-1 text-amber-600 font-medium inline-flex items-center gap-1">
                                     <AlertTriangle size={12} /> Some data restricted.
                                 </span>
