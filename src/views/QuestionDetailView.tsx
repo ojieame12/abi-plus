@@ -34,7 +34,7 @@ export function QuestionDetailView({
   canDownvote = false,
   canAnswer = false,
 }: QuestionDetailViewProps) {
-  const { question, isLoading, error, notice, refetch } = useQuestionDetail(questionId);
+  const { question, isLoading, error, notice, refetch } = useQuestionDetail(questionId, { useMockData: true });
   const { createAnswer, isLoading: isAnswerLoading, error: answerError } = useCreateAnswer();
   const { acceptAnswer, isLoading: isAcceptLoading } = useAcceptAnswer();
 
@@ -176,7 +176,7 @@ export function QuestionDetailView({
 
               {/* Question Body */}
               <div className="prose prose-slate max-w-none mb-6">
-                {question.body.split('\n\n').map((paragraph, i) => {
+                {(question.body ?? '').split('\n\n').map((paragraph, i) => {
                   if (paragraph.startsWith('- ')) {
                     const items = paragraph.split('\n').filter(line => line.startsWith('- '));
                     return (

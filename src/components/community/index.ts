@@ -14,3 +14,8 @@ export { AnswerForm } from './AnswerForm';
 export { BadgeDisplay } from './BadgeDisplay';
 export { UserBadges } from './UserBadges';
 export { ReputationDisplay } from './ReputationDisplay';
+
+// Layout components
+export { CommunityHero } from './CommunityHero';
+export { TopCategoriesSidebar } from './TopCategoriesSidebar';
+export { TopMembersSidebar } from './TopMembersSidebar';

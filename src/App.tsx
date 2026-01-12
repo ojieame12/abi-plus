@@ -674,12 +674,14 @@ function App() {
     }
   };
 
-  // Background opacity: 100 for home, 30 for history/community, 10 for chat/transitioning
+  // Background opacity: 100 for home, 0 for community (hero has own bg), 30 for history, 10 for chat/transitioning
   const backgroundOpacity = viewState === 'home' && !isTransitioning
     ? 100
-    : (viewState === 'history' || viewState === 'community' || viewState === 'community-detail')
-      ? 30
-      : 10;
+    : viewState === 'community'
+      ? 0
+      : (viewState === 'history' || viewState === 'community-detail')
+        ? 30
+        : 10;
 
   // Header variant
   const headerVariant = (viewState === 'home' || viewState === 'history' || viewState === 'community' || viewState === 'community-detail') && !isTransitioning ? 'home' : 'conversation';
@@ -711,6 +713,7 @@ function App() {
           backgroundOpacity={backgroundOpacity}
           isHeaderLoading={isTransitioning || isThinking}
           artifactCount={currentArtifact ? 1 : 0}
+          hideHeader={viewState === 'community'}
           onNewChat={handleNewChat}
           onNavigateToHistory={handleNavigateToHistory}
           onNavigateToCommunity={handleNavigateToCommunity}

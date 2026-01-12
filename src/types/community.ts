@@ -220,3 +220,4 @@ export interface AcceptAnswerResponse {
 
 export type QuestionSortBy = 'newest' | 'votes' | 'unanswered' | 'active';
 export type QuestionFilter = 'all' | 'open' | 'answered' | 'unanswered';
+export type ContentType = 'posts' | 'discussion' | 'announcement';

@@ -9,8 +9,8 @@ interface TagPillProps {
 
 export function TagPill({ tag, size = 'sm', selected = false, onClick }: TagPillProps) {
   const sizeStyles = {
-    sm: 'px-2.5 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
+    sm: 'px-2 py-0.5 text-xs',
+    md: 'px-2.5 py-1 text-xs',
   };
 
   // Monochrome design - no per-tag colors

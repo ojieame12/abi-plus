@@ -51,10 +51,10 @@ export function useCommunityQuestions(
   // Memoize filtered results for mock mode
   const allFilteredQuestions = useMemo(() => {
     if (!useMock) return [];
-    return filterQuestions({ sortBy, filter, tag, search });
+    return filterQuestions({ sortBy, filter, tag, search }) ?? [];
   }, [sortBy, filter, tag, search, useMock]);
 
-  const hasMore = questions.length < totalCount;
+  const hasMore = (questions?.length ?? 0) < totalCount;
 
   // Fetch questions from API or mock
   const fetchQuestions = useCallback(async (reset = false) => {
@@ -91,13 +91,14 @@ export function useCommunityQuestions(
           hasMore: boolean;
         }>(`/api/community/questions?${params}`);
 
+        const fetchedQuestions = data.questions ?? [];
         if (reset) {
-          setQuestions(data.questions);
+          setQuestions(fetchedQuestions);
           setPage(1);
         } else {
-          setQuestions(prev => [...prev, ...data.questions]);
+          setQuestions(prev => [...(prev ?? []), ...fetchedQuestions]);
         }
-        setTotalCount(data.totalCount);
+        setTotalCount(data.totalCount ?? 0);
         setUseFallback(false);
         setNotice(null);
       }
@@ -124,7 +125,7 @@ export function useCommunityQuestions(
         setTags(getPopularTags(8));
       } else {
         const data = await apiFetch<Tag[]>('/api/community/tags');
-        setTags(data.slice(0, 8)); // Limit to 8 popular tags
+        setTags(Array.isArray(data) ? data.slice(0, 8) : []); // Limit to 8 popular tags
       }
     } catch (err) {
       console.error('Error fetching tags:', err);

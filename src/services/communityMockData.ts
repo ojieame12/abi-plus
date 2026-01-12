@@ -79,6 +79,7 @@ export const MOCK_USERS: UserProfile[] = [
     title: 'Senior Procurement Manager',
     company: 'GlobalTech Inc',
     reputation: 1247,
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 'user_2',
@@ -87,6 +88,7 @@ export const MOCK_USERS: UserProfile[] = [
     title: 'Risk Analyst',
     company: 'SupplyChain Pro',
     reputation: 892,
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 'user_3',
@@ -95,6 +97,7 @@ export const MOCK_USERS: UserProfile[] = [
     title: 'VP of Procurement',
     company: 'Acme Manufacturing',
     reputation: 2103,
+    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 'user_4',
@@ -103,6 +106,7 @@ export const MOCK_USERS: UserProfile[] = [
     title: 'Sourcing Specialist',
     company: 'TechStart Solutions',
     reputation: 456,
+    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 'user_5',
@@ -111,6 +115,7 @@ export const MOCK_USERS: UserProfile[] = [
     title: 'Compliance Officer',
     company: 'FinServe Global',
     reputation: 1534,
+    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 'user_6',
@@ -119,6 +124,7 @@ export const MOCK_USERS: UserProfile[] = [
     title: 'Category Manager',
     company: 'RetailMax',
     reputation: 678,
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
   },
 ];
 

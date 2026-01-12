@@ -14,6 +14,7 @@ interface MainLayoutProps {
     notificationCount?: number;
     backgroundOpacity?: number; // 0-100, controls gradient/decoration opacity
     isHeaderLoading?: boolean;
+    hideHeader?: boolean; // When true, hides the main header (e.g., for community view)
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
@@ -30,6 +31,7 @@ export const MainLayout = ({
     notificationCount = 2,
     backgroundOpacity = 100,
     isHeaderLoading = false,
+    hideHeader = false,
     onNewChat,
     onNavigateToHistory,
     onNavigateToCommunity,
@@ -128,15 +130,17 @@ export const MainLayout = ({
                             />
 
                             <div className="flex-1 h-full relative z-10 overflow-hidden flex flex-col">
-                                {/* Header */}
-                                <MainHeader
-                                    variant={headerVariant}
-                                    isSidebarExpanded={isSidebarExpanded}
-                                    conversationTitle={conversationTitle}
-                                    artifactCount={artifactCount}
-                                    notificationCount={notificationCount}
-                                    isLoading={isHeaderLoading}
-                                />
+                                {/* Header - hidden for some views like community */}
+                                {!hideHeader && (
+                                    <MainHeader
+                                        variant={headerVariant}
+                                        isSidebarExpanded={isSidebarExpanded}
+                                        conversationTitle={conversationTitle}
+                                        artifactCount={artifactCount}
+                                        notificationCount={notificationCount}
+                                        isLoading={isHeaderLoading}
+                                    />
+                                )}
 
                                 {/* Content */}
                                 <div className="flex-1 overflow-auto">

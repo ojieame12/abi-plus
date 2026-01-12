@@ -62,12 +62,10 @@ input, textarea, button, select {
 h1 {
   font-weight: 400 !important;
   letter-spacing: 0 !important;
-  color: #291B4B !important;
 }
 
 h2 {
   letter-spacing: normal !important;
-  color: #291B4B !important;
 }
 
 body {
