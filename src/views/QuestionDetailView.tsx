@@ -27,6 +27,8 @@ import {
   CommentThread,
   AuthorSidebar,
   RelatedQuestions,
+  AvatarWithBadge,
+  InlineReputationBadge,
 } from '../components/community';
 import type { Comment } from '../components/community/CommentThread';
 import { useQuestionDetail } from '../hooks/useQuestionDetail';
@@ -348,28 +350,13 @@ export function QuestionDetailView({
                   <div className="bg-white rounded-xl px-5 py-4">
                     {/* Main layout: Avatar | Content | Votes */}
                     <div className="flex gap-4">
-                      {/* Avatar */}
-                      <div className="relative flex-shrink-0 w-16 h-16">
-                        {question.author?.avatarUrl ? (
-                          <img
-                            src={question.author.avatarUrl}
-                            alt={question.author.displayName || 'Author'}
-                            className="w-16 h-16 rounded-full object-cover ring-4 ring-[#FAFAFA]"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-lg font-light ring-4 ring-[#FAFAFA] bg-violet-500">
-                            {(question.author?.displayName || 'A').charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        {/* Badge overlay */}
-                        {(question.author?.reputation ?? 0) > 100 && (
-                          <img
-                            src={`/badges/badge-${((question.author?.reputation ?? 0) % 5) + 1}.png`}
-                            alt="Badge"
-                            className="absolute -bottom-1 -right-1 w-8 h-8 object-contain"
-                          />
-                        )}
-                      </div>
+                      {/* Avatar with tier badge */}
+                      <AvatarWithBadge
+                        avatarUrl={question.author?.avatarUrl}
+                        displayName={question.author?.displayName || 'Anonymous'}
+                        reputation={question.author?.reputation ?? 0}
+                        size="md"
+                      />
 
                       {/* Content section */}
                       <div className="flex-1 min-w-0">
@@ -398,11 +385,6 @@ export function QuestionDetailView({
                           <span className="text-sm font-medium text-slate-900">
                             {question.author?.displayName || 'Anonymous'}
                           </span>
-                          {question.author?.reputation !== undefined && (
-                            <span className="text-sm text-slate-400">
-                              ({question.author.reputation.toLocaleString()})
-                            </span>
-                          )}
                           <span className="text-xs text-slate-400">
                             {formatTimeAgo(question.createdAt)}
                           </span>

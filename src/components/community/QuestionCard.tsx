@@ -6,6 +6,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { TagPill } from './TagPill';
+import { AvatarWithBadge } from './ReputationBadge';
 import type { Question } from '../../types/community';
 
 interface QuestionCardProps {
@@ -15,31 +16,6 @@ interface QuestionCardProps {
   onSave?: () => void;
   onShare?: () => void;
   delay?: number;
-}
-
-// Generate avatar color based on name
-function getAvatarColor(name: string): string {
-  const colors = [
-    'bg-violet-500',
-    'bg-blue-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-cyan-500',
-    'bg-indigo-500',
-    'bg-pink-500',
-  ];
-  const index = name.charCodeAt(0) % colors.length;
-  return colors[index];
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function formatTimeAgo(dateInput: string | Date): string {
@@ -96,33 +72,13 @@ export function QuestionCard({
         <div className="bg-white rounded-xl px-5 py-4">
           {/* Main layout: Avatar | Content | Votes */}
           <div className="flex gap-4">
-          {/* Avatar */}
-          <div className="relative flex-shrink-0 w-16 h-16">
-            {author.avatarUrl ? (
-              <img
-                src={author.avatarUrl}
-                alt={author.displayName}
-                className="w-16 h-16 rounded-full object-cover ring-4 ring-[#FAFAFA]"
-              />
-            ) : (
-              <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center
-                           text-white text-lg font-light ring-4 ring-[#FAFAFA] ${getAvatarColor(
-                             author.displayName
-                           )}`}
-              >
-                {getInitials(author.displayName)}
-              </div>
-            )}
-            {/* Badge overlay */}
-            {(author.reputation ?? 0) > 100 && (
-              <img
-                src={`/badges/badge-${((author.reputation ?? 0) % 5) + 1}.png`}
-                alt="Badge"
-                className="absolute -bottom-1 -right-1 w-8 h-8 object-contain"
-              />
-            )}
-          </div>
+          {/* Avatar with tier badge */}
+          <AvatarWithBadge
+            avatarUrl={author.avatarUrl}
+            displayName={author.displayName}
+            reputation={author.reputation ?? 0}
+            size="md"
+          />
 
           {/* Content section - stacked vertically */}
           <div className="flex-1 min-w-0">

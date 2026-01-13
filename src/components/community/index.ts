@@ -14,6 +14,7 @@ export { AnswerForm } from './AnswerForm';
 export { BadgeDisplay } from './BadgeDisplay';
 export { UserBadges } from './UserBadges';
 export { ReputationDisplay } from './ReputationDisplay';
+export { ReputationBadge, AvatarWithBadge, InlineReputationBadge, getTierFromReputation, getTierConfig } from './ReputationBadge';
 
 // Layout components
 export { CommunityHero } from './CommunityHero';

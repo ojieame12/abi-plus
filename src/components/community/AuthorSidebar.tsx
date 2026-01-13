@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { MessageSquare, HelpCircle, ThumbsUp, ExternalLink } from 'lucide-react';
 import type { UserProfile } from '../../types/community';
+import { AvatarWithBadge, ReputationBadge } from './ReputationBadge';
 
 interface AuthorStats {
   questionCount: number;
@@ -15,22 +16,6 @@ interface AuthorSidebarProps {
   onViewProfile?: () => void;
 }
 
-// Generate avatar color based on name
-function getAvatarColor(name: string): string {
-  const colors = [
-    'bg-violet-500',
-    'bg-blue-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-cyan-500',
-    'bg-indigo-500',
-    'bg-pink-500',
-  ];
-  const index = name.charCodeAt(0) % colors.length;
-  return colors[index];
-}
-
 export function AuthorSidebar({
   author,
   stats,
@@ -38,12 +23,7 @@ export function AuthorSidebar({
   onViewProfile,
 }: AuthorSidebarProps) {
   const displayName = author?.displayName || 'Anonymous';
-  const initials = displayName
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const reputation = author?.reputation ?? 0;
 
   return (
     <motion.div
@@ -61,32 +41,14 @@ export function AuthorSidebar({
             {label}
           </p>
 
-          {/* Avatar - centered with badge */}
+          {/* Avatar - centered with tier badge */}
           <div className="flex justify-center mb-4">
-            <div className="relative">
-              {author?.avatarUrl ? (
-                <img
-                  src={author.avatarUrl}
-                  alt={displayName}
-                  className="w-20 h-20 rounded-full object-cover ring-4 ring-[#FAFAFA]"
-                />
-              ) : (
-                <div
-                  className={`w-20 h-20 rounded-full flex items-center justify-center
-                             text-white text-xl font-light ring-4 ring-[#FAFAFA] ${getAvatarColor(displayName)}`}
-                >
-                  {initials}
-                </div>
-              )}
-              {/* Badge overlay */}
-              {(author?.reputation ?? 0) > 100 && (
-                <img
-                  src={`/badges/badge-${((author?.reputation ?? 0) % 5) + 1}.png`}
-                  alt="Badge"
-                  className="absolute -bottom-1 -right-1 w-8 h-8 object-contain"
-                />
-              )}
-            </div>
+            <AvatarWithBadge
+              avatarUrl={author?.avatarUrl}
+              displayName={displayName}
+              reputation={reputation}
+              size="lg"
+            />
           </div>
 
           {/* Name & Info - centered */}
@@ -102,15 +64,15 @@ export function AuthorSidebar({
             )}
           </div>
 
-          {/* Reputation - centered pill */}
-          {author?.reputation !== undefined && (
+          {/* Reputation Badge - centered */}
+          {reputation > 0 && (
             <div className="flex justify-center mb-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 rounded-full">
-                <span className="text-sm font-semibold text-violet-700">
-                  {author.reputation.toLocaleString()}
-                </span>
-                <span className="text-xs text-violet-500">rep</span>
-              </div>
+              <ReputationBadge
+                reputation={reputation}
+                size="md"
+                showTierName={true}
+                showProgress={false}
+              />
             </div>
           )}
 
