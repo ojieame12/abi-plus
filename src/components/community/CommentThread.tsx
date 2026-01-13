@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, ChevronDown, ChevronUp, ThumbsUp, Send } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { UserProfile } from '../../types/community';
+import { AvatarWithBadge } from './ReputationBadge';
 
 export interface Comment {
   id: string;
@@ -93,20 +94,13 @@ export function CommentThread({
             className="mb-3 last:mb-0"
           >
             <div className="flex gap-2.5">
-              {/* Avatar */}
-              <div className="w-6 h-6 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
-                {comment.author?.avatarUrl ? (
-                  <img
-                    src={comment.author.avatarUrl}
-                    alt={comment.author.displayName || 'User'}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-500 font-medium">
-                    {(comment.author?.displayName || 'A').charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
+              {/* Avatar with Badge */}
+              <AvatarWithBadge
+                avatarUrl={comment.author?.avatarUrl}
+                displayName={comment.author?.displayName || 'Anonymous'}
+                reputation={comment.author?.reputation ?? 0}
+                size="xs"
+              />
 
               {/* Comment Content */}
               <div className="flex-1 min-w-0">

@@ -17,9 +17,9 @@ interface TierConfig {
 }
 
 // Tier colors matched to actual badge image colors:
-// badge-1 = Gold (2 stars), badge-2 = Gold (1 star)
-// badge-3 = Purple (2 stars), badge-4 = Purple (1 star tall)
-// badge-5 = Bronze/Copper
+// badge-bronze.svg = Copper/Brown colors
+// badge-gold.svg = Yellow/Gold starburst
+// badge-diamond.svg = Dark purple/black circle
 const TIER_CONFIG: Record<ReputationTier, TierConfig> = {
   newcomer: {
     name: 'Newcomer',
@@ -38,12 +38,12 @@ const TIER_CONFIG: Record<ReputationTier, TierConfig> = {
     minRep: 100,
     maxRep: 499,
     colors: {
-      // badge-1 is Gold colored
-      bg: 'bg-amber-50',
-      text: 'text-amber-700',
-      accent: 'text-amber-500',
-      icon: 'text-amber-500',
-      ring: 'ring-amber-200',
+      // badge-bronze is copper/brown colored
+      bg: 'bg-orange-50',
+      text: 'text-orange-800',
+      accent: 'text-orange-600',
+      icon: 'text-orange-600',
+      ring: 'ring-orange-200',
     },
   },
   silver: {
@@ -51,12 +51,12 @@ const TIER_CONFIG: Record<ReputationTier, TierConfig> = {
     minRep: 500,
     maxRep: 999,
     colors: {
-      // badge-2 is Gold colored
-      bg: 'bg-amber-50',
-      text: 'text-amber-700',
-      accent: 'text-amber-500',
-      icon: 'text-amber-500',
-      ring: 'ring-amber-300',
+      // badge-bronze is copper/brown colored (shared)
+      bg: 'bg-orange-50',
+      text: 'text-orange-800',
+      accent: 'text-orange-600',
+      icon: 'text-orange-600',
+      ring: 'ring-orange-300',
     },
   },
   gold: {
@@ -64,12 +64,12 @@ const TIER_CONFIG: Record<ReputationTier, TierConfig> = {
     minRep: 1000,
     maxRep: 2499,
     colors: {
-      // badge-3 is Purple colored
-      bg: 'bg-violet-50',
-      text: 'text-violet-700',
-      accent: 'text-violet-500',
-      icon: 'text-violet-500',
-      ring: 'ring-violet-300',
+      // badge-gold is yellow/gold starburst
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      accent: 'text-amber-500',
+      icon: 'text-amber-500',
+      ring: 'ring-amber-300',
     },
   },
   platinum: {
@@ -77,7 +77,7 @@ const TIER_CONFIG: Record<ReputationTier, TierConfig> = {
     minRep: 2500,
     maxRep: 4999,
     colors: {
-      // badge-4 is Purple colored
+      // badge-diamond is dark purple (shared)
       bg: 'bg-violet-50',
       text: 'text-violet-700',
       accent: 'text-violet-500',
@@ -90,12 +90,12 @@ const TIER_CONFIG: Record<ReputationTier, TierConfig> = {
     minRep: 5000,
     maxRep: Infinity,
     colors: {
-      // badge-5 is Bronze/Copper colored
-      bg: 'bg-orange-50',
-      text: 'text-orange-700',
-      accent: 'text-orange-500',
-      icon: 'text-orange-500',
-      ring: 'ring-orange-300',
+      // badge-diamond is dark purple/black
+      bg: 'bg-violet-100',
+      text: 'text-violet-900',
+      accent: 'text-violet-700',
+      icon: 'text-violet-700',
+      ring: 'ring-violet-400',
     },
   },
 };
@@ -231,14 +231,15 @@ interface AvatarWithBadgeProps {
   avatarUrl?: string;
   displayName: string;
   reputation: number;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
 const AVATAR_SIZES = {
-  sm: { avatar: 'w-10 h-10', badge: 'w-5 h-5', ring: 'ring-2', fontSize: '0.875rem' },
-  md: { avatar: 'w-16 h-16', badge: 'w-8 h-8', ring: 'ring-4', fontSize: '1.125rem' },
-  lg: { avatar: 'w-20 h-20', badge: 'w-8 h-8', ring: 'ring-4', fontSize: '1.25rem' },
+  xs: { avatar: 'w-6 h-6', badge: 'w-3 h-3', ring: 'ring-1', fontSize: '0.625rem' },
+  sm: { avatar: 'w-10 h-10', badge: 'w-4 h-4', ring: 'ring-2', fontSize: '0.875rem' },
+  md: { avatar: 'w-12 h-12', badge: 'w-5 h-5', ring: 'ring-2', fontSize: '1rem' },
+  lg: { avatar: 'w-16 h-16', badge: 'w-6 h-6', ring: 'ring-2', fontSize: '1.125rem' },
 };
 
 // Generate avatar color based on name
@@ -257,15 +258,19 @@ function getAvatarColor(name: string): string {
   return colors[index];
 }
 
-// Map tier to badge image number (1-5)
-function getBadgeNumber(tier: ReputationTier): number {
+// Map tier to badge image file
+function getBadgeFile(tier: ReputationTier): string {
   switch (tier) {
-    case 'diamond': return 5;
-    case 'platinum': return 4;
-    case 'gold': return 3;
-    case 'silver': return 2;
-    case 'bronze': return 1;
-    default: return 1;
+    case 'diamond':
+    case 'platinum':
+      return 'badge-diamond.svg';
+    case 'gold':
+      return 'badge-gold.svg';
+    case 'silver':
+    case 'bronze':
+      return 'badge-bronze.svg';
+    default:
+      return 'badge-bronze.svg';
   }
 }
 
@@ -288,7 +293,7 @@ export function AvatarWithBadge({
 
   // Only show badge for users above newcomer (100+ rep)
   const showBadge = tier !== 'newcomer';
-  const badgeNumber = getBadgeNumber(tier);
+  const badgeFile = getBadgeFile(tier);
 
   return (
     <div className={`relative flex-shrink-0 ${sizeConfig.avatar} ${className}`}>
@@ -308,10 +313,10 @@ export function AvatarWithBadge({
         </div>
       )}
 
-      {/* PNG Badge overlay - using existing badge assets */}
+      {/* SVG Badge overlay */}
       {showBadge && (
         <img
-          src={`/badges/badge-${badgeNumber}.png`}
+          src={`/badges/${badgeFile}`}
           alt={`${tier} badge`}
           className={`absolute -bottom-1 -right-1 ${sizeConfig.badge} object-contain`}
         />

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
+import { AvatarWithBadge } from './ReputationBadge';
 
 interface TopMember {
   id: string;
@@ -12,31 +13,6 @@ interface TopMember {
 interface TopMembersSidebarProps {
   members: TopMember[];
   onMemberClick?: (memberId: string) => void;
-}
-
-// Generate avatar colors based on name
-function getAvatarColor(name: string): string {
-  const colors = [
-    'bg-violet-500',
-    'bg-blue-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-cyan-500',
-    'bg-indigo-500',
-    'bg-pink-500',
-  ];
-  const index = name.charCodeAt(0) % colors.length;
-  return colors[index];
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export function TopMembersSidebar({
@@ -71,30 +47,12 @@ export function TopMembersSidebar({
                        hover:bg-slate-50 transition-colors text-left group"
           >
             {/* Avatar with badge */}
-            <div className="relative flex-shrink-0 w-10 h-10">
-              {member.avatarUrl ? (
-                <img
-                  src={member.avatarUrl}
-                  alt={member.displayName}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center
-                             text-white text-sm font-light ${getAvatarColor(member.displayName)}`}
-                >
-                  {getInitials(member.displayName)}
-                </div>
-              )}
-              {/* Badge */}
-              {(member.reputation ?? 0) > 100 && (
-                <img
-                  src={`/badges/badge-${((member.reputation ?? 0) % 5) + 1}.png`}
-                  alt="Badge"
-                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 object-contain"
-                />
-              )}
-            </div>
+            <AvatarWithBadge
+              avatarUrl={member.avatarUrl}
+              displayName={member.displayName}
+              reputation={member.reputation ?? 0}
+              size="sm"
+            />
 
             {/* Info */}
             <div className="flex-1 min-w-0">

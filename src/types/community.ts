@@ -120,6 +120,33 @@ export interface UserCommunityStats {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// MEDIA & WIDGET EMBEDS
+// ══════════════════════════════════════════════════════════════════
+
+export interface QuestionImage {
+  id: string;
+  url: string;
+  alt: string;
+  caption?: string;
+}
+
+export interface QuestionAttachment {
+  id: string;
+  name: string;
+  url: string;
+  size: number;
+  type: 'pdf' | 'spreadsheet' | 'document' | 'other';
+}
+
+export interface EmbeddedWidget {
+  id: string;
+  type: string;  // WidgetType from widgets.ts
+  data: unknown;  // Widget-specific data
+  size?: 'S' | 'M' | 'L';
+  caption?: string;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // QUESTION TYPES
 // ══════════════════════════════════════════════════════════════════
 
@@ -130,6 +157,11 @@ export interface Question {
   title: string;
   body: string;
   aiContextSummary?: string;
+  // Rich media
+  images?: QuestionImage[];
+  attachments?: QuestionAttachment[];
+  embeddedWidgets?: EmbeddedWidget[];
+  // Metrics
   score: number;
   viewCount: number;
   answerCount: number;

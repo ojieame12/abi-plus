@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AvatarWithBadge } from './ReputationBadge';
 
 interface User {
   id: string;
@@ -138,34 +139,18 @@ export function CommunityHero({
               {user && (
                 <button
                   onClick={() => setShowProfilePanel(true)}
-                  className="relative w-9 h-9"
+                  className="relative"
                 >
-                  <div className="w-9 h-9 rounded-full ring-2 ring-white overflow-hidden">
-                    {user.avatarUrl ? (
-                      <img
-                        src={user.avatarUrl}
-                        alt={user.displayName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className={`w-full h-full flex items-center justify-center text-white text-xs font-light
-                                      ${getAvatarColor(user.displayName)}`}>
-                        {getInitials(user.displayName)}
-                      </div>
-                    )}
-                  </div>
-                  {/* Badge */}
-                  {(user.reputation ?? 0) > 100 && (
-                    <img
-                      src={`/badges/badge-${((user.reputation ?? 0) % 5) + 1}.png`}
-                      alt="Badge"
-                      className="absolute -bottom-1 -right-1 w-4 h-4 object-contain"
-                    />
-                  )}
+                  <AvatarWithBadge
+                    avatarUrl={user.avatarUrl}
+                    displayName={user.displayName}
+                    reputation={user.reputation ?? 0}
+                    size="sm"
+                  />
                   {/* Notification indicator */}
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -left-1 w-4 h-4 bg-rose-500 rounded-full
-                                     flex items-center justify-center text-[9px] font-medium text-white">
+                                     flex items-center justify-center text-[9px] font-medium text-white z-10">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -257,30 +242,12 @@ export function CommunityHero({
               {/* Header with user info */}
               <div className="bg-[#FAFBFD] px-5 py-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-full ring-4 ring-white overflow-hidden">
-                      {user.avatarUrl ? (
-                        <img
-                          src={user.avatarUrl}
-                          alt={user.displayName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center text-white text-xl font-light
-                                        ${getAvatarColor(user.displayName)}`}>
-                          {getInitials(user.displayName)}
-                        </div>
-                      )}
-                    </div>
-                    {/* Badge */}
-                    {(user.reputation ?? 0) > 100 && (
-                      <img
-                        src={`/badges/badge-${((user.reputation ?? 0) % 5) + 1}.png`}
-                        alt="Badge"
-                        className="absolute -bottom-1 -right-1 w-6 h-6 object-contain"
-                      />
-                    )}
-                  </div>
+                  <AvatarWithBadge
+                    avatarUrl={user.avatarUrl}
+                    displayName={user.displayName}
+                    reputation={user.reputation ?? 0}
+                    size="lg"
+                  />
                   <button
                     onClick={() => setShowProfilePanel(false)}
                     className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"

@@ -7,7 +7,7 @@ interface AuthorBadgeProps {
   timestamp: string;
   showReputation?: boolean;
   showAvatar?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export function AuthorBadge({
@@ -24,6 +24,10 @@ export function AuthorBadge({
 
   // Size variants for text
   const sizeClasses = {
+    xs: {
+      name: 'text-[10px]',
+      meta: 'text-[10px]',
+    },
     sm: {
       name: 'text-xs',
       meta: 'text-xs',
@@ -40,8 +44,14 @@ export function AuthorBadge({
 
   const classes = sizeClasses[size];
 
-  // Map to AvatarWithBadge sizes
-  const avatarSize = size === 'lg' ? 'md' : 'sm';
+  // Map to AvatarWithBadge sizes (xs maps to xs, sm/md map to sm, lg maps to md)
+  const avatarSizeMap: Record<typeof size, 'xs' | 'sm' | 'md' | 'lg'> = {
+    xs: 'xs',
+    sm: 'sm',
+    md: 'sm',
+    lg: 'md',
+  };
+  const avatarSize = avatarSizeMap[size];
 
   return (
     <div className="flex items-center gap-2.5">
