@@ -37,6 +37,58 @@ const mockCategories = [
   { id: '6', name: 'Contracts', slug: 'contracts', count: 11 },
 ];
 
+// Mock current user - in production, get from auth context
+const mockCurrentUser = {
+  id: 'current-user',
+  displayName: 'Sarah Chen',
+  username: 'sarahchen',
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face',
+  reputation: 1850,
+  questionsCount: 12,
+  answersCount: 34,
+  upvotesReceived: 156,
+};
+
+// Mock notifications - in production, fetch from API
+const mockNotifications = [
+  {
+    id: '1',
+    type: 'answer' as const,
+    message: 'answered your question about supplier risk assessment',
+    actorName: 'Robert Fox',
+    actorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face',
+    timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 mins ago
+    read: false,
+  },
+  {
+    id: '2',
+    type: 'upvote' as const,
+    message: 'upvoted your answer on procurement best practices',
+    actorName: 'Kristin Watson',
+    actorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    read: false,
+  },
+  {
+    id: '3',
+    type: 'mention' as const,
+    message: 'mentioned you in a discussion about compliance',
+    actorName: 'Annette Black',
+    actorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
+    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
+    read: true,
+  },
+  {
+    id: '4',
+    type: 'new_question' as const,
+    message: 'posted a new question in Cost Savings',
+    actorName: 'Dianne Russell',
+    actorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face',
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+    read: true,
+  },
+];
+
 export function CommunityView({ onSelectQuestion, onAskQuestion, canAsk = false }: CommunityViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<QuestionSortBy>('newest');
@@ -94,6 +146,10 @@ export function CommunityView({ onSelectQuestion, onAskQuestion, canAsk = false 
             onSearchChange={setSearchQuery}
             onAskQuestion={onAskQuestion}
             canAsk={canAsk}
+            user={mockCurrentUser}
+            notifications={mockNotifications}
+            onNotificationClick={(id) => console.log('Notification clicked:', id)}
+            onMarkAllRead={() => console.log('Mark all read')}
           />
 
           {/* Two Column Layout - overlaps hero */}
@@ -105,7 +161,8 @@ export function CommunityView({ onSelectQuestion, onAskQuestion, canAsk = false 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden"
+                  className="bg-white rounded-2xl overflow-hidden"
+                  style={{ boxShadow: '0 4px 40px rgba(0, 0, 0, 0.06)' }}
                 >
                   {/* Filters & Tabs */}
                   <div className="px-5">
