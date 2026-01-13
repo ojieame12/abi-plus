@@ -713,7 +713,7 @@ function App() {
           backgroundOpacity={backgroundOpacity}
           isHeaderLoading={isTransitioning || isThinking}
           artifactCount={currentArtifact ? 1 : 0}
-          hideHeader={viewState === 'community'}
+          hideHeader={viewState === 'community' || viewState === 'ask-question'}
           onNewChat={handleNewChat}
           onNavigateToHistory={handleNavigateToHistory}
           onNavigateToCommunity={handleNavigateToCommunity}

@@ -11,7 +11,7 @@ interface TagSelectorProps {
 }
 
 export function TagSelector({
-  availableTags,
+  availableTags = [],
   selectedTagIds,
   onChange,
   maxTags = 5,
@@ -20,18 +20,21 @@ export function TagSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
+  // Ensure availableTags is always an array
+  const safeAvailableTags = Array.isArray(availableTags) ? availableTags : [];
+
   const selectedTags = useMemo(
-    () => availableTags.filter(tag => selectedTagIds.includes(tag.id)),
-    [availableTags, selectedTagIds]
+    () => safeAvailableTags.filter(tag => selectedTagIds.includes(tag.id)),
+    [safeAvailableTags, selectedTagIds]
   );
 
   const filteredTags = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    return availableTags
+    return safeAvailableTags
       .filter(tag => !selectedTagIds.includes(tag.id))
       .filter(tag => !query || tag.name.toLowerCase().includes(query))
       .slice(0, 10);
-  }, [availableTags, selectedTagIds, searchQuery]);
+  }, [safeAvailableTags, selectedTagIds, searchQuery]);
 
   const handleAddTag = (tagId: string) => {
     if (selectedTagIds.length < maxTags) {
