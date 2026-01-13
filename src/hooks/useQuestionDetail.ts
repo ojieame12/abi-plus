@@ -24,7 +24,7 @@ export function useQuestionDetail(
   const [question, setQuestion] = useState<QuestionWithAnswers | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(useMockData ? 'Showing sample question.' : null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const fetchQuestion = useCallback(async () => {
     if (!questionId) {
@@ -47,7 +47,6 @@ export function useQuestionDetail(
         } else {
           setQuestion(data);
         }
-        setNotice('Showing sample question.');
       } else {
         // Use API
         const data = await apiFetch<QuestionWithAnswers>(
@@ -62,11 +61,9 @@ export function useQuestionDetail(
         const fallback = getMockQuestionById(questionId);
         if (fallback) {
           setQuestion(fallback);
-          setNotice('API unavailable. Showing sample question.');
           return;
         }
       }
-      setNotice(null);
       setError('Failed to load question');
     } finally {
       setIsLoading(false);

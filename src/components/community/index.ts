@@ -19,3 +19,10 @@ export { ReputationDisplay } from './ReputationDisplay';
 export { CommunityHero } from './CommunityHero';
 export { TopCategoriesSidebar } from './TopCategoriesSidebar';
 export { TopMembersSidebar } from './TopMembersSidebar';
+
+// Question detail components
+export { ImageGallery } from './ImageGallery';
+export { CommentThread } from './CommentThread';
+export { AuthorSidebar } from './AuthorSidebar';
+export { RelatedQuestions } from './RelatedQuestions';
+export { FileAttachments } from './FileAttachments';

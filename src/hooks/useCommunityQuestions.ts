@@ -42,7 +42,7 @@ export function useCommunityQuestions(
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(useMockData ? 'Showing sample questions.' : null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -70,7 +70,6 @@ export function useCommunityQuestions(
         setQuestions(paginatedQuestions);
         setTotalCount(allFilteredQuestions.length);
         if (reset) setPage(1);
-        setNotice(useMockData ? 'Showing sample questions.' : 'API unavailable. Showing sample questions.');
       } else {
         // Use API
         const currentPage = reset ? 1 : page;
@@ -111,7 +110,6 @@ export function useCommunityQuestions(
       setTotalCount(fallbackQuestions.length);
       if (reset) setPage(1);
       setUseFallback(true);
-      setNotice('API unavailable. Showing sample questions.');
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +129,6 @@ export function useCommunityQuestions(
       console.error('Error fetching tags:', err);
       setTags(getPopularTags(8));
       setUseFallback(true);
-      setNotice('API unavailable. Showing sample questions.');
     }
   }, [useMock]);
 

@@ -832,6 +832,7 @@ function App() {
             <QuestionDetailView
               questionId={selectedQuestionId}
               onBack={handleBackToCommunity}
+              onSelectQuestion={handleSelectQuestion}
               isAuthenticated={isAuthenticated}
               userId={userId}
               canUpvote={permissions.canUpvote}
