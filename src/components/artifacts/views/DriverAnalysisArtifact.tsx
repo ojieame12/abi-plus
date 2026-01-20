@@ -17,6 +17,8 @@ import {
 import { ArtifactSection, ArtifactFooter } from '../primitives';
 import type { PriceChange, InflationDriver, DriverCategory } from '../../../types/inflation';
 
+// Re-export DriverContribution for external use
+
 // ============================================
 // TYPES
 // ============================================
@@ -260,14 +262,12 @@ export const DriverAnalysisArtifact = ({
   period = 'January 2026',
   priceChange = { percent: 0, absolute: 0, direction: 'stable' },
   drivers = [],
-  driverContributions = [],
   marketNews = [],
   historicalDrivers = [],
   marketContext,
   sources = [],
   onExport,
   onViewCommodity,
-  onClose,
 }: DriverAnalysisArtifactProps) => {
   const [activeTab, setActiveTab] = useState<'drivers' | 'news' | 'history'>('drivers');
 

@@ -1,6 +1,6 @@
 // Streak Service - Track user activity streaks
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { profiles } from '../db/schema.js';
 
 interface StreakInfo {
@@ -102,7 +102,6 @@ export async function getStreakInfo(
   // Check if streak is still valid (active today or yesterday)
   if (lastActiveAt) {
     const now = new Date();
-    const todayStart = getDateStart(now);
     const yesterdayStart = getDateStart(new Date(now.getTime() - 24 * 60 * 60 * 1000));
     const lastActiveStart = getDateStart(lastActiveAt);
 

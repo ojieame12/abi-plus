@@ -1,11 +1,8 @@
 // Commodity Dashboard Artifact
 // Single commodity deep dive with price history, drivers, exposure, and forecast
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  TrendingUp,
-  TrendingDown,
   Download,
   Calendar,
   DollarSign,
@@ -100,8 +97,6 @@ const TIMEFRAME_LABELS = {
 // ============================================
 
 const PriceHeader = ({ commodity }: { commodity: CommodityPrice }) => {
-  const monthlyChange = commodity.changes?.monthly;
-  const isUp = monthlyChange?.direction === 'up';
   const CategoryIcon = CATEGORY_ICONS[commodity.category] || Package;
 
   return (
@@ -478,7 +473,6 @@ export const CommodityDashboardArtifact = ({
   onExport,
   onSetAlert,
   onViewSupplier,
-  onClose,
 }: CommodityDashboardArtifactProps) => {
   if (!commodity) {
     return (

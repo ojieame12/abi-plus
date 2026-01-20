@@ -7,7 +7,6 @@ import type {
   Tag,
   UserProfile,
   Badge,
-  BadgeTier,
   VoteValue,
   CreateQuestionInput,
   CreateAnswerInput,
@@ -60,7 +59,7 @@ export function createTestUserProfile(overrides: Partial<UserProfile> = {}): Use
   return {
     id: `test-user-${userCounter}`,
     displayName: overrides.displayName ?? `Test User ${userCounter}`,
-    avatarUrl: overrides.avatarUrl ?? null,
+    avatarUrl: overrides.avatarUrl ?? undefined,
     title: overrides.title ?? 'Procurement Manager',
     company: overrides.company ?? 'Test Corp',
     reputation: overrides.reputation ?? 100,

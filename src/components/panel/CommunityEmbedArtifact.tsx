@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Exports helper function alongside component */
 // CommunityEmbedArtifact - Layer 4: Community Q&A and Discussions
 // Shows related community threads and allows starting new discussions
 

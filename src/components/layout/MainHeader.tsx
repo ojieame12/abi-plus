@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, MessageSquare, Globe, LayoutGrid } from 'lucide-react';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
+import { CreditTicker } from '../subscription/CreditTicker';
+import type { CompanySubscription } from '../../types/subscription';
 
 interface MainHeaderProps {
     variant?: 'home' | 'conversation' | 'transitioning';
@@ -9,6 +11,9 @@ interface MainHeaderProps {
     artifactCount?: number;
     notificationCount?: number;
     isLoading?: boolean;
+    // Subscription/credits (Phase 2)
+    subscription?: CompanySubscription;
+    onCreditsClick?: () => void;
 }
 
 export const MainHeader = ({
@@ -18,12 +23,11 @@ export const MainHeader = ({
     artifactCount = 0,
     notificationCount = 0,
     isLoading = false,
+    subscription,
+    onCreditsClick,
 }: MainHeaderProps) => {
     const isHome = variant === 'home';
-    const isTransitioning = variant === 'transitioning';
-    const isConversation = variant === 'conversation';
     const showLogo = isHome && !isSidebarExpanded;
-    const showConversationHeader = isConversation || isTransitioning;
 
     return (
         <header
@@ -93,7 +97,7 @@ export const MainHeader = ({
             <div className="flex items-center gap-2">
                 <AnimatePresence mode="wait">
                     {isHome ? (
-                        /* Home: Bell, Sources, Worldview */
+                        /* Home: Credits, Bell, Sources, Worldview */
                         <motion.div
                             key="home-actions"
                             initial={{ opacity: 0 }}
@@ -102,6 +106,13 @@ export const MainHeader = ({
                             transition={{ duration: 0.3 }}
                             className="flex items-center gap-2"
                         >
+                            {subscription && (
+                                <CreditTicker
+                                    subscription={subscription}
+                                    onClick={onCreditsClick}
+                                    variant="default"
+                                />
+                            )}
                             <button className="relative w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:border-slate-300 hover:text-slate-600 transition-colors">
                                 <Bell size={16} strokeWidth={1.5} />
                                 {notificationCount > 0 && (
@@ -114,7 +125,7 @@ export const MainHeader = ({
                             <HeaderPill icon={Globe} label="Worldview" variant="light" />
                         </motion.div>
                     ) : (
-                        /* Conversation: Files, Artifacts, Worldview, Badge */
+                        /* Conversation: Credits (compact), Artifacts, Worldview */
                         <motion.div
                             key="conversation-actions"
                             initial={{ opacity: 0 }}
@@ -130,6 +141,13 @@ export const MainHeader = ({
                                 </>
                             ) : (
                                 <>
+                                    {subscription && (
+                                        <CreditTicker
+                                            subscription={subscription}
+                                            onClick={onCreditsClick}
+                                            variant="compact"
+                                        />
+                                    )}
                                     <HeaderPill icon={LayoutGrid} label={`${artifactCount} Artifacts`} variant="dark" />
                                     <HeaderPill icon={Globe} label="Worldview" variant="dark" />
                                 </>
@@ -143,7 +161,7 @@ export const MainHeader = ({
 };
 
 interface HeaderPillProps {
-    icon: any;
+    icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
     label: string;
     variant: 'light' | 'dark';
     onClick?: () => void;

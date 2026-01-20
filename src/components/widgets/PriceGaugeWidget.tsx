@@ -41,7 +41,7 @@ const isNewFormat = (props: PriceGaugeWidgetProps): props is NewPriceGaugeWidget
 export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
     // Extract common props
     const onViewDetails = 'onViewDetails' in props ? props.onViewDetails : undefined;
-    const beroeSourceCount = 'beroeSourceCount' in props ? props.beroeSourceCount : 0;
+    const beroeSourceCount = 'beroeSourceCount' in props ? (props.beroeSourceCount ?? 0) : 0;
     const hideFooter = 'hideFooter' in props ? props.hideFooter : false;
 
     // Normalize to common format
@@ -231,9 +231,9 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
             </div>
 
             {/* Data Attribution Footer - hidden when WidgetRenderer handles it */}
-            {!hideFooter && (beroeSourceCount > 0 || onViewDetails) && (
-                <div className={`flex items-center px-5 py-3 border-t border-slate-100 bg-slate-50/30 ${beroeSourceCount > 0 ? 'justify-between' : 'justify-end'}`}>
-                    {beroeSourceCount > 0 && (
+            {!hideFooter && ((beroeSourceCount ?? 0) > 0 || onViewDetails) && (
+                <div className={`flex items-center px-5 py-3 border-t border-slate-100 bg-slate-50/30 ${(beroeSourceCount ?? 0) > 0 ? 'justify-between' : 'justify-end'}`}>
+                    {(beroeSourceCount ?? 0) > 0 && (
                         <div className="flex items-center gap-2 text-sm text-slate-500">
                             <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
                                 <span className="text-[8px] font-bold text-white">B</span>

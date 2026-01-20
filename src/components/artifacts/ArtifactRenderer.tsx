@@ -1,8 +1,10 @@
+/* eslint-disable react-refresh/only-export-components -- Exports utility functions alongside component */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Artifact payloads are intentionally loosely typed */
 // Artifact Renderer
 // Renders the appropriate artifact component based on type
 
 import { ReactNode } from 'react';
-import { ArtifactType, ArtifactPayload, getArtifactTitle, getArtifactMeta } from './registry';
+import { ArtifactType, ArtifactPayload, getArtifactMeta } from './registry';
 
 // Import existing artifacts
 import { InsightDetailArtifact } from '../panel/InsightDetailArtifact';
@@ -133,8 +135,9 @@ export const ArtifactRenderer = ({
   onClose,
   onAction,
 }: ArtifactRendererProps): ReactNode => {
-  // Get metadata for the artifact
-  const meta = getArtifactMeta(type);
+  // Get metadata for the artifact (unused but available for future use)
+  const _meta = getArtifactMeta(type);
+  void _meta;
 
   // Render based on type
   switch (type) {
@@ -143,7 +146,7 @@ export const ArtifactRenderer = ({
       return (
         <div className="p-6">
           <InsightDetailArtifact
-            data={(payload as any).data}
+            data={(payload as unknown as { data: unknown }).data}
             isExpanded={isExpanded}
           />
         </div>
@@ -154,22 +157,23 @@ export const ArtifactRenderer = ({
 
     case 'factor_breakdown':
       {
-        const factorAiContent = (payload as any).aiContent;
+        const factorPayload = payload as unknown as Record<string, unknown>;
+        const factorAiContent = factorPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={factorAiContent} />
             <div className="flex-1 min-h-0">
               <FactorBreakdownArtifact
-                supplierName={(payload as any).supplierName}
-                supplierId={(payload as any).supplierId}
-                overallScore={(payload as any).overallScore}
-                previousScore={(payload as any).previousScore}
-                level={(payload as any).level}
-                trend={(payload as any).trend}
-                lastUpdated={(payload as any).lastUpdated}
-                factors={(payload as any).factors || []}
-                scoreHistory={(payload as any).scoreHistory}
-                contributingEvents={(payload as any).contributingEvents}
+                supplierName={factorPayload.supplierName as string}
+                supplierId={factorPayload.supplierId as string | undefined}
+                overallScore={factorPayload.overallScore as number}
+                previousScore={factorPayload.previousScore as number | undefined}
+                level={factorPayload.level as import('../../types/supplier').RiskLevel}
+                trend={factorPayload.trend as 'improving' | 'stable' | 'worsening' | undefined}
+                lastUpdated={factorPayload.lastUpdated as string | undefined}
+                factors={(factorPayload.factors as import('./views/FactorBreakdownArtifact').FactorData[]) || []}
+                scoreHistory={factorPayload.scoreHistory as import('./views/FactorBreakdownArtifact').HistoryPoint[] | undefined}
+                contributingEvents={factorPayload.contributingEvents as import('./views/FactorBreakdownArtifact').ContributingEvent[] | undefined}
                 onViewDashboard={() => onAction?.('view_dashboard')}
                 onExport={() => onAction?.('export')}
                 onClose={onClose}
@@ -181,15 +185,16 @@ export const ArtifactRenderer = ({
 
     case 'news_events':
       {
-        const newsAiContent = (payload as any).aiContent;
+        const newsPayload = payload as unknown as Record<string, unknown>;
+        const newsAiContent = newsPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={newsAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <NewsEventsArtifact
-                title={(payload as any).title}
-                context={(payload as any).context}
-                events={(payload as any).events || []}
+                title={newsPayload.title as string | undefined}
+                context={newsPayload.context as { type: 'supplier' | 'portfolio'; name?: string; id?: string } | undefined}
+                events={(newsPayload.events as import('./views/NewsEventsArtifact').NewsEvent[]) || []}
                 onSetAlert={() => onAction?.('set_alert')}
                 onExport={() => onAction?.('export')}
                 onEventClick={(event) => onAction?.('event_click', event)}
@@ -203,16 +208,17 @@ export const ArtifactRenderer = ({
     // Supplier Views
     case 'supplier_detail':
       {
-        const detailAiContent = (payload as any).aiContent;
+        const detailPayload = payload as unknown as Record<string, unknown>;
+        const detailAiContent = detailPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={detailAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <SupplierDetailArtifact
-                supplier={(payload as any).supplier}
-                onClose={onClose}
-                onFindAlternatives={() => onAction?.('find_alternatives', (payload as any).supplier)}
-                onAddToShortlist={() => onAction?.('add_to_shortlist', (payload as any).supplier)}
+                supplier={detailPayload.supplier as any}
+                onBack={onClose}
+                onFindAlternatives={() => onAction?.('find_alternatives', detailPayload.supplier)}
+                onAddToShortlist={() => onAction?.('add_to_shortlist', detailPayload.supplier)}
                 onViewDashboard={() => onAction?.('view_dashboard')}
               />
             </div>
@@ -222,19 +228,20 @@ export const ArtifactRenderer = ({
 
     case 'supplier_table':
       {
-        const suppliers = (payload as any).suppliers || [];
-        const totalCount = (payload as any).totalCount ?? suppliers.length;
-        const categories = (payload as any).categories || [];
-        const locations = (payload as any).locations || [];
-        const supplierIds = suppliers.map((supplier: any) => supplier.id).filter(Boolean);
-        const aiContent = (payload as any).aiContent;
+        const tablePayload = payload as unknown as Record<string, unknown>;
+        const suppliers = (tablePayload.suppliers as Array<{ id?: string }>) || [];
+        const totalCount = (tablePayload.totalCount as number) ?? suppliers.length;
+        const categories = (tablePayload.categories as string[]) || [];
+        const locations = (tablePayload.locations as string[]) || [];
+        const supplierIds = suppliers.map((supplier) => supplier.id).filter(Boolean);
+        const aiContent = tablePayload.aiContent as AIContent | undefined;
 
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={aiContent} />
             <div className="flex-1 min-h-0">
               <SupplierTableArtifact
-                suppliers={suppliers}
+                suppliers={suppliers as any}
                 totalCount={totalCount}
                 categories={categories}
                 locations={locations}
@@ -248,19 +255,20 @@ export const ArtifactRenderer = ({
 
     case 'supplier_comparison':
       {
-        const compSuppliers = (payload as any).suppliers || [];
-        const compAiContent = (payload as any).aiContent;
+        const compPayload = payload as unknown as Record<string, unknown>;
+        const compSuppliers = (compPayload.suppliers as Array<{ id?: string }>) || [];
+        const compAiContent = compPayload.aiContent as AIContent | undefined;
 
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={compAiContent} />
             <div className="flex-1 min-h-0">
               <ComparisonArtifact
-                suppliers={compSuppliers}
+                suppliers={compSuppliers as any}
                 onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
                 onExport={() => onAction?.('export', {
                   context: 'comparison',
-                  entityIds: compSuppliers.map((supplier: any) => supplier.id).filter(Boolean),
+                  entityIds: compSuppliers.map((supplier) => supplier.id).filter(Boolean),
                 })}
                 onViewDashboard={() => onAction?.('view_dashboard')}
               />
@@ -271,15 +279,16 @@ export const ArtifactRenderer = ({
 
     case 'supplier_alternatives':
       {
-        const altAiContent = (payload as any).aiContent;
+        const altPayload = payload as unknown as Record<string, unknown>;
+        const altAiContent = altPayload.aiContent as AIContent | undefined;
 
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={altAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <AlternativesArtifact
-                currentSupplier={(payload as any).currentSupplier}
-                alternatives={(payload as any).alternatives || []}
+                currentSupplier={altPayload.currentSupplier as { id: string; name: string; score: number; category: string }}
+                alternatives={(altPayload.alternatives as import('./views/AlternativesArtifact').AlternativeSupplier[]) || []}
                 onRequestAssessment={(ids) => onAction?.('request_assessment', ids)}
                 onAddToShortlist={(ids) => onAction?.('add_to_shortlist', ids)}
                 onSelectSupplier={(supplier) => onAction?.('select_supplier', supplier)}
@@ -292,26 +301,32 @@ export const ArtifactRenderer = ({
 
     // Actions
     case 'alert_config':
-      return (
-        <AlertConfigArtifact
-          supplierId={(payload as any).supplierId}
-          supplierName={(payload as any).supplierName}
-          currentScore={(payload as any).currentScore}
-          onSave={(config) => onAction?.('alert_created', config)}
-          onCancel={onClose}
-        />
-      );
+      {
+        const alertPayload = payload as unknown as Record<string, unknown>;
+        return (
+          <AlertConfigArtifact
+            supplierId={alertPayload.supplierId as string | undefined}
+            supplierName={alertPayload.supplierName as string | undefined}
+            currentScore={alertPayload.currentScore as number | undefined}
+            onSave={(config) => onAction?.('alert_created', config)}
+            onCancel={onClose}
+          />
+        );
+      }
 
     case 'export_builder':
-      return (
-        <ExportBuilderArtifact
-          context={(payload as any).context}
-          entityName={(payload as any).entityName}
-          entityIds={(payload as any).entityIds}
-          onExport={(config) => onAction?.('export_complete', config)}
-          onCancel={onClose}
-        />
-      );
+      {
+        const exportPayload = payload as unknown as Record<string, unknown>;
+        return (
+          <ExportBuilderArtifact
+            context={exportPayload.context as 'supplier' | 'portfolio' | 'comparison' | undefined}
+            entityName={exportPayload.entityName as string | undefined}
+            entityIds={exportPayload.entityIds as string[] | undefined}
+            onExport={(config) => onAction?.('export_complete', config)}
+            onCancel={onClose}
+          />
+        );
+      }
 
     case 'watchlist_manage':
     case 'assessment_request':
@@ -320,19 +335,20 @@ export const ArtifactRenderer = ({
     // Discovery
     case 'portfolio_dashboard':
       {
-        const totalSuppliers = (payload as any).totalSuppliers ?? 0;
-        const distribution = (payload as any).distribution || {
+        const portfolioPayload = payload as unknown as Record<string, unknown>;
+        const totalSuppliers = (portfolioPayload.totalSuppliers as number) ?? 0;
+        const distribution = (portfolioPayload.distribution as { high: number; mediumHigh: number; medium: number; low: number; unrated: number }) || {
           high: 0,
           mediumHigh: 0,
           medium: 0,
           low: 0,
           unrated: 0,
         };
-        const trends = (payload as any).trends || { period: '30d', newHighRisk: 0, improved: 0, deteriorated: 0 };
-        const alerts = (payload as any).alerts || [];
-        const topMovers = (payload as any).topMovers || [];
-        const lastUpdated = (payload as any).lastUpdated || new Date().toISOString();
-        const portfolioAiContent = (payload as any).aiContent;
+        const trends = (portfolioPayload.trends as { period: string; newHighRisk: number; improved: number; deteriorated: number }) || { period: '30d', newHighRisk: 0, improved: 0, deteriorated: 0 };
+        const alerts = (portfolioPayload.alerts as Array<{ id: string; headline: string; type: 'critical' | 'warning' | 'info'; affectedCount: number; timestamp: string }>) || [];
+        const topMovers = (portfolioPayload.topMovers as Array<{ id: string; name: string; previousScore: number; currentScore: number; direction: 'up' | 'down' }>) || [];
+        const lastUpdated = (portfolioPayload.lastUpdated as string) || new Date().toISOString();
+        const portfolioAiContent = portfolioPayload.aiContent as AIContent | undefined;
 
         return (
           <div className="flex flex-col h-full">
@@ -360,17 +376,19 @@ export const ArtifactRenderer = ({
     // Inflation Watch Artifacts
     case 'inflation_dashboard':
       {
-        const inflationAiContent = (payload as any).aiContent;
+        const inflationPayload = payload as unknown as Record<string, unknown>;
+        const inflationAiContent = inflationPayload.aiContent as AIContent | undefined;
+        const priceMovementsData = inflationPayload.priceMovements as { commodities?: unknown[] } | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={inflationAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <InflationDashboardArtifact
-                period={(payload as any).period}
-                summary={(payload as any).summary}
-                priceMovements={(payload as any).priceMovements?.commodities || []}
-                drivers={(payload as any).drivers || []}
-                alerts={(payload as any).alerts || []}
+                period={inflationPayload.period as string | undefined}
+                summary={inflationPayload.summary as import('./views/InflationDashboardArtifact').InflationSummary | undefined}
+                priceMovements={(priceMovementsData?.commodities as import('./views/InflationDashboardArtifact').PriceMovement[]) || []}
+                drivers={(inflationPayload.drivers as import('../../types/inflation').InflationDriver[]) || []}
+                alerts={(inflationPayload.alerts as import('./views/InflationDashboardArtifact').InflationAlert[]) || []}
                 onExport={() => onAction?.('export')}
                 onDrillDown={(commodity) => onAction?.('drill_down', { commodity })}
                 onClose={onClose}
@@ -382,21 +400,22 @@ export const ArtifactRenderer = ({
 
     case 'driver_analysis':
       {
-        const driverAiContent = (payload as any).aiContent;
+        const driverPayload = payload as unknown as Record<string, unknown>;
+        const driverAiContent = driverPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={driverAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <DriverAnalysisArtifact
-                commodity={(payload as any).commodity}
-                period={(payload as any).period}
-                priceChange={(payload as any).priceChange}
-                drivers={(payload as any).drivers || []}
-                driverContributions={(payload as any).driverContributions || []}
-                marketNews={(payload as any).marketNews || []}
-                historicalDrivers={(payload as any).historicalDrivers || []}
-                marketContext={(payload as any).marketContext}
-                sources={(payload as any).sources || []}
+                commodity={driverPayload.commodity as string | undefined}
+                period={driverPayload.period as string | undefined}
+                priceChange={driverPayload.priceChange as import('../../types/inflation').PriceChange | undefined}
+                drivers={(driverPayload.drivers as import('../../types/inflation').InflationDriver[]) || []}
+                driverContributions={(driverPayload.driverContributions as import('./views/DriverAnalysisArtifact').DriverContribution[]) || []}
+                marketNews={(driverPayload.marketNews as import('./views/DriverAnalysisArtifact').MarketNews[]) || []}
+                historicalDrivers={(driverPayload.historicalDrivers as import('./views/DriverAnalysisArtifact').HistoricalDriver[]) || []}
+                marketContext={driverPayload.marketContext as string | undefined}
+                sources={(driverPayload.sources as Array<{ title: string; source: string; url?: string }>) || []}
                 onExport={() => onAction?.('export')}
                 onViewCommodity={() => onAction?.('view_commodity')}
                 onClose={onClose}
@@ -408,17 +427,18 @@ export const ArtifactRenderer = ({
 
     case 'impact_analysis':
       {
-        const impactAiContent = (payload as any).aiContent;
+        const impactPayload = payload as unknown as Record<string, unknown>;
+        const impactAiContent = impactPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={impactAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <ImpactAnalysisArtifact
-                period={(payload as any).period}
-                exposure={(payload as any).exposure}
-                riskCorrelation={(payload as any).riskCorrelation}
-                budgetImpact={(payload as any).budgetImpact}
-                mitigationOptions={(payload as any).mitigationOptions || []}
+                period={impactPayload.period as string | undefined}
+                exposure={impactPayload.exposure as import('../../types/inflation').InflationExposure | undefined}
+                riskCorrelation={impactPayload.riskCorrelation as { highRiskHighExposure: number; concentrationRisk: import('./views/ImpactAnalysisArtifact').ConcentrationRisk[] } | undefined}
+                budgetImpact={impactPayload.budgetImpact as import('./views/ImpactAnalysisArtifact').BudgetImpact | undefined}
+                mitigationOptions={(impactPayload.mitigationOptions as import('./views/ImpactAnalysisArtifact').MitigationOption[]) || []}
                 onExport={() => onAction?.('export')}
                 onDrillDown={(dimension, value) => onAction?.('drill_down', { dimension, value })}
                 onClose={onClose}
@@ -430,15 +450,16 @@ export const ArtifactRenderer = ({
 
     case 'scenario_planner':
       {
-        const scenarioAiContent = (payload as any).aiContent;
+        const scenarioPayload = payload as unknown as Record<string, unknown>;
+        const scenarioAiContent = scenarioPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={scenarioAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <ScenarioPlannerArtifact
-                scenarios={(payload as any).scenarios || []}
-                baselineData={(payload as any).baselineData}
-                availableFactors={(payload as any).availableFactors || []}
+                scenarios={(scenarioPayload.scenarios as import('../../types/inflation').InflationScenario[]) || []}
+                baselineData={scenarioPayload.baselineData as { totalSpend: number; byCategory: Array<{ category: string; spend: number }>; bySupplier: Array<{ supplier: string; spend: number }> } | undefined}
+                availableFactors={(scenarioPayload.availableFactors as Array<{ factor: string; currentValue: number; unit: string; historicalRange: { min: number; max: number } }>) || []}
                 onExport={() => onAction?.('export')}
                 onCreateScenario={(assumptions) => onAction?.('create_scenario', { assumptions })}
                 onSelectScenario={(scenario) => onAction?.('select_scenario', scenario)}
@@ -451,16 +472,17 @@ export const ArtifactRenderer = ({
 
     case 'justification_report':
       {
-        const justificationAiContent = (payload as any).aiContent;
+        const justificationPayload = payload as unknown as Record<string, unknown>;
+        const justificationAiContent = justificationPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={justificationAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <JustificationReportArtifact
-                justification={(payload as any).justification}
-                historicalPricing={(payload as any).historicalPricing || []}
-                competitorPricing={(payload as any).competitorPricing || []}
-                contractTerms={(payload as any).contractTerms}
+                justification={justificationPayload.justification as import('../../types/inflation').PriceJustification | undefined}
+                historicalPricing={(justificationPayload.historicalPricing as import('./views/JustificationReportArtifact').HistoricalPricing[]) || []}
+                competitorPricing={(justificationPayload.competitorPricing as import('./views/JustificationReportArtifact').CompetitorPricing[]) || []}
+                contractTerms={justificationPayload.contractTerms as import('./views/JustificationReportArtifact').ContractTerms | undefined}
                 onExport={() => onAction?.('export')}
                 onStartNegotiation={() => onAction?.('start_negotiation')}
                 onClose={onClose}
@@ -472,21 +494,22 @@ export const ArtifactRenderer = ({
 
     case 'executive_presentation':
       {
-        const execAiContent = (payload as any).aiContent;
+        const execPayload = payload as unknown as Record<string, unknown>;
+        const execAiContent = execPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={execAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <ExecutivePresentationArtifact
-                title={(payload as any).title}
-                period={(payload as any).period}
-                summary={(payload as any).summary}
-                keyMetrics={(payload as any).keyMetrics || []}
-                highlights={(payload as any).highlights || []}
-                talkingPoints={(payload as any).talkingPoints || []}
-                outlook={(payload as any).outlook}
-                nextSteps={(payload as any).nextSteps || []}
-                shareableUrl={(payload as any).shareableUrl}
+                title={execPayload.title as string | undefined}
+                period={execPayload.period as string | undefined}
+                summary={execPayload.summary as string | undefined}
+                keyMetrics={(execPayload.keyMetrics as import('./views/ExecutivePresentationArtifact').KeyMetric[]) || []}
+                highlights={(execPayload.highlights as import('./views/ExecutivePresentationArtifact').Highlight[]) || []}
+                talkingPoints={(execPayload.talkingPoints as import('./views/ExecutivePresentationArtifact').TalkingPoint[]) || []}
+                outlook={execPayload.outlook as string | undefined}
+                nextSteps={(execPayload.nextSteps as string[]) || []}
+                shareableUrl={execPayload.shareableUrl as string | undefined}
                 onExport={() => onAction?.('export')}
                 onShare={() => onAction?.('share')}
                 onClose={onClose}
@@ -498,19 +521,20 @@ export const ArtifactRenderer = ({
 
     case 'commodity_dashboard':
       {
-        const commodityAiContent = (payload as any).aiContent;
+        const commodityPayload = payload as unknown as Record<string, unknown>;
+        const commodityAiContent = commodityPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={commodityAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <CommodityDashboardArtifact
-                commodity={(payload as any).commodity}
-                drivers={(payload as any).drivers || []}
-                exposure={(payload as any).exposure}
-                affectedSuppliers={(payload as any).affectedSuppliers || []}
-                historicalComparison={(payload as any).historicalComparison || []}
-                forecast={(payload as any).forecast}
-                relatedCommodities={(payload as any).relatedCommodities || []}
+                commodity={commodityPayload.commodity as import('../../types/inflation').CommodityPrice | undefined}
+                drivers={(commodityPayload.drivers as import('../../types/inflation').InflationDriver[]) || []}
+                exposure={commodityPayload.exposure as import('../../types/inflation').CommodityExposure | undefined}
+                affectedSuppliers={(commodityPayload.affectedSuppliers as import('../../types/inflation').SupplierExposure[]) || []}
+                historicalComparison={(commodityPayload.historicalComparison as import('./views/CommodityDashboardArtifact').HistoricalComparison[]) || []}
+                forecast={commodityPayload.forecast as import('../../types/inflation').PriceForecast | undefined}
+                relatedCommodities={(commodityPayload.relatedCommodities as import('./views/CommodityDashboardArtifact').RelatedCommodity[]) || []}
                 onExport={() => onAction?.('export')}
                 onSetAlert={() => onAction?.('set_alert')}
                 onViewSupplier={(supplierId) => onAction?.('view_supplier', { supplierId })}
@@ -523,19 +547,20 @@ export const ArtifactRenderer = ({
 
     case 'spend_analysis':
       {
-        const spendAiContent = (payload as any).aiContent;
+        const spendPayload = payload as unknown as Record<string, unknown>;
+        const spendAiContent = spendPayload.aiContent as AIContent | undefined;
         return (
           <div className="flex flex-col h-full">
             <AIContentSection aiContent={spendAiContent} />
             <div className="flex-1 min-h-0 overflow-auto">
               <SpendAnalysisArtifact
-                totalSpend={(payload as any).totalSpend}
-                totalSpendFormatted={(payload as any).totalSpendFormatted}
-                byRiskLevel={(payload as any).byRiskLevel || []}
-                byCategory={(payload as any).byCategory || []}
-                byRegion={(payload as any).byRegion || []}
-                concentrationWarnings={(payload as any).concentrationWarnings}
-                trend={(payload as any).trend}
+                totalSpend={spendPayload.totalSpend as number}
+                totalSpendFormatted={spendPayload.totalSpendFormatted as string}
+                byRiskLevel={(spendPayload.byRiskLevel as import('./views/SpendAnalysisArtifact').SpendByRiskLevel[]) || []}
+                byCategory={(spendPayload.byCategory as import('./views/SpendAnalysisArtifact').SpendByCategory[]) || []}
+                byRegion={(spendPayload.byRegion as import('./views/SpendAnalysisArtifact').SpendByRegion[]) || []}
+                concentrationWarnings={spendPayload.concentrationWarnings as import('./views/SpendAnalysisArtifact').ConcentrationWarning[] | undefined}
+                trend={spendPayload.trend as { direction: 'up' | 'down' | 'stable'; percent: number; period: string } | undefined}
                 onExport={() => onAction?.('export')}
                 onDrillDown={(dimension, value) => onAction?.('drill_down', { dimension, value })}
                 onClose={onClose}
@@ -547,48 +572,61 @@ export const ArtifactRenderer = ({
 
     // Value Ladder (4-Layer System)
     case 'analyst_connect':
-      return (
-        <AnalystConnectArtifact
-          analystConnect={(payload as any).analystConnect}
-          queryContext={(payload as any).queryContext}
-          onScheduleCall={(analystId, slot) => onAction?.('schedule_call', { analystId, slot })}
-          onSendQuestion={(analystId, question) => onAction?.('send_question', { analystId, question })}
-        />
-      );
+      {
+        const analystPayload = payload as unknown as Record<string, unknown>;
+        return (
+          <AnalystConnectArtifact
+            analystConnect={analystPayload.analystConnect as import('./registry').AnalystConnectPayload['analystConnect']}
+            queryContext={analystPayload.queryContext as { queryId?: string; queryText?: string; relevantSection?: string } | undefined}
+            onScheduleCall={(analystId, slot) => onAction?.('schedule_call', { analystId, slot })}
+            onSendQuestion={(analystId, question) => onAction?.('send_question', { analystId, question })}
+          />
+        );
+      }
 
     case 'expert_request':
-      return (
-        <ExpertRequestArtifact
-          expertDeepDive={(payload as any).expertDeepDive}
-          queryContext={(payload as any).queryContext}
-          onRequestIntro={(expertId, briefing, projectType) =>
-            onAction?.('request_expert_intro', { expertId, briefing, projectType })
-          }
-        />
-      );
+      {
+        const expertPayload = payload as unknown as Record<string, unknown>;
+        return (
+          <ExpertRequestArtifact
+            expertDeepDive={expertPayload.expertDeepDive as import('./registry').ExpertRequestPayload['expertDeepDive']}
+            queryContext={expertPayload.queryContext as { queryId?: string; queryText?: string; topic?: string } | undefined}
+            onRequestIntro={(expertId, briefing, projectType) =>
+              onAction?.('request_expert_intro', { expertId, briefing, projectType })
+            }
+          />
+        );
+      }
 
     case 'community_embed':
-      return (
-        <CommunityEmbedArtifact
-          community={(payload as any).community}
-          queryContext={(payload as any).queryContext}
-          onViewThread={(threadId) => onAction?.('view_thread', { threadId })}
-          onStartDiscussion={(title, body) => onAction?.('start_discussion', { title, body })}
-          onViewAll={() => onAction?.('view_all_discussions')}
-        />
-      );
+      {
+        const communityPayload = payload as unknown as Record<string, unknown>;
+        return (
+          <CommunityEmbedArtifact
+            community={communityPayload.community as import('./registry').CommunityEmbedPayload['community']}
+            queryContext={communityPayload.queryContext as { queryId?: string; queryText?: string; topic?: string } | undefined}
+            onViewThread={(threadId) => onAction?.('view_thread', { threadId })}
+            onStartDiscussion={(title, body) => onAction?.('start_discussion', { title, body })}
+            onViewAll={() => onAction?.('view_all_discussions')}
+          />
+        );
+      }
 
     case 'report_viewer':
-      return (
-        <ReportViewerArtifact
-          report={(payload as any).report}
-          queryContext={(payload as any).queryContext}
-        />
-      );
+      {
+        const reportPayload = payload as unknown as Record<string, unknown>;
+        return (
+          <ReportViewerArtifact
+            report={reportPayload.report as import('./registry').ReportViewerPayload['report']}
+            queryContext={reportPayload.queryContext as { queryText?: string; highlightTerms?: string[] } | undefined}
+          />
+        );
+      }
 
     default:
       {
-        const fallbackAiContent = (payload as any).aiContent;
+        const fallbackPayload = payload as unknown as Record<string, unknown>;
+        const fallbackAiContent = fallbackPayload.aiContent as AIContent | undefined;
         if (fallbackAiContent) {
           return (
             <div className="flex flex-col h-full">

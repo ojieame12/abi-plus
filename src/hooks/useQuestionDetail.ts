@@ -29,6 +29,8 @@ export function useQuestionDetail(
   const fetchQuestion = useCallback(async () => {
     if (!questionId) {
       setQuestion(null);
+      setNotice(null);
+      setError(null);
       return;
     }
 
@@ -46,6 +48,7 @@ export function useQuestionDetail(
           setQuestion(null);
         } else {
           setQuestion(data);
+          setNotice('Showing sample question.');
         }
       } else {
         // Use API
@@ -61,6 +64,7 @@ export function useQuestionDetail(
         const fallback = getMockQuestionById(questionId);
         if (fallback) {
           setQuestion(fallback);
+          setNotice('API unavailable. Showing sample question.');
           return;
         }
       }

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { eq, desc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { conversations, messages } from '../../src/db/schema.js';
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // PATCH - Update conversation (star, archive, rename)
     if (req.method === 'PATCH') {
-      const updates: Record<string, any> = {};
+      const updates: Record<string, string | boolean | Date> = {};
       const { title, isStarred, isArchived, category } = req.body;
 
       if (title !== undefined) updates.title = title;

@@ -1,6 +1,6 @@
 // EventsFeedWidget - Beautiful events/news feed for suppliers
 import { motion } from 'framer-motion';
-import { Newspaper, AlertTriangle, TrendingUp, TrendingDown, Bell, ExternalLink, Clock, ChevronRight } from 'lucide-react';
+import { Newspaper, AlertTriangle, TrendingUp, Bell, ExternalLink, Clock, ChevronRight } from 'lucide-react';
 
 interface FeedEvent {
   id: string;

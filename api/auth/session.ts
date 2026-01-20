@@ -1,5 +1,5 @@
 // GET /api/auth/session - Get current session/user info
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelResponse } from '@vercel/node';
 import {
   withAuth,
   type AuthRequest,

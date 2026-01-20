@@ -5,7 +5,6 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   getCategoryCounts,
-  getWidgetsByCategory,
   searchWidgets,
   type WidgetCategory,
 } from '../services/widgetRegistry';

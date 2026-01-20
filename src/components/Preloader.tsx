@@ -6,14 +6,14 @@ interface PreloaderProps {
 }
 
 // Consistent easing with the rest of the app
-const EASING = [0.25, 0.46, 0.45, 0.94];
+const EASING = [0.25, 0.46, 0.45, 0.94] as const;
 
 const logoVariants = {
   hidden: { scale: 0.8, opacity: 0 },
   visible: {
     scale: 1,
     opacity: 1,
-    transition: { type: 'spring', stiffness: 200, damping: 20, delay: 0.2 },
+    transition: { type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.2 },
   },
   exit: {
     scale: 1.1,

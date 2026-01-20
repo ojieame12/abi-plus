@@ -1,6 +1,6 @@
 // RecommendationCard - AI recommendation with confidence and reasoning
 import { motion } from 'framer-motion';
-import { Sparkles, CheckCircle, ChevronRight, Shield, AlertTriangle, Zap, Target } from 'lucide-react';
+import { Sparkles, CheckCircle, ChevronRight, AlertTriangle, Zap, Target } from 'lucide-react';
 
 interface RecommendationCardProps {
   title: string;

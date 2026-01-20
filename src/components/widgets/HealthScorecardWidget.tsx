@@ -1,6 +1,6 @@
 // HealthScorecardWidget - Beautiful portfolio health scorecard
 import { motion } from 'framer-motion';
-import { Heart, TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle, ChevronRight, Shield } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle, ChevronRight, Shield } from 'lucide-react';
 
 interface HealthMetric {
   label: string;

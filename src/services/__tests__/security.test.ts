@@ -1,5 +1,5 @@
 // Security Service Tests
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   generateCsrfToken,
   validateCsrfToken,
@@ -173,7 +173,7 @@ describe('Security Service', () => {
 
       it('returns null for tampered signature', () => {
         const id = generateVisitorId();
-        const signed = signVisitorId(id);
+        signVisitorId(id); // Generate valid signature but don't use it
         const tampered = id + '.invalidsignature';
 
         expect(verifySignedVisitorId(tampered)).toBeNull();
@@ -188,7 +188,7 @@ describe('Security Service', () => {
       });
 
       it('returns null for undefined', () => {
-        expect(verifySignedVisitorId(undefined as any)).toBeNull();
+        expect(verifySignedVisitorId(undefined as unknown as string)).toBeNull();
       });
     });
   });

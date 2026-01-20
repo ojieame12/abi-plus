@@ -4,7 +4,7 @@
 
 import type { IntentCategory, SubIntent, ArtifactType } from '../types/intents';
 import type { WidgetType } from '../types/widgets';
-import { getWidgetForIntent, getWidgetsForIntent, type WidgetRegistryEntry } from './widgetRegistry';
+import { getWidgetsForIntent, type WidgetRegistryEntry } from './widgetRegistry';
 
 // ============================================
 // INTENT TO WIDGET TYPE MAPPING
@@ -24,7 +24,15 @@ export interface WidgetRoute {
 // supplier_detail, supplier_comparison, supplier_table, supplier_alternatives,
 // alert_config, export_builder, watchlist_manage, assessment_request,
 // category_overview, portfolio_dashboard, regional_analysis, spend_analysis
-const INTENT_WIDGET_MAP: Record<IntentCategory, WidgetRoute> = {
+const DEFAULT_ROUTE: WidgetRoute = {
+  widgetType: 'none',
+  artifactType: 'portfolio_dashboard',
+  requiresSuppliers: false,
+  requiresPortfolio: false,
+  requiresRiskChanges: false,
+};
+
+const INTENT_WIDGET_MAP: Partial<Record<IntentCategory, WidgetRoute>> = {
   portfolio_overview: {
     widgetType: 'risk_distribution',
     artifactType: 'portfolio_dashboard',
@@ -104,11 +112,7 @@ const INTENT_WIDGET_MAP: Record<IntentCategory, WidgetRoute> = {
     requiresHandoff: true,
   },
   general: {
-    widgetType: 'none',
-    artifactType: 'portfolio_dashboard',
-    requiresSuppliers: false,
-    requiresPortfolio: false,
-    requiresRiskChanges: false,
+    ...DEFAULT_ROUTE,
   },
 };
 
@@ -145,7 +149,7 @@ export function getWidgetRoute(
   subIntent?: SubIntent
 ): WidgetRoute {
   // Start with base intent mapping
-  const baseRoute = INTENT_WIDGET_MAP[intent] || INTENT_WIDGET_MAP.general;
+  const baseRoute = INTENT_WIDGET_MAP[intent] ?? INTENT_WIDGET_MAP.general ?? DEFAULT_ROUTE;
 
   // Apply sub-intent override if exists
   if (subIntent && SUBINTENT_OVERRIDES[subIntent]) {

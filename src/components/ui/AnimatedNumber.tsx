@@ -15,6 +15,7 @@ export function AnimatedNumber({ value, className = '', format = false }: Animat
 
   useEffect(() => {
     if (value !== displayValue) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation direction sync is intentional
       setDirection(value > displayValue ? 'up' : 'down');
       setDisplayValue(value);
     }

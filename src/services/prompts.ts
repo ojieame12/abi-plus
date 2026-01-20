@@ -120,7 +120,7 @@ ${dataContext}
 ## Your Task
 Generate the content to accompany this widget. You are NOT choosing the widget - it's already selected.
 ${hasDetailedBuilder ? 'The user has made a detailed structured request - provide a comprehensive response that addresses their specific requirements.' : ''}
-${isExternalResearch ? `IMPORTANT: Since "${supplierName}" is NOT in the user\'s database, you MUST research this company using your knowledge and populate the "researchedCompany" field with accurate company information.` : ''}
+${isExternalResearch ? `IMPORTANT: Since "${supplierName}" is NOT in the user's database, you MUST research this company using your knowledge and populate the "researchedCompany" field with accurate company information.` : ''}
 
 ## Required Output (JSON only, no markdown fences)
 {

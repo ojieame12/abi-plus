@@ -8,9 +8,19 @@ export interface ChatMessage {
   // AI response specific
   suggestions?: Suggestion[];
   sources?: Source[];
-  insight?: string;
+  insight?: ChatInsight;
   thoughtProcess?: ThoughtProcessData;
 }
+
+export type ChatInsight =
+  | string
+  | {
+      text?: string;
+      headline?: string;
+      detail?: string;
+      trend?: string;
+      sentiment?: string;
+    };
 
 export interface FileAttachment {
   id: string;

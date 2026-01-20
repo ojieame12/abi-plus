@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Exports multiple related badge components and utilities */
 import { motion } from 'framer-motion';
 
 // Reputation tier configuration

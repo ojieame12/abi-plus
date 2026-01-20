@@ -12,7 +12,6 @@ import {
   SelectInput,
   Toggle,
   RadioGroup,
-  Checkbox,
 } from '../primitives';
 
 // ============================================
@@ -47,7 +46,6 @@ export interface AlertConfigArtifactProps {
 // ============================================
 
 export const AlertConfigArtifact = ({
-  supplierId,
   supplierName,
   currentScore,
   onSave,

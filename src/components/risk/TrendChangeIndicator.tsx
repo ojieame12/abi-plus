@@ -1,11 +1,11 @@
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface TrendChangeIndicatorProps {
     previousScore: number;
     currentScore: number;
     previousLevel?: string;
     currentLevel?: string;
-    changeDate: string;
+    changeDate?: string;
     variant?: 'inline' | 'card' | 'alert';
 }
 
@@ -20,7 +20,6 @@ export const TrendChangeIndicator = ({
     const change = currentScore - previousScore;
     const isWorsening = change > 0; // Higher score = worse
     const isImproving = change < 0;
-    const isStable = change === 0;
 
     const getChangeConfig = () => {
         if (isWorsening) {
@@ -87,9 +86,11 @@ export const TrendChangeIndicator = ({
                                 ({change > 0 ? '+' : ''}{change} points)
                             </span>
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-2 font-normal">
-                            Changed: {changeDate}
-                        </div>
+                        {changeDate && (
+                            <div className="text-[11px] text-slate-400 mt-2 font-normal">
+                                Changed: {changeDate}
+                            </div>
+                        )}
                     </div>
                     <div className={`w-10 h-10 rounded-2xl ${config.bgColor} flex items-center justify-center shrink-0`}>
                         <Icon size={16} strokeWidth={1.5} className={config.color} />
@@ -134,7 +135,6 @@ interface RiskChangeAlertProps {
     supplierName: string;
     previousScore: number;
     currentScore: number;
-    currentLevel: string;
     changeDate: string;
     onClick?: () => void;
 }
@@ -143,7 +143,6 @@ export const RiskChangeAlert = ({
     supplierName,
     previousScore,
     currentScore,
-    currentLevel,
     changeDate,
     onClick,
 }: RiskChangeAlertProps) => {

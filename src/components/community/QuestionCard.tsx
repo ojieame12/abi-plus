@@ -50,6 +50,7 @@ export function QuestionCard({
     displayName: 'Anonymous',
     reputation: 0,
   };
+  const displayName = author.displayName ?? 'Anonymous';
   const upvotes = question.score > 0 ? question.score : 0;
   const downvotes = Math.abs(Math.min(question.score, 0));
 
@@ -75,7 +76,7 @@ export function QuestionCard({
           {/* Avatar with tier badge */}
           <AvatarWithBadge
             avatarUrl={author.avatarUrl}
-            displayName={author.displayName}
+            displayName={displayName}
             reputation={author.reputation ?? 0}
             size="md"
           />
@@ -85,7 +86,7 @@ export function QuestionCard({
             {/* Author name and time */}
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-medium text-slate-900">
-                {author.displayName}
+                {displayName}
               </span>
               <span className="text-xs text-slate-400">
                 {formatTimeAgo(question.createdAt)}
@@ -169,7 +170,7 @@ export function QuestionCard({
             <button
               onClick={e => {
                 e.stopPropagation();
-                onAnswer?.() || onClick?.();
+                if (onAnswer) onAnswer(); else onClick?.();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs
                          bg-slate-900 text-white rounded-md

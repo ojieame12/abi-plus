@@ -10,7 +10,6 @@ import {
   MessageSquare,
   Send,
   Check,
-  Star,
   Briefcase,
   ChevronRight,
 } from 'lucide-react';

@@ -11,7 +11,6 @@ interface SpendLevel {
 }
 
 interface SpendExposureWidgetProps {
-  totalSpend: number;
   totalSpendFormatted: string;
   breakdown: SpendLevel[];
   highestExposure?: {
@@ -49,10 +48,6 @@ export const SpendExposureWidget = ({
     const order = ['high', 'medium-high', 'medium', 'low', 'unrated'];
     return order.indexOf(a.level) - order.indexOf(b.level);
   });
-
-  const atRiskSpend = breakdown
-    .filter(b => b.level === 'high' || b.level === 'medium-high')
-    .reduce((sum, b) => sum + b.amount, 0);
 
   const atRiskPercent = breakdown
     .filter(b => b.level === 'high' || b.level === 'medium-high')

@@ -1,34 +1,37 @@
 // ValueLadderActions - Action row for escalation tiers
 // Sits under the widget in AI responses, provides access to:
+// - Upgrade: L2b Decision Grade upgrade (paid, uses credits)
 // - Analyst Connect: Beroe analysts (DM / schedule call)
-// - Community: Peer discussions (free / open)
-// - Expert Network: Premium external experts (paid)
+// - Expert Network: Premium external experts (L3, paid)
+// NOTE: Community has been parked - removed from this component
 
 import { motion } from 'framer-motion';
-import { UserCircle, Users, Sparkles, Crown, ChevronRight } from 'lucide-react';
+import { UserCircle, Star, Crown, ChevronRight, Coins } from 'lucide-react';
 import type { ValueLadder } from '../../types/aiResponse';
 
 interface ValueLadderActionsProps {
   valueLadder: ValueLadder;
+  onUpgrade?: () => void;
   onAnalystConnect?: () => void;
-  onCommunity?: () => void;
   onExpertDeepDive?: () => void;
+  upgradeCost?: number;
   className?: string;
 }
 
 export const ValueLadderActions = ({
   valueLadder,
+  onUpgrade,
   onAnalystConnect,
-  onCommunity,
   onExpertDeepDive,
+  upgradeCost = 2000,
   className = '',
 }: ValueLadderActionsProps) => {
-  const { analystConnect, community, expertDeepDive } = valueLadder;
+  const { analystConnect, expertDeepDive } = valueLadder;
 
-  // Check if any actions are available
+  // Check if any actions are available (upgrade is always available for L1 content)
   const hasActions =
+    onUpgrade ||
     analystConnect?.available ||
-    community?.available ||
     expertDeepDive?.available;
 
   if (!hasActions) return null;
@@ -40,7 +43,28 @@ export const ValueLadderActions = ({
       transition={{ duration: 0.3, delay: 0.2 }}
       className={`flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100 ${className}`}
     >
-      {/* Analyst Connect - Teal/Beroe styling */}
+      {/* Upgrade to Decision Grade - Violet styling (L2b) */}
+      {onUpgrade && (
+        <button
+          onClick={onUpgrade}
+          className="group flex items-center gap-2 px-3 py-2 rounded-lg
+                     bg-violet-50 hover:bg-violet-100 border border-violet-200
+                     text-violet-700 text-sm font-medium transition-all
+                     hover:shadow-sm"
+        >
+          <Star className="w-4 h-4 text-violet-500" />
+          <span>Upgrade Report</span>
+          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-violet-600 text-white text-[10px]
+                          rounded font-semibold">
+            <Coins className="w-3 h-3" />
+            {upgradeCost.toLocaleString()}
+          </span>
+          <ChevronRight className="w-3 h-3 opacity-0 -ml-1 group-hover:opacity-100
+                                   group-hover:ml-0 transition-all" />
+        </button>
+      )}
+
+      {/* Analyst Connect - Teal/Beroe styling (L2a) */}
       {analystConnect?.available && (
         <button
           onClick={onAnalystConnect}
@@ -58,7 +82,7 @@ export const ValueLadderActions = ({
           ) : (
             <UserCircle className="w-4 h-4" />
           )}
-          <span>Ask an Analyst</span>
+          <span>Ask Analyst</span>
           <span className="px-1.5 py-0.5 bg-teal-600 text-white text-[10px]
                           rounded font-semibold uppercase tracking-wide">
             Beroe
@@ -68,30 +92,7 @@ export const ValueLadderActions = ({
         </button>
       )}
 
-      {/* Community - Standard styling */}
-      {community?.available && (
-        <button
-          onClick={onCommunity}
-          className="group flex items-center gap-2 px-3 py-2 rounded-lg
-                     bg-slate-50 hover:bg-slate-100 border border-slate-200
-                     text-slate-700 text-sm font-medium transition-all
-                     hover:shadow-sm"
-        >
-          <Users className="w-4 h-4 text-slate-500" />
-          <span>Ask the Community</span>
-          {community.relatedThreadCount > 0 && (
-            <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-[10px]
-                            rounded-full font-medium ml-0.5"
-                  title={`${community.relatedThreadCount} related discussions`}>
-              {community.relatedThreadCount}
-            </span>
-          )}
-          <ChevronRight className="w-3 h-3 opacity-0 -ml-1 group-hover:opacity-100
-                                   group-hover:ml-0 transition-all" />
-        </button>
-      )}
-
-      {/* Expert Network - Premium Gold styling */}
+      {/* Expert Network - Premium Gold styling (L3) */}
       {expertDeepDive?.available && (
         <button
           onClick={onExpertDeepDive}
@@ -107,7 +108,7 @@ export const ValueLadderActions = ({
           <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-500
                           text-white text-[10px] rounded font-semibold uppercase tracking-wide
                           shadow-sm">
-            Premium
+            Bespoke
           </span>
           <ChevronRight className="w-3 h-3 opacity-0 -ml-1 group-hover:opacity-100
                                    group-hover:ml-0 transition-all" />
@@ -120,21 +121,39 @@ export const ValueLadderActions = ({
 // Compact variant for tighter spaces
 export const ValueLadderActionsCompact = ({
   valueLadder,
+  onUpgrade,
   onAnalystConnect,
-  onCommunity,
   onExpertDeepDive,
+  upgradeCost = 2000,
 }: ValueLadderActionsProps) => {
-  const { analystConnect, community, expertDeepDive } = valueLadder;
+  const { analystConnect, expertDeepDive } = valueLadder;
 
   const hasActions =
+    onUpgrade ||
     analystConnect?.available ||
-    community?.available ||
     expertDeepDive?.available;
 
   if (!hasActions) return null;
 
   return (
     <div className="flex items-center gap-1.5 mt-3">
+      {onUpgrade && (
+        <button
+          onClick={onUpgrade}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md
+                     bg-violet-50 hover:bg-violet-100 border border-violet-200
+                     text-violet-700 text-xs font-medium transition-colors"
+          title="Upgrade to Decision Grade"
+        >
+          <Star className="w-3 h-3" />
+          <span>Upgrade</span>
+          <span className="flex items-center gap-0.5 text-[10px]">
+            <Coins className="w-2.5 h-2.5" />
+            {upgradeCost.toLocaleString()}
+          </span>
+        </button>
+      )}
+
       {analystConnect?.available && (
         <button
           onClick={onAnalystConnect}
@@ -144,20 +163,7 @@ export const ValueLadderActionsCompact = ({
           title="Connect with a Beroe analyst"
         >
           <UserCircle className="w-3 h-3" />
-          <span>Ask an Analyst</span>
-        </button>
-      )}
-
-      {community?.available && (
-        <button
-          onClick={onCommunity}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md
-                     bg-slate-50 hover:bg-slate-100 border border-slate-200
-                     text-slate-600 text-xs font-medium transition-colors"
-          title="Post to community discussions"
-        >
-          <Users className="w-3 h-3" />
-          <span>Ask the Community</span>
+          <span>Ask Analyst</span>
         </button>
       )}
 
@@ -180,21 +186,40 @@ export const ValueLadderActionsCompact = ({
 // Inline variant - sits in same row as feedback actions (no "Go deeper" label)
 export const ValueLadderActionsInline = ({
   valueLadder,
+  onUpgrade,
   onAnalystConnect,
-  onCommunity,
   onExpertDeepDive,
+  upgradeCost = 2000,
 }: ValueLadderActionsProps) => {
-  const { analystConnect, community, expertDeepDive } = valueLadder;
+  const { analystConnect, expertDeepDive } = valueLadder;
 
   const hasActions =
+    onUpgrade ||
     analystConnect?.available ||
-    community?.available ||
     expertDeepDive?.available;
 
   if (!hasActions) return null;
 
   return (
     <div className="flex items-center gap-2">
+      {/* Upgrade - Compact violet */}
+      {onUpgrade && (
+        <button
+          onClick={onUpgrade}
+          className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
+                     bg-violet-50 hover:bg-violet-100 border border-violet-200
+                     text-violet-700 text-xs font-medium transition-all"
+          title="Upgrade to Decision Grade"
+        >
+          <Star className="w-3.5 h-3.5" />
+          <span>Upgrade</span>
+          <span className="flex items-center gap-0.5 px-1 py-0.5 bg-violet-200/60 rounded text-[10px]">
+            <Coins className="w-2.5 h-2.5" />
+            {upgradeCost.toLocaleString()}
+          </span>
+        </button>
+      )}
+
       {/* Analyst Connect - Compact teal */}
       {analystConnect?.available && (
         <button
@@ -213,28 +238,7 @@ export const ValueLadderActionsInline = ({
           ) : (
             <UserCircle className="w-3.5 h-3.5" />
           )}
-          <span>Ask an Analyst</span>
-        </button>
-      )}
-
-      {/* Community - Compact slate */}
-      {community?.available && (
-        <button
-          onClick={onCommunity}
-          className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
-                     bg-slate-50 hover:bg-slate-100 border border-slate-200
-                     text-slate-600 text-xs font-medium transition-all"
-          title="Post to community discussions"
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>Ask the Community</span>
-          {community.relatedThreadCount > 0 && (
-            <span className="px-1 py-0.5 bg-slate-200 text-slate-500 text-[10px]
-                            rounded-full font-medium leading-none ml-0.5"
-                  title={`${community.relatedThreadCount} related discussions`}>
-              {community.relatedThreadCount}
-            </span>
-          )}
+          <span>Ask Analyst</span>
         </button>
       )}
 

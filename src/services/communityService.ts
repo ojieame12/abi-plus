@@ -12,9 +12,6 @@ import {
 } from '../db/schema.js';
 import type {
   DbQuestion,
-  DbAnswer,
-  Vote,
-  Tag as DbTag,
   Profile,
 } from '../db/schema.js';
 import type {
@@ -29,7 +26,6 @@ import type {
   VoteValue,
   VoteTargetType,
   ReputationReason,
-  REPUTATION_CHANGES,
 } from '../types/community.js';
 
 // Re-export for API use
@@ -109,15 +105,6 @@ export async function listQuestions(
     default:
       orderBy = desc(questions.createdAt);
   }
-
-  // Base query - get questions with author profile
-  let query = db
-    .select({
-      question: questions,
-      profile: profiles,
-    })
-    .from(questions)
-    .leftJoin(profiles, eq(profiles.userId, questions.userId));
 
   // Apply tag filter via subquery if needed
   if (tagSlug) {

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
+  ArrowUpDown,
   MessageSquare,
   Loader2,
   AlertCircle,
@@ -12,7 +13,6 @@ import {
   Flag,
   Link2,
   MoreHorizontal,
-  ArrowUpDown,
   Clock,
   TrendingUp,
   CheckCircle,
@@ -191,10 +191,10 @@ export function QuestionDetailView({
 
   const isQuestionOwner = userId && question?.userId === userId;
   const effectiveAcceptedId = acceptedId || question?.acceptedAnswerId;
-  const allAnswers = [...(question?.answers || []), ...localAnswers];
 
-  // Sort answers
+  // Sort answers - allAnswers is computed inside useMemo to avoid dependency issues
   const sortedAnswers = useMemo(() => {
+    const allAnswers = [...(question?.answers || []), ...localAnswers];
     const sorted = [...allAnswers];
 
     // Always put accepted answer first
@@ -215,7 +215,7 @@ export function QuestionDetailView({
     });
 
     return sorted;
-  }, [allAnswers, answerSortBy, effectiveAcceptedId]);
+  }, [question?.answers, localAnswers, answerSortBy, effectiveAcceptedId]);
 
   // Loading state
   if (isLoading) {
@@ -362,26 +362,6 @@ export function QuestionDetailView({
 
                       {/* Content section */}
                       <div className="flex-1 min-w-0">
-                        {/* Status Badge + Author + Time */}
-                        <div className="flex items-center gap-3 mb-2">
-                          {/* Status Badge */}
-                          {question.hasAcceptedAnswer ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded-full">
-                              <CheckCircle size={12} />
-                              Answered
-                            </span>
-                          ) : question.answerCount > 0 ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">
-                              <MessageSquare size={12} />
-                              {question.answerCount} answers
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-700 rounded-full">
-                              Awaiting answers
-                            </span>
-                          )}
-                        </div>
-
                         {/* Author name and time */}
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-medium text-slate-900">

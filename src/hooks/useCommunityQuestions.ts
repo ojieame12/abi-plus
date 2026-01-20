@@ -70,6 +70,11 @@ export function useCommunityQuestions(
         setQuestions(paginatedQuestions);
         setTotalCount(allFilteredQuestions.length);
         if (reset) setPage(1);
+        // Preserve "API unavailable" notice if we're in fallback mode due to prior failure
+        // Only set generic notice if explicitly using mock data (not fallback)
+        if (!useFallback) {
+          setNotice('Showing sample questions.');
+        }
       } else {
         // Use API
         const currentPage = reset ? 1 : page;
@@ -110,10 +115,11 @@ export function useCommunityQuestions(
       setTotalCount(fallbackQuestions.length);
       if (reset) setPage(1);
       setUseFallback(true);
+      setNotice('API unavailable. Showing sample questions.');
     } finally {
       setIsLoading(false);
     }
-  }, [useMock, useMockData, allFilteredQuestions, page, pageSize, sortBy, filter, tag, search]);
+  }, [useMock, useFallback, allFilteredQuestions, page, pageSize, sortBy, filter, tag, search]);
 
   // Fetch tags from API or mock
   const fetchTags = useCallback(async () => {
@@ -135,6 +141,7 @@ export function useCommunityQuestions(
   // Initial fetch and refetch on filter changes
   useEffect(() => {
     fetchQuestions(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchQuestions is stable, only refetch on filter changes
   }, [sortBy, filter, tag, search]);
 
   // Fetch tags once
@@ -154,6 +161,7 @@ export function useCommunityQuestions(
     if (page > 1) {
       fetchQuestions(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only fetch when page changes
   }, [page]);
 
   const refetch = useCallback(() => {

@@ -10,6 +10,7 @@ interface RiskScoreBadgeProps {
     trend?: Trend;
     size?: Size;
     showLabel?: boolean;
+    showEmoji?: boolean;
 }
 
 const getRiskLevel = (score: number | null): RiskLevel => {
@@ -92,9 +93,10 @@ interface RiskScoreCircleProps {
     level?: RiskLevel;
     trend?: Trend;
     lastUpdated?: string;
+    showLabel?: boolean;
 }
 
-export const RiskScoreCircle = ({ score, level, trend, lastUpdated }: RiskScoreCircleProps) => {
+export const RiskScoreCircle = ({ score, level, trend, lastUpdated, showLabel = true }: RiskScoreCircleProps) => {
     const computedLevel = level || getRiskLevel(score);
     const config = getRiskConfig(computedLevel);
 
@@ -107,9 +109,11 @@ export const RiskScoreCircle = ({ score, level, trend, lastUpdated }: RiskScoreC
                 <span className={`text-4xl font-light ${config.text} tracking-tight`}>
                     {score !== null ? score : '—'}
                 </span>
-                <span className={`text-xs font-medium ${config.text} uppercase tracking-wider mt-1 opacity-80`}>
-                    {config.label}
-                </span>
+                {showLabel && (
+                    <span className={`text-xs font-medium ${config.text} uppercase tracking-wider mt-1 opacity-80`}>
+                        {config.label}
+                    </span>
+                )}
             </div>
             {(trend || lastUpdated) && (
                 <div className="mt-3 text-center">

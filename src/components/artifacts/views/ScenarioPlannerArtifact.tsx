@@ -8,21 +8,17 @@ import {
   TrendingUp,
   TrendingDown,
   Download,
-  ChevronRight,
   AlertTriangle,
   Lightbulb,
   Target,
   BarChart3,
   ArrowRight,
   CheckCircle2,
-  XCircle,
-  MinusCircle,
 } from 'lucide-react';
 import { ArtifactSection, ArtifactFooter } from '../primitives';
 import type {
   InflationScenario,
   ScenarioAssumption,
-  ScenarioResults,
 } from '../../../types/inflation';
 
 // ============================================
@@ -394,9 +390,7 @@ export const ScenarioPlannerArtifact = ({
   baselineData,
   availableFactors = [],
   onExport,
-  onCreateScenario,
   onSelectScenario,
-  onClose,
 }: ScenarioPlannerArtifactProps) => {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(
     scenarios.length > 0 ? scenarios[0].id : null

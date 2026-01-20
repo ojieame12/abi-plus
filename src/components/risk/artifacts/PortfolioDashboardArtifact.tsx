@@ -4,7 +4,6 @@ import {
     TrendingDown,
     AlertTriangle,
     ChevronRight,
-    Filter,
     Download,
     RefreshCw,
     Clock
@@ -12,7 +11,6 @@ import {
 import { RiskDistributionChart } from '../RiskDistributionChart';
 import { TrendChangeIndicator } from '../TrendChangeIndicator';
 import { PortfolioOverviewCard } from '../PortfolioOverviewCard';
-import { EventAlertCard } from '../EventAlertCard';
 
 interface RiskDistribution {
     high: number;
@@ -76,8 +74,9 @@ export const PortfolioDashboardArtifact = ({
 }: PortfolioDashboardArtifactProps) => {
     const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
 
-    const highRiskPercent = Math.round((distribution.high / totalSuppliers) * 100);
-    const atRiskCount = distribution.high + distribution.mediumHigh;
+    const highRiskCount = distribution.high;
+    const unratedCount = distribution.unrated;
+    const totalSpend = '—';
 
     return (
         <div className="flex flex-col h-full bg-white font-sans">
@@ -115,7 +114,10 @@ export const PortfolioDashboardArtifact = ({
                 <section>
                     <PortfolioOverviewCard
                         totalSuppliers={totalSuppliers}
+                        totalSpend={totalSpend}
                         distribution={distribution}
+                        highRiskCount={highRiskCount}
+                        unratedCount={unratedCount}
                         variant="standard" // Reverted to standard as 'full' isn't defined in the props interface I read earlier
                         onSegmentClick={onViewAllRisks}
                     />

@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
-import { Plus, Globe, X, Paperclip, Brain, Zap, FileText, Database, Search, MessageSquare, Sparkles, Puzzle, ChevronRight } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Globe, X, Paperclip, Brain, Zap, Search, Sparkles, Puzzle, ChevronRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     type BuilderSelection,
@@ -68,8 +69,10 @@ export const ChatInput = ({
     mode: externalMode,
     webSearchEnabled: externalWebSearch,
     inputMode: externalInputMode,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     disabled = false,
     variant = 'default',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sources,
     showModeToggle = false,
 }: ChatInputProps) => {
@@ -678,7 +681,7 @@ export const ChatInput = ({
 };
 
 // Toolbar Button Component
-const ToolbarButton = ({ icon: Icon, onClick, isActive }: { icon: any; onClick: () => void; isActive?: boolean }) => (
+const ToolbarButton = ({ icon: Icon, onClick, isActive }: { icon: LucideIcon; onClick: () => void; isActive?: boolean }) => (
     <button
         onClick={onClick}
         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border ${
@@ -768,7 +771,7 @@ const DropdownMenuUp = ({ children, onClose, align = 'left' }: { children: React
 );
 
 // Dropdown Item Component
-const DropdownItem = ({ icon: Icon, label, onClick, isSelected }: { icon?: any; label: string; onClick: () => void; isSelected?: boolean }) => (
+const DropdownItem = ({ icon: Icon, label, onClick, isSelected }: { icon?: LucideIcon; label: string; onClick: () => void; isSelected?: boolean }) => (
     <button
         onClick={onClick}
         className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 transition-colors ${

@@ -45,17 +45,6 @@ const generateScoreHistory = (currentScore: number, trend: 'improving' | 'worsen
   return history;
 };
 
-// Generate previous score based on trend
-const generatePreviousScore = (currentScore: number, trend: 'improving' | 'worsening' | 'stable'): number => {
-  const change = Math.floor(Math.random() * 10) + 8; // 8-18 point change
-  if (trend === 'worsening') {
-    return Math.max(20, currentScore - change);
-  } else if (trend === 'improving') {
-    return Math.min(95, currentScore + change);
-  }
-  return currentScore + (Math.random() > 0.5 ? 3 : -3);
-};
-
 // Generate risk factors for a supplier (respecting data tiers)
 const generateRiskFactors = (overallScore: number): RiskFactor[] => {
   const factors: RiskFactor[] = [];
@@ -1067,9 +1056,6 @@ export const getRegionBreakdown = (portfolio: RiskPortfolio, suppliers: Supplier
 
 import type {
   ValueLadder,
-  AnalystConnectAction,
-  CommunityAction,
-  ExpertDeepDiveAction,
   SourceEnhancement,
   SourceEnhancementSuggestion,
 } from '../types/aiResponse';
@@ -1150,39 +1136,6 @@ const MOCK_EXPERTS = [
   },
 ];
 
-// Mock Community Threads (Layer 4)
-const MOCK_COMMUNITY_THREADS = [
-  {
-    id: 'thread_001',
-    title: 'Steel price increases - how are you handling supplier negotiations?',
-    replyCount: 23,
-    category: 'Metals',
-  },
-  {
-    id: 'thread_002',
-    title: 'Alternative packaging suppliers in APAC region',
-    replyCount: 15,
-    category: 'Packaging',
-  },
-  {
-    id: 'thread_003',
-    title: 'Managing lithium supply constraints for EV components',
-    replyCount: 31,
-    category: 'Chemicals',
-  },
-  {
-    id: 'thread_004',
-    title: 'Best practices for supplier risk monitoring',
-    replyCount: 42,
-    category: 'Risk Management',
-  },
-  {
-    id: 'thread_005',
-    title: 'Ocean freight rate volatility - strategies?',
-    replyCount: 18,
-    category: 'Logistics',
-  },
-];
 
 // Category to specialty mapping for analyst matching
 const CATEGORY_SPECIALTY_MAP: Record<string, string[]> = {
@@ -1254,24 +1207,6 @@ export const generateValueLadder = (
       } : undefined,
     };
   }
-
-  // Layer 4: Community - Find related threads
-  const relatedThreads = MOCK_COMMUNITY_THREADS.filter(thread => {
-    const titleLower = thread.title.toLowerCase();
-    const categoryLower = thread.category.toLowerCase();
-    return searchTerms.some(term =>
-      term && (titleLower.includes(term) || categoryLower.includes(term) || term.includes(categoryLower.toLowerCase()))
-    );
-  });
-
-  // Community is always available - show matched threads or fallback to first general thread
-  const threads = relatedThreads.length > 0 ? relatedThreads : [MOCK_COMMUNITY_THREADS[0]];
-  valueLadder.community = {
-    available: true,
-    relatedThreadCount: threads.length,
-    topThread: threads[0],
-    cta: threads.length > 1 ? `${threads.length} related discussions` : 'See related discussions',
-  };
 
   // Layer 3: Expert Deep-Dive - Match expert based on context (premium)
   // Use deterministic matching - first matched expert or first in list
@@ -1382,8 +1317,9 @@ export const determineSourceMix = (
 
   // Handle object format (ResponseSources): { web: [], internal: [] }
   if (!Array.isArray(sources)) {
-    const hasWeb = Array.isArray((sources as any).web) && (sources as any).web.length > 0;
-    const hasInternal = Array.isArray((sources as any).internal) && (sources as any).internal.length > 0;
+    const sourcesObj = sources as { web?: unknown[]; internal?: unknown[] };
+    const hasWeb = Array.isArray(sourcesObj.web) && sourcesObj.web.length > 0;
+    const hasInternal = Array.isArray(sourcesObj.internal) && sourcesObj.internal.length > 0;
     // Partner data would be in internal array with specific types
     if (hasWeb && hasInternal) {
       return 'internal_plus_web';
@@ -1412,7 +1348,7 @@ export const determineSourceMix = (
   let hasPartner = false;
 
   for (const source of sources) {
-    const type = (source as any).type?.toLowerCase();
+    const type = source.type?.toLowerCase();
     if (!type) continue;
 
     if (WEB_TYPES.includes(type)) {

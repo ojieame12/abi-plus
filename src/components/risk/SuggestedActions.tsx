@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Exports multiple related components */
 import {
     ChevronRight,
     BarChart3,

@@ -98,7 +98,7 @@ export function validatePassword(password: string): PasswordValidation {
   }
 
   // Require at least one number or special character for complexity
-  if (!/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+  if (!/[0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
     errors.push('Password must contain at least one number or special character');
   }
 
@@ -138,7 +138,7 @@ export function validateUsername(username: string): UsernameValidation {
 
   // Check reserved usernames (case insensitive)
   const lowerUsername = username.toLowerCase();
-  if (RESERVED_USERNAMES.includes(lowerUsername as any)) {
+  if ((RESERVED_USERNAMES as readonly string[]).includes(lowerUsername)) {
     return { valid: false, error: 'This username is reserved' };
   }
 

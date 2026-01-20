@@ -2,7 +2,7 @@
 // Full news feed with filters
 
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Newspaper,
   AlertTriangle,
@@ -13,9 +13,8 @@ import {
   Bell,
   Download,
   ExternalLink,
-  Filter,
 } from 'lucide-react';
-import { ArtifactSection, ArtifactFooter, TextInput } from '../primitives';
+import { ArtifactFooter, TextInput } from '../primitives';
 
 // ============================================
 // TYPES
@@ -259,13 +258,11 @@ const DateGroup = ({
 // ============================================
 
 export const NewsEventsArtifact = ({
-  title = 'News & Events',
   context,
   events,
   onSetAlert,
   onExport,
   onEventClick,
-  onClose,
 }: NewsEventsArtifactProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('all');

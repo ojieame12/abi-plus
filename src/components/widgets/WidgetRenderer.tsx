@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Exports multiple widget components and utilities */
 // Widget Renderer - Routes to appropriate widget component based on type or data context
 import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
@@ -78,6 +79,7 @@ import { TrendBadge } from './TrendBadge';
 // COMPONENT REGISTRY
 // ============================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   // Widget components - Portfolio
   RiskDistributionWidget,
@@ -212,7 +214,8 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     // PRIORITY 2: Fall back to context-based selection if no explicit widget type
     if (!config) {
       const dataCtx = buildDataContext(props.intent, {
-        portfolio: props.portfolio,
+        // RiskPortfolio is a superset of Portfolio, safe to cast
+        portfolio: props.portfolio as Portfolio | undefined,
         suppliers: props.suppliers,
         supplier: props.supplier,
         riskChanges: props.riskChanges,
@@ -304,14 +307,16 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     // AlternativesPreviewCard → supplier_alternatives artifact
     if (config.componentType === 'AlternativesPreviewCard') {
       artifactHandlers.onViewAll = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const altProps = config.props as any;
         onOpenArtifact('supplier_alternatives', {
           currentSupplier: {
             id: supplier?.id || 'unknown',
-            name: config.props.currentSupplier,
-            score: config.props.currentScore,
-            category: supplier?.category || config.props.alternatives?.[0]?.category || 'General',
+            name: altProps.currentSupplier,
+            score: altProps.currentScore,
+            category: supplier?.category || altProps.alternatives?.[0]?.category || 'General',
           },
-          alternatives: config.props.alternatives,
+          alternatives: altProps.alternatives,
           aiContent: artifactContent,
         });
       };
@@ -322,15 +327,14 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
       artifactHandlers.onViewDetails = () => {
         // Enrich with portfolio data when available
         // Handle both Portfolio (spendFormatted) and RiskPortfolio (totalSpendFormatted)
-        const totalSpend = portfolio?.totalSpend || 0;
+        const portfolioTotalSpend = portfolio?.totalSpend || 0;
         const totalSpendFormatted =
           ('totalSpendFormatted' in (portfolio || {}))
             ? (portfolio as RiskPortfolio).totalSpendFormatted
             : ('spendFormatted' in (portfolio || {}))
               ? (portfolio as Portfolio).spendFormatted
-              : formatCurrency(totalSpend);
+              : formatCurrency(portfolioTotalSpend);
         const dist = portfolio?.distribution;
-        const totalSuppliers = portfolio?.totalSuppliers || 1; // Avoid division by zero
 
         // Distribution values are supplier counts, calculate percentages
         const buildRiskLevelData = () => {
@@ -340,7 +344,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
 
           const makeEntry = (level: string, count: number) => {
             const percent = (count / total) * 100;
-            const amount = (percent / 100) * totalSpend;
+            const amount = (percent / 100) * portfolioTotalSpend;
             return {
               level,
               amount,
@@ -359,7 +363,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
         };
 
         onOpenArtifact('spend_analysis', {
-          totalSpend,
+          totalSpend: portfolioTotalSpend,
           totalSpendFormatted,
           byRiskLevel: buildRiskLevelData(),
           concentrationWarnings: [{
@@ -400,15 +404,18 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
 
     // SupplierTableWidget → supplier_table artifact (view all) and supplier_detail (row click)
     if (config.componentType === 'SupplierTableWidget') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tableData = (config.props as any).data || {};
       artifactHandlers.onViewAll = () => {
         onOpenArtifact('supplier_table', {
-          suppliers: props.suppliers || config.props.data?.suppliers || [],
-          totalCount: config.props.data?.totalCount || props.suppliers?.length || 0,
-          filter: config.props.data?.filters,
+          suppliers: props.suppliers || tableData.suppliers || [],
+          totalCount: tableData.totalCount || props.suppliers?.length || 0,
+          filter: tableData.filters,
           aiContent: artifactContent,
         });
       };
-      artifactHandlers.onRowClick = (supplierRow: Record<string, unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (artifactHandlers as any).onRowClick = (supplierRow: Record<string, unknown>) => {
         // Find full supplier data if available, otherwise use row data
         const fullSupplier = props.suppliers?.find(s => s.id === supplierRow.id) || supplierRow;
         onOpenArtifact('supplier_detail', {
@@ -420,14 +427,17 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
 
     // SupplierMiniTable → supplier_table artifact (view all) and supplier_detail (row click)
     if (config.componentType === 'SupplierMiniTable') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const miniProps = config.props as any;
       artifactHandlers.onViewAll = () => {
         onOpenArtifact('supplier_table', {
-          suppliers: props.suppliers || config.props.suppliers || [],
-          totalCount: config.props.totalCount || props.suppliers?.length || 0,
+          suppliers: props.suppliers || miniProps.suppliers || [],
+          totalCount: miniProps.totalCount || props.suppliers?.length || 0,
           aiContent: artifactContent,
         });
       };
-      artifactHandlers.onRowClick = (supplierRow: Record<string, unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (artifactHandlers as any).onRowClick = (supplierRow: Record<string, unknown>) => {
         // Find full supplier data if available, otherwise use row data
         const fullSupplier = props.suppliers?.find(s => s.id === supplierRow.id) || supplierRow;
         onOpenArtifact('supplier_detail', {
@@ -582,11 +592,12 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
           )}
 
           {/* Unified footer - inside the card, only if there's content to show */}
-          {(sources?.totalWebCount || sources?.totalInternalCount || config.props?.beroeSourceCount || viewDetailsHandler) && (
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {(sources?.totalWebCount || sources?.totalInternalCount || (config.props as any)?.beroeSourceCount || viewDetailsHandler !== undefined) && (
             <WidgetFooter
               sources={sources}
-              beroeSourceCount={config.props?.beroeSourceCount}
-              hasBeroeSourceCount={config.props?.beroeSourceCount !== undefined}
+              beroeSourceCount={(config.props as Record<string, unknown>)?.beroeSourceCount as number | undefined}
+              hasBeroeSourceCount={(config.props as Record<string, unknown>)?.beroeSourceCount !== undefined}
               onViewDetails={viewDetailsHandler}
               onSourceClick={handleSourceClick}
             />
@@ -820,19 +831,22 @@ const getConfigFromWidget = (widget: WidgetData): ComponentConfig | null => {
         props: { ...widget.data },
       };
 
-    case 'concentration_warning':
+    case 'concentration_warning': {
       // Transform registry data shape to component props
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cwData = widget.data as any;
       return {
         componentType: 'ConcentrationWarningCard',
         props: {
-          type: widget.data.type || 'category',
-          entity: widget.data.name || widget.data.entity || 'Unknown',
-          concentration: widget.data.percentage || widget.data.concentration || 0,
-          threshold: widget.data.threshold || 30,
-          spend: widget.data.affectedSpend || widget.data.spend || '$0',
-          severity: widget.data.severity || (widget.data.percentage > 40 ? 'high' : widget.data.percentage > 25 ? 'medium' : 'low'),
+          type: cwData.type || 'category',
+          entity: cwData.name || cwData.entity || 'Unknown',
+          concentration: cwData.percentage || cwData.concentration || 0,
+          threshold: cwData.threshold || 30,
+          spend: cwData.affectedSpend || cwData.spend || '$0',
+          severity: cwData.severity || (cwData.percentage > 40 ? 'high' : cwData.percentage > 25 ? 'medium' : 'low'),
         },
       };
+    }
 
     // Market & Context widgets
     // market_card data shape doesn't match MarketContextCard - use NewsItemCard instead

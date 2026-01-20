@@ -94,11 +94,12 @@ describe('componentSelector', () => {
       expect(config).toBeDefined();
       expect(config?.componentType).toBe('SupplierRiskCardWidget');
       // Verify transformed data has required fields
-      expect(config?.props?.data).toBeDefined();
-      expect(config?.props?.data?.supplierName).toBe('Acme Corp');
-      expect(config?.props?.data?.category).toBe('Electronics');
-      expect(config?.props?.data?.location?.city).toBe('San Francisco');
-      expect(config?.props?.data?.spendFormatted).toBe('$5.0M');
+      const data = (config?.props as { data?: Record<string, unknown> })?.data as Record<string, unknown> | undefined;
+      expect(data).toBeDefined();
+      expect(data?.supplierName).toBe('Acme Corp');
+      expect(data?.category).toBe('Electronics');
+      expect((data?.location as Record<string, unknown> | undefined)?.city).toBe('San Francisco');
+      expect(data?.spendFormatted).toBe('$5.0M');
     });
 
     it('returns correct config for comparison with multiple suppliers', () => {
@@ -111,11 +112,13 @@ describe('componentSelector', () => {
       expect(config).toBeDefined();
       expect(config?.componentType).toBe('ComparisonTableWidget');
       // Verify uses comparisonDimensions not dimensions
-      expect(config?.props?.data?.comparisonDimensions).toBeDefined();
-      expect(Array.isArray(config?.props?.data?.comparisonDimensions)).toBe(true);
+      const data = (config?.props as { data?: Record<string, unknown> })?.data as Record<string, unknown> | undefined;
+      expect(data?.comparisonDimensions).toBeDefined();
+      expect(Array.isArray(data?.comparisonDimensions)).toBe(true);
       // Verify suppliers have strengths and weaknesses
-      expect(config?.props?.data?.suppliers?.[0]?.strengths).toBeDefined();
-      expect(config?.props?.data?.suppliers?.[0]?.weaknesses).toBeDefined();
+      const suppliers = data?.suppliers as Array<Record<string, unknown>> | undefined;
+      expect(suppliers?.[0]?.strengths).toBeDefined();
+      expect(suppliers?.[0]?.weaknesses).toBeDefined();
     });
 
     it('returns correct config for market_context with valid riskLevel', () => {

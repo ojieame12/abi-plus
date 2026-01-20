@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
 import { ReactNode } from 'react';
 import { ICON } from '../../utils/iconSizes';
+import { LayerBadge } from '../ui/LayerBadge';
+import type { ContentLayer, LayerMetadata } from '../../types/layers';
 
 interface ArtifactPanelProps {
     isOpen: boolean;
@@ -12,6 +14,9 @@ interface ArtifactPanelProps {
     onToggleExpand?: () => void;
     defaultWidth?: '40%' | '45%' | '50%' | '60%' | '100%';
     allowExpand?: boolean;
+    // Content layer provenance
+    contentLayer?: ContentLayer;
+    layerMetadata?: LayerMetadata;
 }
 
 export const ArtifactPanel = ({
@@ -23,6 +28,8 @@ export const ArtifactPanel = ({
     onToggleExpand,
     defaultWidth = '40%',
     allowExpand = true,
+    contentLayer,
+    layerMetadata,
 }: ArtifactPanelProps) => {
     // Only show expand button if allowExpand is true
     const showExpandButton = allowExpand && onToggleExpand;
@@ -50,7 +57,19 @@ export const ArtifactPanel = ({
 
                         {/* Header */}
                         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-sm z-10">
-                            <h2 className="font-medium text-primary truncate pr-4">{title}</h2>
+                            <div className="flex items-center gap-3 min-w-0">
+                                <h2 className="font-medium text-primary truncate">{title}</h2>
+                                {contentLayer && (
+                                    <LayerBadge
+                                        layer={contentLayer}
+                                        size="sm"
+                                        variant="subtle"
+                                        showTooltip={true}
+                                        analystName={layerMetadata?.analystName}
+                                        expertName={layerMetadata?.expertName}
+                                    />
+                                )}
+                            </div>
                             <div className="flex items-center gap-1 shrink-0">
                                 {showExpandButton && (
                                     <button

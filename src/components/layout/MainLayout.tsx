@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { MainHeader } from './MainHeader';
+import type { CompanySubscription } from '../../types/subscription';
 
 interface MainLayoutProps {
     children: ReactNode;
@@ -18,24 +19,36 @@ interface MainLayoutProps {
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
+    onNavigateToSettings?: () => void;
+    onNavigateToExpertPortal?: () => void;
+    showExpertPortal?: boolean; // Show expert portal nav (for experts/demo)
+    // Subscription/credits (Phase 2)
+    subscription?: CompanySubscription;
+    onCreditsClick?: () => void;
 }
 
-export const MainLayout = ({
-    children,
-    panel,
-    isPanelOpen = false,
-    isArtifactExpanded = false,
-    headerVariant = 'home',
-    conversationTitle = '',
-    artifactCount = 0,
-    notificationCount = 2,
-    backgroundOpacity = 100,
-    isHeaderLoading = false,
-    hideHeader = false,
-    onNewChat,
-    onNavigateToHistory,
-    onNavigateToCommunity,
-}: MainLayoutProps) => {
+export const MainLayout = (props: MainLayoutProps) => {
+    const {
+        children,
+        panel,
+        // isPanelOpen - reserved for future use
+        isArtifactExpanded = false,
+        headerVariant = 'home',
+        conversationTitle = '',
+        artifactCount = 0,
+        notificationCount = 2,
+        backgroundOpacity = 100,
+        isHeaderLoading = false,
+        hideHeader = false,
+        onNewChat,
+        onNavigateToHistory,
+        onNavigateToCommunity,
+        onNavigateToSettings,
+        onNavigateToExpertPortal,
+        showExpertPortal = false,
+        subscription,
+        onCreditsClick,
+    } = props;
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
     // Calculate opacity multiplier (0-1)
@@ -52,6 +65,9 @@ export const MainLayout = ({
                 onNewChat={onNewChat}
                 onNavigateToHistory={onNavigateToHistory}
                 onNavigateToCommunity={onNavigateToCommunity}
+                onNavigateToSettings={onNavigateToSettings}
+                onNavigateToExpertPortal={onNavigateToExpertPortal}
+                showExpertPortal={showExpertPortal}
             />
 
             {/* Column 2: Main Content - Animates out when artifact is expanded */}
@@ -139,6 +155,8 @@ export const MainLayout = ({
                                         artifactCount={artifactCount}
                                         notificationCount={notificationCount}
                                         isLoading={isHeaderLoading}
+                                        subscription={subscription}
+                                        onCreditsClick={onCreditsClick}
                                     />
                                 )}
 

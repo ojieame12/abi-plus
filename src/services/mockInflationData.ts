@@ -5,8 +5,6 @@ import type {
   CommodityPrice,
   InflationDriver,
   InflationExposure,
-  CommodityExposure,
-  SupplierExposure,
   PriceJustification,
   InflationScenario,
   PriceChange,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, X, ArrowUpDown, Check, MessageSquare, Sparkles } from 'lucide-react';
 import { ConversationRow } from '../components/chat/ConversationRow';

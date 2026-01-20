@@ -59,7 +59,7 @@ function calculateRelevance(query: string, title: string, body: string): number 
   const bodyLower = body.toLowerCase();
 
   let score = 0;
-  let totalWeight = queryWords.length;
+  const totalWeight = queryWords.length;
 
   for (const word of queryWords) {
     // Title matches are worth more

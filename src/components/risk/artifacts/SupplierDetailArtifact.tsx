@@ -5,20 +5,13 @@ import {
     ExternalLink,
     Star,
     MoreHorizontal,
-    Building2,
     MapPin,
-    DollarSign,
-    TrendingUp,
-    TrendingDown,
-    Minus,
     Clock,
     AlertTriangle,
     Lock,
-    Search,
     Check
 } from 'lucide-react';
 import { RiskScoreCircle } from '../RiskScoreBadge';
-import { HandoffCard } from '../HandoffCard';
 
 interface RiskFactor {
     name: string;
@@ -68,7 +61,6 @@ interface Supplier {
 interface SupplierDetailArtifactProps {
     supplier: Supplier;
     onBack?: () => void;
-    onClose?: () => void;
     onFindAlternatives?: () => void;
     onAddToShortlist?: () => void;
     onViewDashboard?: () => void;
@@ -86,7 +78,6 @@ const tabs: { id: TabId; label: string }[] = [
 export const SupplierDetailArtifact = ({
     supplier,
     onBack,
-    onClose,
     onFindAlternatives,
     onAddToShortlist,
     onViewDashboard,
@@ -99,18 +90,6 @@ export const SupplierDetailArtifact = ({
     const events = supplier?.events || [];
     const history = supplier?.history || [];
     const location = supplier?.location || { city: 'Unknown', country: 'Unknown' };
-
-    const getTrendIcon = () => {
-        switch (srs.trend) {
-            case 'improving':
-                return <TrendingDown size={16} className="text-green-500" />;
-            case 'worsening':
-                return <TrendingUp size={16} className="text-red-500" />;
-            case 'stable':
-            default:
-                return <Minus size={16} className="text-slate-400" />;
-        }
-    };
 
     return (
         <div className="flex flex-col h-full bg-white font-sans">

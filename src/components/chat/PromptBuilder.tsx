@@ -53,7 +53,7 @@ const containerVariants = {
     y: 0,
     transition: {
       duration: 0.3,
-      ease: [0.25, 0.46, 0.45, 0.94],
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
       staggerChildren: 0.05,
     },
   },
@@ -70,7 +70,7 @@ const chipVariants = {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] as const },
   },
   exit: {
     opacity: 0,
@@ -84,7 +84,7 @@ const levelVariants = {
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] as const },
   },
   exit: {
     opacity: 0,
@@ -206,7 +206,7 @@ const ModifierInput = ({ config, value, onChange }: ModifierInputProps) => {
         <option value="">Select...</option>
         {config.options?.map((opt) => (
           <option key={opt.id} value={opt.id}>
-            {opt.label}
+            {opt.name}
           </option>
         ))}
       </select>

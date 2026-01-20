@@ -1,4 +1,4 @@
-import { Newspaper, AlertTriangle, TrendingUp, Globe, ExternalLink } from 'lucide-react';
+import { Newspaper, AlertTriangle, TrendingUp, Globe, ExternalLink, type LucideIcon } from 'lucide-react';
 
 interface MarketContextCardProps {
     sector: string;
@@ -19,7 +19,7 @@ export const MarketContextCard = ({
     onViewReport,
     onViewSuppliers,
 }: MarketContextCardProps) => {
-    const getRiskConfig = () => {
+    const getRiskConfig = (): { icon: LucideIcon; color: string; bg: string; badge: string } => {
         switch (riskLevel) {
             case 'elevated':
                 return { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', badge: 'bg-amber-100 text-amber-700' };
@@ -31,7 +31,6 @@ export const MarketContextCard = ({
     };
 
     const config = getRiskConfig();
-    const Icon = config.icon;
 
     return (
         <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-[1.25rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/[0.02]">

@@ -383,11 +383,11 @@ export const INTENT_COMPONENT_MATRIX: IntentComponentMapping[] = [
 // WIDGET TYPE → COMPONENT MAPPING
 // ============================================
 
-export const WIDGET_TO_COMPONENT: Record<WidgetType, {
+export const WIDGET_TO_COMPONENT: Partial<Record<WidgetType, {
   primary: string;
   alternates: string[];
   artifactExpansion: string | null;
-}> = {
+}>> = {
   // Portfolio & Overview
   risk_distribution: {
     primary: 'RiskDistributionWidget',

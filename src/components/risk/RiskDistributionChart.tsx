@@ -89,7 +89,7 @@ export const RiskDistributionInline = ({
 }) => {
     return (
         <div className="flex items-center gap-3">
-            {segments.map(({ key, label, dotColor }) => {
+            {segments.map(({ key, dotColor }) => {
                 const count = distribution[key];
                 if (count === 0) return null;
 

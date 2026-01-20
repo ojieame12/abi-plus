@@ -1,7 +1,6 @@
 // Justification Report Artifact
 // Full price increase validation report with market comparison and negotiation support
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   CheckCircle2,
@@ -9,8 +8,6 @@ import {
   MinusCircle,
   AlertTriangle,
   Download,
-  TrendingUp,
-  TrendingDown,
   Scale,
   FileText,
   Calendar,
@@ -18,6 +15,7 @@ import {
   Shield,
   Target,
   MessageSquare,
+  TrendingUp,
 } from 'lucide-react';
 import { ArtifactSection, ArtifactFooter } from '../primitives';
 import type {
@@ -26,6 +24,8 @@ import type {
   JustificationFactor,
   SupportingDataPoint,
 } from '../../../types/inflation';
+
+// Re-export for external use
 
 // ============================================
 // TYPES
@@ -445,12 +445,10 @@ const ContractInfo = ({ terms }: { terms: ContractTerms }) => {
 
 export const JustificationReportArtifact = ({
   justification,
-  historicalPricing = [],
   competitorPricing = [],
   contractTerms,
   onExport,
   onStartNegotiation,
-  onClose,
 }: JustificationReportArtifactProps) => {
   if (!justification) {
     return (

@@ -10,6 +10,7 @@ import {
 } from '../widgetTransformers';
 import type { Supplier, RiskChange } from '../../types/supplier';
 import type { Portfolio } from '../../types/data';
+import type { EventsFeedData } from '../../types/widgets';
 
 // Mock data
 const mockSupplier: Supplier = {
@@ -303,7 +304,7 @@ describe('widgetTransformers', () => {
     it('handles double-wrapped events (prevents double-wrapping bug)', () => {
       // This is the bug scenario: { events: { events: [...] } }
       const doubleWrapped = { events: { events: mockEvents } };
-      const result = extractEventsArray(doubleWrapped);
+      const result = extractEventsArray(doubleWrapped as unknown as EventsFeedData);
 
       expect(result).toEqual(mockEvents);
     });

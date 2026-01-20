@@ -1,5 +1,5 @@
 // Utility for building insight detail data from supplier/portfolio data
-import type { Supplier, RiskFactor } from '../types/supplier';
+import type { Supplier } from '../types/supplier';
 
 // ============================================
 // TYPES
@@ -205,7 +205,7 @@ export const buildInsightFromSupplier = (
     internal?: Array<{ name: string; type: string }>;
   }
 ): InsightDetailData => {
-  const { srs, name, category, location } = supplier;
+  const { srs, name, category } = supplier;
 
   // Determine sentiment and type based on risk level and trend
   const isHighRisk = srs.level === 'high' || srs.level === 'medium-high';

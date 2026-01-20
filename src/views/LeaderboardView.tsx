@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Flame, Crown, Medal, Award, Loader2, User } from 'lucide-react';
 import { useLeaderboard, type LeaderboardEntry } from '../hooks/useLeaderboard';
 import type { LeaderboardPeriod } from '../services/leaderboardService';
-import { AnimatedNumber, StreakBadge } from '../components/ui';
+import { AnimatedNumber } from '../components/ui';
 
 interface LeaderboardViewProps {
   onSelectUser?: (userId: string) => void;

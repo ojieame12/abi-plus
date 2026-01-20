@@ -1,7 +1,7 @@
 // Artifact Registry
 // Central registry mapping artifact types to components and metadata
 
-import { ComponentType } from 'react';
+// ComponentType import available if needed for component registry pattern
 
 // ============================================
 // ARTIFACT TYPE DEFINITIONS

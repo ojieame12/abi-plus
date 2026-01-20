@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useCommunityQuestions } from '../useCommunityQuestions';
+import type { QuestionSortBy } from '../../types/community';
 import * as api from '../../services/api';
 import * as mockData from '../../services/communityMockData';
 import { createTestQuestion, createTestTag } from '../../test/community-utils';
@@ -220,9 +221,8 @@ describe('useCommunityQuestions', () => {
     });
 
     it('does not load more when already loading', async () => {
-      let resolvePromise: (value: unknown) => void;
-      const promise = new Promise((resolve) => {
-        resolvePromise = resolve;
+      const promise = new Promise(() => {
+        // Never resolves to keep loading state
       });
       mockApiFetch.mockReturnValue(promise);
 
@@ -299,14 +299,14 @@ describe('useCommunityQuestions', () => {
 
       const { result, rerender } = renderHook(
         ({ sortBy }) => useCommunityQuestions({ sortBy }),
-        { initialProps: { sortBy: 'newest' as const } }
+        { initialProps: { sortBy: 'newest' as QuestionSortBy } }
       );
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      rerender({ sortBy: 'votes' as const });
+      rerender({ sortBy: 'votes' as QuestionSortBy });
 
       await waitFor(() => {
         // Check that the new sortBy is being used in calls

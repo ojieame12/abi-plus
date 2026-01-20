@@ -76,7 +76,7 @@ export const RiskDistributionWidget = ({ data, onViewDetails, beroeSourceCount =
               strokeWidth="3"
             />
             {/* Segments */}
-            {segments.map((segment, i) => (
+            {segments.map((segment) => (
               <circle
                 key={segment.key}
                 cx="18"

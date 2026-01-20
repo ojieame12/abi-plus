@@ -1,6 +1,6 @@
 // Auth Middleware Tests
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { describe, it, expect } from 'vitest';
+import type { VercelRequest } from '@vercel/node';
 import {
   extractSessionToken,
   extractVisitorId,
@@ -24,16 +24,6 @@ function createMockRequest(overrides: Partial<VercelRequest> = {}): VercelReques
     method: 'GET',
     ...overrides,
   } as VercelRequest;
-}
-
-function createMockResponse(): VercelResponse {
-  const res: Partial<VercelResponse> = {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis(),
-    setHeader: vi.fn().mockReturnThis(),
-    end: vi.fn().mockReturnThis(),
-  };
-  return res as VercelResponse;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -132,7 +122,7 @@ describe('Auth Middleware', () => {
 
     it('returns undefined for non-string header value', () => {
       const req = createMockRequest({
-        headers: { 'x-csrf-token': ['array', 'value'] as any },
+        headers: { 'x-csrf-token': ['array', 'value'] as unknown as string },
       });
 
       expect(extractCsrfToken(req)).toBeUndefined();

@@ -394,3 +394,463 @@ export type DbUserPortfolio = typeof userPortfolios.$inferSelect;
 export type NewDbUserPortfolio = typeof userPortfolios.$inferInsert;
 export type DbRiskChange = typeof riskChanges.$inferSelect;
 export type NewDbRiskChange = typeof riskChanges.$inferInsert;
+
+// ══════════════════════════════════════════════════════════════════
+// ORGANIZATION TABLES (Companies & Teams)
+// ══════════════════════════════════════════════════════════════════
+
+// Companies table - organization entity
+export const companies = pgTable('companies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  industry: text('industry'),
+  size: text('size'), // 'startup', 'smb', 'mid-market', 'enterprise'
+  logoUrl: text('logo_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Teams table - groups within a company
+export const teams = pgTable('teams', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  unique('team_company_slug_unique').on(table.companyId, table.slug),
+  index('teams_company_id_idx').on(table.companyId),
+]);
+
+// Team memberships - link users to teams
+export const teamMemberships = pgTable('team_memberships', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull().default('member'), // 'member', 'approver', 'admin', 'owner'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  unique('team_membership_unique').on(table.teamId, table.userId),
+  index('team_memberships_user_id_idx').on(table.userId),
+]);
+
+// Organization types
+export type Company = typeof companies.$inferSelect;
+export type NewCompany = typeof companies.$inferInsert;
+export type Team = typeof teams.$inferSelect;
+export type NewTeam = typeof teams.$inferInsert;
+export type TeamMembership = typeof teamMemberships.$inferSelect;
+export type NewTeamMembership = typeof teamMemberships.$inferInsert;
+
+// ══════════════════════════════════════════════════════════════════
+// CREDIT LEDGER TABLES
+// ══════════════════════════════════════════════════════════════════
+
+// Entry types for the ledger
+export type LedgerEntryType = 'credit' | 'debit';
+
+export type LedgerTransactionType =
+  | 'allocation'       // Mid-cycle top-up ONLY (initial is in credit_accounts)
+  | 'spend'            // Direct spend (auto-approved)
+  | 'hold_conversion'  // Approved hold converted to spend
+  | 'refund'           // Credit returned to account
+  | 'adjustment'       // Manual admin adjustment
+  | 'expiry'           // Credits expired
+  | 'rollover';        // Credits rolled over to new period
+
+export type LedgerReferenceType = 'request' | 'subscription' | 'admin' | 'system';
+
+export type CreditHoldStatus = 'active' | 'converted' | 'released' | 'expired';
+
+// Credit accounts - one per company, holds subscription and credit info
+// IMPORTANT: total_credits + bonus_credits = initial subscription allocation
+// Ledger 'allocation' entries are ONLY for mid-cycle top-ups to avoid double-counting
+export const creditAccounts = pgTable('credit_accounts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'restrict' }),
+
+  // Subscription info
+  subscriptionTier: text('subscription_tier').notNull(),
+  subscriptionStart: timestamp('subscription_start', { mode: 'date' }).notNull(),
+  subscriptionEnd: timestamp('subscription_end', { mode: 'date' }).notNull(),
+
+  // Initial credit allocation (from subscription)
+  // This is the SOURCE OF TRUTH for subscription-granted credits
+  totalCredits: integer('total_credits').notNull(), // Base credits from tier
+  bonusCredits: integer('bonus_credits').notNull().default(0), // Tier bonus
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  unique('credit_accounts_company_unique').on(table.companyId),
+  index('credit_accounts_company_id_idx').on(table.companyId),
+]);
+
+// Ledger entries - immutable, append-only double-entry style ledger
+export const ledgerEntries = pgTable('ledger_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => creditAccounts.id, { onDelete: 'restrict' }),
+
+  // Entry type: credit (add) or debit (subtract)
+  entryType: text('entry_type').notNull().$type<LedgerEntryType>(), // 'credit' | 'debit'
+
+  // Amount is always positive; entry_type determines direction
+  amount: integer('amount').notNull(),
+
+  // Transaction classification
+  transactionType: text('transaction_type').notNull().$type<LedgerTransactionType>(),
+
+  // Reference to source entity
+  referenceType: text('reference_type').$type<LedgerReferenceType>(),
+  referenceId: uuid('reference_id'),
+
+  // Audit trail
+  description: text('description').notNull(),
+  performedBy: uuid('performed_by').references(() => users.id),
+
+  // Idempotency: prevents duplicate entries from retries (scoped to account)
+  idempotencyKey: text('idempotency_key'),
+
+  // Timestamp (immutable - no updated_at)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  unique('ledger_entries_idempotency_unique').on(table.accountId, table.idempotencyKey),
+  index('ledger_entries_account_created_idx').on(table.accountId, table.createdAt),
+  index('ledger_entries_account_type_idx').on(table.accountId, table.transactionType),
+  index('ledger_entries_reference_idx').on(table.referenceType, table.referenceId),
+]);
+
+// Credit holds - reservations for pending approval requests
+// NOTE: requestId references approvalRequests, but we can't add FK here due to circular reference
+// The FK is enforced at application level and can be added via raw SQL migration
+export const creditHolds = pgTable('credit_holds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => creditAccounts.id, { onDelete: 'restrict' }),
+  requestId: uuid('request_id').notNull(), // References approval_requests.id
+
+  // Hold details
+  amount: integer('amount').notNull(),
+
+  // Hold status
+  status: text('status').notNull().default('active').$type<CreditHoldStatus>(),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  releasedAt: timestamp('released_at'),
+  convertedAt: timestamp('converted_at'),
+}, (table) => [
+  unique('credit_holds_request_unique').on(table.requestId),
+  index('credit_holds_account_active_idx').on(table.accountId),
+  index('credit_holds_created_active_idx').on(table.createdAt),
+]);
+
+// Credit allocations - team-level budget allocations from company pool
+export const creditAllocations = pgTable('credit_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => creditAccounts.id, { onDelete: 'restrict' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'restrict' }),
+
+  // Allocation amount for this period
+  allocatedCredits: integer('allocated_credits').notNull(),
+
+  // Budget period
+  periodStart: timestamp('period_start', { mode: 'date' }).notNull(),
+  periodEnd: timestamp('period_end', { mode: 'date' }).notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  unique('credit_allocations_team_period_unique').on(table.accountId, table.teamId, table.periodStart),
+  index('credit_allocations_team_idx').on(table.teamId, table.periodStart),
+]);
+
+// Credit Ledger types
+export type CreditAccount = typeof creditAccounts.$inferSelect;
+export type NewCreditAccount = typeof creditAccounts.$inferInsert;
+export type LedgerEntry = typeof ledgerEntries.$inferSelect;
+export type NewLedgerEntry = typeof ledgerEntries.$inferInsert;
+export type CreditHold = typeof creditHolds.$inferSelect;
+export type NewCreditHold = typeof creditHolds.$inferInsert;
+export type CreditAllocation = typeof creditAllocations.$inferSelect;
+export type NewCreditAllocation = typeof creditAllocations.$inferInsert;
+
+// ══════════════════════════════════════════════════════════════════
+// APPROVAL WORKFLOW TABLES
+// ══════════════════════════════════════════════════════════════════
+
+// Approval request types
+export type ApprovalRequestType =
+  | 'report_upgrade'
+  | 'analyst_qa'
+  | 'analyst_call'
+  | 'expert_consult'
+  | 'expert_deepdive'
+  | 'bespoke_project';
+
+// Approval request status (state machine)
+export type ApprovalRequestStatus =
+  | 'draft'
+  | 'pending'
+  | 'approved'
+  | 'denied'
+  | 'cancelled'
+  | 'expired'
+  | 'fulfilled';
+
+// Approval level (routing)
+export type ApprovalLevel = 'auto' | 'approver' | 'admin';
+
+// Approval event types
+export type ApprovalEventType =
+  | 'created'
+  | 'submitted'
+  | 'auto_approved'    // Request auto-approved (under threshold)
+  | 'approved'
+  | 'denied'
+  | 'escalated'
+  | 'reassigned'
+  | 'cancelled'
+  | 'expired'
+  | 'fulfilled';
+
+// Request context JSON structure
+export interface ApprovalRequestContext {
+  reportId?: string;
+  reportTitle?: string;
+  category?: string;
+  queryText?: string;
+  sourceConversationId?: string;
+  [key: string]: unknown;
+}
+
+// Approval requests - the core state machine
+export const approvalRequests = pgTable('approval_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'restrict' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'restrict' }),
+  requesterId: uuid('requester_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+
+  // Request type and status
+  requestType: text('request_type').notNull().$type<ApprovalRequestType>(),
+  status: text('status').notNull().default('draft').$type<ApprovalRequestStatus>(),
+
+  // Request details
+  title: text('title').notNull(),
+  description: text('description'),
+  context: jsonb('context').$type<ApprovalRequestContext>(),
+
+  // Credit information
+  estimatedCredits: integer('estimated_credits').notNull(),
+  actualCredits: integer('actual_credits'), // Set on fulfillment if different
+
+  // Approval routing
+  currentApproverId: uuid('current_approver_id').references(() => users.id),
+  approvalLevel: text('approval_level').$type<ApprovalLevel>(),
+  escalationCount: integer('escalation_count').notNull().default(0),
+
+  // Decision tracking
+  decisionReason: text('decision_reason'),
+  decidedBy: uuid('decided_by').references(() => users.id),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  submittedAt: timestamp('submitted_at'),
+  decidedAt: timestamp('decided_at'),
+  fulfilledAt: timestamp('fulfilled_at'),
+  expiresAt: timestamp('expires_at'),
+}, (table) => [
+  index('approval_requests_company_status_idx').on(table.companyId, table.status),
+  index('approval_requests_approver_status_idx').on(table.currentApproverId, table.status),
+  index('approval_requests_requester_idx').on(table.requesterId),
+  index('approval_requests_expires_idx').on(table.expiresAt),
+  index('approval_requests_team_idx').on(table.teamId),
+]);
+
+// Approval events - audit trail for all state transitions
+export const approvalEvents = pgTable('approval_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  requestId: uuid('request_id').notNull().references(() => approvalRequests.id, { onDelete: 'cascade' }),
+
+  // Event details
+  eventType: text('event_type').notNull().$type<ApprovalEventType>(),
+
+  // Actor
+  performedBy: uuid('performed_by').references(() => users.id),
+  performedBySystem: boolean('performed_by_system').notNull().default(false),
+
+  // State transition
+  fromStatus: text('from_status').$type<ApprovalRequestStatus>(),
+  toStatus: text('to_status').$type<ApprovalRequestStatus>(),
+
+  // Additional context
+  reason: text('reason'),
+  metadata: jsonb('metadata'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('approval_events_request_idx').on(table.requestId),
+  index('approval_events_created_idx').on(table.createdAt),
+]);
+
+// Approval rules - configurable thresholds per company
+export const approvalRules = pgTable('approval_rules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+
+  // Threshold range
+  minCredits: integer('min_credits').notNull(),
+  maxCredits: integer('max_credits'), // NULL = unlimited
+
+  // Routing configuration
+  approverRole: text('approver_role').notNull().$type<ApprovalLevel>(),
+  escalationHours: integer('escalation_hours'), // NULL = no escalation
+
+  // Priority for rule matching (lower = first)
+  priority: integer('priority').notNull().default(0),
+
+  // Status
+  isActive: boolean('is_active').notNull().default(true),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('approval_rules_company_active_idx').on(table.companyId, table.isActive),
+]);
+
+// Approval Workflow types
+export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type NewApprovalRequest = typeof approvalRequests.$inferInsert;
+export type ApprovalEvent = typeof approvalEvents.$inferSelect;
+export type NewApprovalEvent = typeof approvalEvents.$inferInsert;
+export type ApprovalRule = typeof approvalRules.$inferSelect;
+export type NewApprovalRule = typeof approvalRules.$inferInsert;
+
+// ══════════════════════════════════════════════════════════════════
+// EXPERT NETWORK TABLES
+// ══════════════════════════════════════════════════════════════════
+
+// Expert availability status
+export type ExpertAvailability = 'online' | 'busy' | 'offline';
+
+// Engagement types
+export type ExpertEngagementType = 'consultation' | 'deep_dive' | 'bespoke_project';
+
+// Engagement status
+export type ExpertEngagementStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+
+// Experts table - industry experts available for consultations
+export const experts = pgTable('experts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  // Link to user account (if expert has logged in)
+  userId: uuid('user_id').unique().references(() => users.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  title: text('title').notNull(),
+  photo: text('photo'),
+  formerCompany: text('former_company').notNull(),
+  formerTitle: text('former_title').notNull(),
+  yearsExperience: integer('years_experience').notNull(),
+  specialties: jsonb('specialties').$type<string[]>().notNull(),
+  industries: jsonb('industries').$type<string[]>().notNull(),
+  regions: jsonb('regions').$type<string[]>().notNull(),
+  rating: integer('rating').default(0), // Stored as 10x (48 = 4.8)
+  totalRatings: integer('total_ratings').default(0),
+  totalEngagements: integer('total_engagements').default(0),
+  availability: text('availability').default('offline').$type<ExpertAvailability>(),
+  hourlyRate: integer('hourly_rate').notNull(),
+  isTopVoice: boolean('is_top_voice').default(false),
+  isVerified: boolean('is_verified').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('experts_availability_idx').on(table.availability),
+  index('experts_is_top_voice_idx').on(table.isTopVoice),
+  index('experts_user_id_idx').on(table.userId),
+]);
+
+// Expert engagements - track consultations and projects
+export const expertEngagements = pgTable('expert_engagements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  expertId: uuid('expert_id').notNull().references(() => experts.id, { onDelete: 'restrict' }),
+  requestId: uuid('request_id').references(() => approvalRequests.id, { onDelete: 'set null' }),
+  clientId: uuid('client_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  type: text('type').notNull().$type<ExpertEngagementType>(),
+  title: text('title').notNull(),
+  status: text('status').notNull().default('scheduled').$type<ExpertEngagementStatus>(),
+  scheduledAt: timestamp('scheduled_at'),
+  completedAt: timestamp('completed_at'),
+  credits: integer('credits').notNull(),
+  rating: integer('rating'), // 1-5, set after completion
+  review: text('review'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('expert_engagements_expert_idx').on(table.expertId),
+  index('expert_engagements_client_idx').on(table.clientId),
+  index('expert_engagements_status_idx').on(table.status),
+]);
+
+// Expert Network types
+export type Expert = typeof experts.$inferSelect;
+export type NewExpert = typeof experts.$inferInsert;
+export type ExpertEngagement = typeof expertEngagements.$inferSelect;
+export type NewExpertEngagement = typeof expertEngagements.$inferInsert;
+
+// ══════════════════════════════════════════════════════════════════
+// MANAGED CATEGORIES TABLES
+// ══════════════════════════════════════════════════════════════════
+
+// Category domains - high-level groupings
+export const categoryDomains = pgTable('category_domains', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  slug: text('slug').notNull().unique(),
+  icon: text('icon'),
+  color: text('color'),
+  categoryCount: integer('category_count').default(0),
+});
+
+// Managed categories - Beroe-managed intelligence categories
+export const managedCategories = pgTable('managed_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  domainId: uuid('domain_id').notNull().references(() => categoryDomains.id, { onDelete: 'restrict' }),
+  subDomain: text('sub_domain'),
+  description: text('description'),
+  leadAnalystName: text('lead_analyst_name'),
+  leadAnalystPhoto: text('lead_analyst_photo'),
+  updateFrequency: text('update_frequency').notNull(), // 'daily', 'weekly', 'monthly'
+  hasMarketReport: boolean('has_market_report').default(false),
+  hasPriceIndex: boolean('has_price_index').default(false),
+  hasSupplierData: boolean('has_supplier_data').default(false),
+  responseTimeSla: text('response_time_sla').default('24 hours'),
+  clientCount: integer('client_count').default(0),
+  isPopular: boolean('is_popular').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('managed_categories_domain_idx').on(table.domainId),
+  index('managed_categories_is_popular_idx').on(table.isPopular),
+]);
+
+// Activated categories - which categories a company has active
+export const activatedCategories = pgTable('activated_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  categoryId: uuid('category_id').notNull().references(() => managedCategories.id, { onDelete: 'restrict' }),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  activatedAt: timestamp('activated_at').defaultNow().notNull(),
+  activatedBy: uuid('activated_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  queriesThisMonth: integer('queries_this_month').default(0),
+  alertsEnabled: boolean('alerts_enabled').default(true),
+}, (table) => [
+  unique('activated_categories_unique').on(table.categoryId, table.companyId),
+  index('activated_categories_company_idx').on(table.companyId),
+]);
+
+// Managed Categories types
+export type CategoryDomain = typeof categoryDomains.$inferSelect;
+export type NewCategoryDomain = typeof categoryDomains.$inferInsert;
+export type ManagedCategory = typeof managedCategories.$inferSelect;
+export type NewManagedCategory = typeof managedCategories.$inferInsert;
+export type ActivatedCategory = typeof activatedCategories.$inferSelect;
+export type NewActivatedCategory = typeof activatedCategories.$inferInsert;

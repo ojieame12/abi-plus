@@ -10,15 +10,17 @@ import { sendMessage } from '../services/ai';
 import type { ChatMessage } from '../types/chat';
 import { generateId } from '../types/chat';
 import type { Supplier } from '../types/supplier';
+import type { ResponseInsight } from '../types/aiResponse';
+import type { WidgetData } from '../types/widgets';
+import type { Milestone } from '../services/ai';
 import { buildResponseSources } from '../utils/sources';
 import { ResponseBody } from '../components/response';
 
 interface LiveChatViewProps {
   initialQuestion?: string;
-  onArtifactChange?: (artifact: AIResponseType['artifact'], suppliers?: Supplier[], portfolio?: any) => void;
+  onArtifactChange?: (artifact: AIResponseType['artifact'], suppliers?: Supplier[], portfolio?: unknown) => void;
   // Value Ladder callbacks
   onAnalystConnect?: (response: AIResponseType) => void;
-  onCommunity?: (response: AIResponseType) => void;
   onExpertDeepDive?: (response: AIResponseType) => void;
   onSourceEnhancement?: (type: string, response: AIResponseType) => void;
 }
@@ -34,7 +36,6 @@ export const LiveChatView = ({
   initialQuestion,
   onArtifactChange,
   onAnalystConnect,
-  onCommunity,
   onExpertDeepDive,
   onSourceEnhancement,
 }: LiveChatViewProps) => {
@@ -50,13 +51,57 @@ export const LiveChatView = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
-  // Handle initial question
+  // Handle initial question - using ref to ensure single initialization
   useEffect(() => {
     if (initialQuestion && !hasInitialized.current) {
       hasInitialized.current = true;
-      handleSendMessage(initialQuestion);
+      // Send message on mount - intentionally not including handleSendMessage in deps
+      // because we only want this to run once when initialQuestion is set
+      const sendInitial = async () => {
+        const content = initialQuestion;
+        if (!content.trim()) return;
+
+        const userMessage: Message = {
+          id: generateId(),
+          role: 'user',
+          content,
+        };
+        setMessages(prev => [...prev, userMessage]);
+        setIsThinking(true);
+
+        try {
+          const response = await sendMessage(content, {
+            mode,
+            webSearchEnabled,
+            conversationHistory: [],
+          });
+
+          const aiMessage: Message = {
+            id: response.id,
+            role: 'assistant',
+            content: response.content,
+            response,
+          };
+          setMessages(prev => [...prev, aiMessage]);
+
+          if (response.artifact && response.artifact.type !== 'none') {
+            onArtifactChange?.(response.artifact, response.suppliers, response.portfolio);
+          }
+        } catch (error) {
+          console.error('Error sending message:', error);
+          const errorMessage: Message = {
+            id: generateId(),
+            role: 'assistant',
+            content: "I'm sorry, I encountered an error. Please try again.",
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        } finally {
+          setIsThinking(false);
+        }
+      };
+      sendInitial();
     }
-  }, [initialQuestion]);
+  }, [initialQuestion, mode, webSearchEnabled, onArtifactChange]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -136,19 +181,20 @@ export const LiveChatView = ({
                   <UserMessage message={msg.content} initial="S" />
                 ) : (
                   <AIResponse
-                    thoughtProcess={msg.response?.thinkingSteps ? {
-                      duration: msg.response.thinkingDuration || '2s',
-                      content: {
-                        queryAnalysis: {
-                          commodity: msg.response.intent?.category.replace('_', ' ') || 'Analysis',
-                          informationNeeded: msg.response.thinkingSteps[0]?.content,
-                        },
-                        searchStrategy: msg.response.thinkingSteps[1] ? {
-                          priority: msg.response.thinkingSteps[1].title,
-                          bullets: [msg.response.thinkingSteps[1].content],
-                        } : undefined,
-                      },
-                    } : undefined}
+                    thoughtProcess={(() => {
+                      const response = msg.response;
+                      const steps = response?.thinkingSteps;
+                      if (!steps || steps.length === 0) return undefined;
+                      return {
+                        duration: response?.thinkingDuration || '2s',
+                        milestones: steps.map((step, index) => ({
+                          id: `${msg.id}-step-${index}`,
+                          event: (index === steps.length - 1 ? 'response_ready' : 'data_retrieved') as Milestone['event'],
+                          label: step.title,
+                          timestamp: (index + 1) * 400,
+                        })),
+                      };
+                    })()}
                     // Acknowledgement header
                     acknowledgement={msg.response?.acknowledgement}
                     // Widget context for WidgetRenderer - enables context-based widget selection
@@ -158,10 +204,23 @@ export const LiveChatView = ({
                       suppliers: msg.response.suppliers,
                       supplier: msg.response.suppliers?.[0],
                       riskChanges: msg.response.riskChanges,
-                      widgetData: msg.response.widget,
+                      widgetData: msg.response.widget as WidgetData | undefined,
                       renderContext: 'chat',
                     } : undefined}
-                    insight={msg.response?.insight}
+                    insight={(() => {
+                      const insight = msg.response?.insight;
+                      if (!insight) return undefined;
+                      if (typeof insight === 'string') return insight;
+                      if ('headline' in insight) return insight as ResponseInsight;
+                      const trend = insight.trend === 'up' || insight.trend === 'down' || insight.trend === 'neutral'
+                        ? insight.trend
+                        : undefined;
+                      return {
+                        text: insight.text ?? insight.detail ?? 'Insight available',
+                        detail: insight.detail,
+                        trend,
+                      };
+                    })()}
                     sources={(() => {
                       const sources = msg.response?.sources;
                       if (!sources) return undefined;
@@ -182,7 +241,6 @@ export const LiveChatView = ({
                     // Value Ladder (4-layer system)
                     valueLadder={msg.response?.canonical?.valueLadder}
                     onAnalystConnect={() => msg.response && onAnalystConnect?.(msg.response)}
-                    onCommunity={() => msg.response && onCommunity?.(msg.response)}
                     onExpertDeepDive={() => msg.response && onExpertDeepDive?.(msg.response)}
                     // Source Enhancement
                     sourceEnhancement={msg.response?.canonical?.sourceEnhancement}

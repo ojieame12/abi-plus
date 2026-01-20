@@ -12,7 +12,7 @@ import {
   verifySignedVisitorId,
 } from '../../src/services/security.js';
 import { getPermissions } from '../../src/services/auth.js';
-import type { UserPermissions, AuthState } from '../../src/types/auth.js';
+import type { UserPermissions } from '../../src/types/auth.js';
 
 // ══════════════════════════════════════════════════════════════════
 // Types

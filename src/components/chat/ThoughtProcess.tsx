@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Exports utility function alongside component */
 import { useState, useEffect } from 'react';
 import { Clock, ChevronDown, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,6 +30,7 @@ export const ThoughtProcess = ({
     // Auto-expand during thinking, auto-collapse after
     useEffect(() => {
         if (isThinking) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- UI state sync is intentional
             setIsExpanded(true);
         } else if (milestones.length > 0) {
             const timer = setTimeout(() => setIsExpanded(false), 1500);

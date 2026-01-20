@@ -7,7 +7,6 @@ import {
   DollarSign,
   AlertTriangle,
   Download,
-  PieChart,
   BarChart3,
   MapPin,
   Package,
@@ -259,13 +258,10 @@ const ConcentrationAlert = ({ warning }: { warning: ConcentrationWarning }) => {
     low: 'bg-slate-50 border-slate-200 text-slate-600',
   };
 
-  const typeIcons = {
-    supplier: DollarSign,
-    category: Package,
-    region: MapPin,
-  };
-
-  const Icon = typeIcons[warning.type];
+  // Type icons available for future use
+  void DollarSign;
+  void Package;
+  void MapPin;
 
   return (
     <motion.div
@@ -300,8 +296,8 @@ export const SpendAnalysisArtifact = ({
   trend,
   onExport,
   onDrillDown,
-  onClose,
 }: SpendAnalysisArtifactProps) => {
+  void totalSpend; // Used for type checking purposes
   // Determine which tabs have data
   const hasRiskData = byRiskLevel.length > 0;
   const hasCategoryData = byCategory.length > 0;

@@ -1,14 +1,7 @@
 // Tests for VoteButtons component
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { VoteButtons } from '../VoteButtons';
-
-// Mock AnimatedNumber since it might have animation logic
-vi.mock('../../ui/AnimatedNumber', () => ({
-  AnimatedNumber: ({ value, className }: { value: number; className: string }) => (
-    <span data-testid="score" className={className}>{value}</span>
-  ),
-}));
 
 describe('VoteButtons', () => {
   const defaultProps = {
@@ -49,14 +42,18 @@ describe('VoteButtons', () => {
       render(<VoteButtons {...defaultProps} userVote={1} />);
 
       const upvoteButton = screen.getByTitle('Upvote');
-      expect(upvoteButton.className).toContain('text-violet-600');
+      // Active upvote uses white text on violet background
+      expect(upvoteButton.className).toContain('text-white');
+      expect(upvoteButton.className).toContain('bg-violet-500');
     });
 
     it('highlights downvote when active', () => {
       render(<VoteButtons {...defaultProps} userVote={-1} />);
 
       const downvoteButton = screen.getByTitle('Downvote');
-      expect(downvoteButton.className).toContain('text-red-500');
+      // Active downvote uses white text on slate background
+      expect(downvoteButton.className).toContain('text-white');
+      expect(downvoteButton.className).toContain('bg-slate-500');
     });
 
     it('shows neutral state when no vote', () => {

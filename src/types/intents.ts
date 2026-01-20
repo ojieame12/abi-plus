@@ -87,6 +87,7 @@ export type ArtifactType =
   | 'supplier_table'      // List view with filters
   | 'supplier_detail'     // Single supplier tabbed view
   | 'comparison'          // Multi-supplier comparison
+  | 'supplier_comparison' // Supplier comparison artifact
   | 'portfolio_dashboard' // Overview with charts
   // Inflation artifacts
   | 'inflation_dashboard'     // Full inflation overview

@@ -23,7 +23,9 @@ export async function apiFetch<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const { requiresAuth = false, ...fetchOptions } = options;
+  // requiresAuth could be used for auth checks in future
+  const { requiresAuth: _requiresAuth, ...fetchOptions } = options;
+  void _requiresAuth; // Explicitly mark as unused for future use
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',

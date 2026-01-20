@@ -1,8 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
-  AlertCircle,
   Bold,
   Italic,
   List,
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 import { TagSelector } from '../components/community/TagSelector';
 import { useTags } from '../hooks/useTags';
-import type { Tag, CreateQuestionInput } from '../types/community';
 
 interface AskQuestionViewProps {
   onBack: () => void;

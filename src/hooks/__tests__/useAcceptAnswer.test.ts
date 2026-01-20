@@ -108,7 +108,7 @@ describe('useAcceptAnswer', () => {
     });
 
     it('throws error after setting state', async () => {
-      const error = new api.ApiError('Not authorized');
+      const error = new api.ApiError('Not authorized', 403);
       mockApiFetch.mockRejectedValue(error);
 
       const { result } = renderHook(() => useAcceptAnswer());
@@ -121,7 +121,7 @@ describe('useAcceptAnswer', () => {
     });
 
     it('clears previous error on new request', async () => {
-      mockApiFetch.mockRejectedValueOnce(new api.ApiError('First error'));
+      mockApiFetch.mockRejectedValueOnce(new api.ApiError('First error', 400));
 
       const { result } = renderHook(() => useAcceptAnswer());
 
@@ -149,7 +149,7 @@ describe('useAcceptAnswer', () => {
 
   describe('clearError', () => {
     it('clears the error state', async () => {
-      mockApiFetch.mockRejectedValue(new api.ApiError('Some error'));
+      mockApiFetch.mockRejectedValue(new api.ApiError('Some error', 500));
 
       const { result } = renderHook(() => useAcceptAnswer());
 

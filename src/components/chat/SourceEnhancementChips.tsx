@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Exports type alongside component */
 // SourceEnhancementChips - Smart follow-up suggestions for source expansion
 // Shown when user queries only use Beroe data, suggesting broader coverage
 

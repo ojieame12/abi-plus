@@ -16,9 +16,6 @@ import {
   createTestInvite,
   createExpiredInvite,
   createUsedUpInvite,
-  createTestUser,
-  createTestProfile,
-  createVerifiedUser,
   resetTestCounters,
 } from '../../test/auth-utils';
 

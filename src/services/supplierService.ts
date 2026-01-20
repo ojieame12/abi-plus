@@ -2,7 +2,7 @@
 // Replaces mock data with real database queries
 
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { eq, desc, sql, and, inArray, ilike, or } from 'drizzle-orm';
+import { eq, desc, inArray, ilike, or } from 'drizzle-orm';
 import {
   suppliers,
   supplierRiskScores,
@@ -10,7 +10,6 @@ import {
   userPortfolios,
   type DbSupplier,
   type DbSupplierRiskScore,
-  type DbRiskChange,
   type RiskFactorScore,
 } from '../db/schema.js';
 

@@ -189,7 +189,6 @@ export const InflationDashboardArtifact = ({
   alerts = [],
   onExport,
   onDrillDown,
-  onClose,
 }: InflationDashboardArtifactProps) => {
   const [showAllMovements, setShowAllMovements] = useState(false);
 
@@ -275,7 +274,7 @@ export const InflationDashboardArtifact = ({
                 <span className="text-xs font-medium text-red-600 uppercase tracking-wide">Top Increases</span>
               </div>
               <div className="space-y-1.5">
-                {topIncreases.map((item, i) => (
+                {topIncreases.map((item) => (
                   <div key={item.id} className="flex items-center justify-between text-sm">
                     <span className="text-slate-700 truncate">{item.name}</span>
                     <span className="text-red-600 font-medium">+{item.change.percent}%</span>
@@ -294,7 +293,7 @@ export const InflationDashboardArtifact = ({
                 <span className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Top Decreases</span>
               </div>
               <div className="space-y-1.5">
-                {topDecreases.map((item, i) => (
+                {topDecreases.map((item) => (
                   <div key={item.id} className="flex items-center justify-between text-sm">
                     <span className="text-slate-700 truncate">{item.name}</span>
                     <span className="text-emerald-600 font-medium">{item.change.percent}%</span>

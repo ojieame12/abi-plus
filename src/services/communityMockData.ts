@@ -6,8 +6,8 @@ import type {
   Question,
   Answer,
   QuestionWithAnswers,
-  QuestionImage,
-  EmbeddedWidget,
+  QuestionSortBy,
+  QuestionFilter,
 } from '../types/community';
 import type {
   TrendChartData,
@@ -965,8 +965,8 @@ export function getQuestionById(id: string): QuestionWithAnswers | null {
 }
 
 export function filterQuestions(options: {
-  sortBy?: 'newest' | 'votes' | 'unanswered' | 'active';
-  filter?: 'all' | 'open' | 'answered';
+  sortBy?: QuestionSortBy;
+  filter?: QuestionFilter;
   tag?: string | null;
   search?: string;
 }): Question[] {
@@ -977,6 +977,8 @@ export function filterQuestions(options: {
     results = results.filter(q => q.status === 'open');
   } else if (options.filter === 'answered') {
     results = results.filter(q => q.hasAcceptedAnswer);
+  } else if (options.filter === 'unanswered') {
+    results = results.filter(q => !q.hasAcceptedAnswer);
   }
 
   // Filter by tag

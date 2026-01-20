@@ -60,7 +60,7 @@ export const EventTimelineWidget = ({ data, size = 'M', onEventClick }: EventTim
 
           {/* Events */}
           <div className="space-y-4">
-            {displayEvents.map((event, i) => {
+            {displayEvents.map((event) => {
               const config = eventConfig[event.type];
               const Icon = config.icon;
 

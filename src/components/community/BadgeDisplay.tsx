@@ -1,4 +1,5 @@
 import * as LucideIcons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { Badge, BadgeTier } from '../../types/community';
 
 interface BadgeDisplayProps {
@@ -52,7 +53,8 @@ export function BadgeDisplay({
   const sizeStyle = SIZE_STYLES[size];
 
   // Get icon component dynamically
-  const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ size: number; className?: string }>>)[badge.icon] || LucideIcons.Award;
+  const IconComponent =
+    (LucideIcons as unknown as Record<string, LucideIcon>)[badge.icon] || LucideIcons.Award;
 
   return (
     <div

@@ -20,8 +20,11 @@ export function TagSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Ensure availableTags is always an array
-  const safeAvailableTags = Array.isArray(availableTags) ? availableTags : [];
+  // Ensure availableTags is always an array - memoized to prevent dependency issues
+  const safeAvailableTags = useMemo(
+    () => Array.isArray(availableTags) ? availableTags : [],
+    [availableTags]
+  );
 
   const selectedTags = useMemo(
     () => safeAvailableTags.filter(tag => selectedTagIds.includes(tag.id)),

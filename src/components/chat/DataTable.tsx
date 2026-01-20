@@ -1,17 +1,17 @@
 import { ExternalLink, Download, MoreVertical, ArrowRight, Table, LayoutGrid } from 'lucide-react';
 
-interface Column {
+interface Column<T = Record<string, unknown>> {
     key: string;
     header: string;
-    render?: (value: any, row: any) => React.ReactNode;
+    render?: (value: T[keyof T], row: T) => React.ReactNode;
 }
 
-interface DataTableProps {
+interface DataTableProps<T = Record<string, unknown>> {
     title: string;
-    columns: Column[];
-    data: Record<string, any>[];
+    columns: Column<T>[];
+    data: T[];
     selectedRowIndex?: number;
-    onRowClick?: (row: any, index: number) => void;
+    onRowClick?: (row: T, index: number) => void;
     showViewToggle?: boolean;
     footer?: {
         text: string;
@@ -90,7 +90,7 @@ export const DataTable = ({
                                 <td key={col.key} className="px-4 py-3 text-sm">
                                     {col.render
                                         ? col.render(row[col.key], row)
-                                        : row[col.key]}
+                                        : row[col.key] as React.ReactNode}
                                 </td>
                             ))}
                             <td className="px-2">

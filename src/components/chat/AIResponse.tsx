@@ -8,8 +8,10 @@ import { SourceAttribution } from './SourceAttribution';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
 import { ValueLadderActionsInline } from './ValueLadderActions';
-import { SourceEnhancementChips } from './SourceEnhancementChips';
+// SourceEnhancementChips import removed - currently not used but kept for reference
+// import { SourceEnhancementChips } from './SourceEnhancementChips';
 import { WidgetRenderer } from '../widgets/WidgetRenderer';
+import { LayerBadge } from '../ui/LayerBadge';
 import { buildInsightFromSupplier, buildInsightFromPortfolio, findSupplierFromContext } from '../../utils/insightBuilder';
 import type { WidgetData } from '../../types/widgets';
 import type { IntentCategory } from '../../types/intents';
@@ -18,6 +20,7 @@ import type { RiskPortfolio } from '../../types/supplier';
 import type { ResponseInsight, ResponseSources, ValueLadder, SourceEnhancement, SourceEnhancementType } from '../../types/aiResponse';
 import type { RenderContext } from '../../services/componentSelector';
 import type { Milestone } from '../../services/ai';
+import { getContentLayer, type ContentLayer, type LayerMetadata } from '../../types/layers';
 
 interface ThoughtProcessData {
     duration?: string;
@@ -44,7 +47,7 @@ interface LegacySourcesData {
 interface FollowUpItem {
     id: string;
     text: string;
-    icon?: 'chat' | 'search' | 'document' | 'chart' | 'alert';
+    icon?: 'chat' | 'search' | 'document' | 'chart' | 'alert' | 'lightbulb' | 'message' | 'compare';
 }
 
 // ============================================
@@ -103,11 +106,16 @@ interface AIResponseProps {
     // Sources - supports both legacy and new format
     sources?: LegacySourcesData | ResponseSources;
 
-    // Value Ladder - 4-layer system actions (Layer 2, 3, 4)
+    // Content Layer - Three-tier provenance indicator (L1/L2a/L2b/L3)
+    contentLayer?: ContentLayer;
+    layerMetadata?: LayerMetadata;
+
+    // Value Ladder - 3-layer system actions (Upgrade, Analyst, Expert)
     valueLadder?: ValueLadder;
+    onUpgrade?: () => void;
     onAnalystConnect?: () => void;
-    onCommunity?: () => void;
     onExpertDeepDive?: () => void;
+    upgradeCost?: number;
 
     // Source Enhancement - suggestions when using limited sources
     sourceEnhancement?: SourceEnhancement;
@@ -122,7 +130,7 @@ interface AIResponseProps {
     onFeedback?: (type: 'up' | 'down') => void;
     onRefresh?: () => void;
     onWidgetExpand?: (artifactComponent: string) => void;
-    onInsightClick?: (insightData: any) => void;
+    onInsightClick?: (insightData: Record<string, unknown>) => void;
 
     // Animation control
     isAnimating?: boolean; // When true, plays staggered entrance animation
@@ -165,11 +173,16 @@ export const AIResponse = ({
     widgetContext,
     insight,
     sources,
+    contentLayer,
+    layerMetadata,
     valueLadder,
+    onUpgrade,
     onAnalystConnect,
-    onCommunity,
     onExpertDeepDive,
+    upgradeCost,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sourceEnhancement,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onSourceEnhancement,
     followUps = [],
     onFollowUpClick,
@@ -190,12 +203,14 @@ export const AIResponse = ({
     const [showValueLadder, setShowValueLadder] = useState(!isAnimating);
     const [showInsight, setShowInsight] = useState(!isAnimating);
     const [showFooter, setShowFooter] = useState(!isAnimating);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [showSourceEnhancement, setShowSourceEnhancement] = useState(!isAnimating);
     const [showFollowUps, setShowFollowUps] = useState(!isAnimating);
 
     // Orchestrate animation phases
     useEffect(() => {
         if (!isAnimating) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- animation phase setup is intentional
             setPhase('complete');
             setShowBody(true);
             setShowWidget(true);
@@ -289,7 +304,7 @@ export const AIResponse = ({
                     onOpenArtifact={widgetContext.onOpenArtifact}
                     insight={normalizedInsight}
                     onInsightClick={onInsightClick}
-                    sources={sources}
+                    sources={sources as ResponseSources | undefined}
                 />
             );
         }
@@ -303,6 +318,7 @@ export const AIResponse = ({
     };
 
     // When unified footer is active (widgetContext + insight), sources are shown inside widget
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const showUnifiedFooter = widgetContext && normalizedInsight;
 
     // ========================================
@@ -377,16 +393,16 @@ export const AIResponse = ({
 
             // Try to find supplier from widgetContext or by name
             const supplier = widgetContext?.supplier ||
-                (widgetContext?.suppliers && entityName ? findSupplierFromContext(entityName, widgetContext.suppliers as any) : undefined);
+                (widgetContext?.suppliers && entityName ? findSupplierFromContext(entityName, widgetContext.suppliers) : undefined);
 
             // If we have a supplier, use the rich utility function
             if (supplier) {
                 const insightData = buildInsightFromSupplier(
-                    supplier as any, // Type cast to Supplier from supplier.ts
+                    supplier,
                     headlineText,
                     insightSources
                 );
-                onInsightClick(insightData);
+                onInsightClick(insightData as unknown as Record<string, unknown>);
                 return;
             }
 
@@ -409,7 +425,7 @@ export const AIResponse = ({
                     { totalSuppliers, highRiskCount, unratedCount },
                     insightSources
                 );
-                onInsightClick(insightData);
+                onInsightClick(insightData as unknown as Record<string, unknown>);
                 return;
             }
 
@@ -469,8 +485,10 @@ export const AIResponse = ({
     // ========================================
     // RENDER SOURCES
     // ========================================
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hasDetailedSources = sources && isResponseSources(sources);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const renderSources = () => {
         if (!sources) return null;
 
@@ -495,6 +513,7 @@ export const AIResponse = ({
 
     // Check if we should show the footer (feedback + sources)
     const hasFooter = sources || followUps.length > 0;
+    const resolvedLayer = contentLayer ?? getContentLayer(layerMetadata);
 
     // ========================================
     // RENDER
@@ -512,6 +531,26 @@ export const AIResponse = ({
                     />
                 </div>
             )}
+
+            {/* 1.5 Content Layer Badge - shows provenance (L1/L2a/L2b/L3) */}
+            <AnimatePresence>
+                {showBody && resolvedLayer && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mb-3"
+                    >
+                        <LayerBadge
+                            layer={resolvedLayer}
+                            size="sm"
+                            variant="subtle"
+                            analystName={layerMetadata?.analystName}
+                            expertName={layerMetadata?.expertName}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* 2. Acknowledgement Header (Optional) */}
             <AnimatePresence>
@@ -600,14 +639,15 @@ export const AIResponse = ({
                             onThumbsDown={() => onFeedback?.('down')}
                             onRefresh={onRefresh}
                         />
-                        {/* Right side: Value Ladder Actions (Ask Analyst, Discussion) */}
+                        {/* Right side: Value Ladder Actions (Upgrade, Ask Analyst, Request Expert) */}
                         <div className="flex items-center gap-3">
                             {showValueLadder && valueLadder && (
                                 <ValueLadderActionsInline
                                     valueLadder={valueLadder}
+                                    onUpgrade={onUpgrade}
                                     onAnalystConnect={onAnalystConnect}
-                                    onCommunity={onCommunity}
                                     onExpertDeepDive={onExpertDeepDive}
+                                    upgradeCost={upgradeCost}
                                 />
                             )}
                         </div>

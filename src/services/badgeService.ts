@@ -9,7 +9,6 @@ import {
   profiles,
   votes,
 } from '../db/schema.js';
-import type { Badge as DbBadge } from '../db/schema.js';
 import type {
   Badge,
   BadgeCriteria,

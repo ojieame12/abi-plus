@@ -135,7 +135,7 @@ describe('useVote', () => {
     });
 
     it('rolls back on error', async () => {
-      mockApiFetch.mockRejectedValue(new api.ApiError('Insufficient reputation'));
+      mockApiFetch.mockRejectedValue(new api.ApiError('Insufficient reputation', 403));
 
       const { result } = renderHook(() =>
         useVote({

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { MessageSquare, Compass, Bot, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, MessagesSquare } from 'lucide-react';
+import { MessageSquare, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, Compass, Bot, Crown } from 'lucide-react';
 
 interface SidebarProps {
     isExpanded: boolean;
@@ -9,9 +9,24 @@ interface SidebarProps {
     onNewChat?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
+    onNavigateToSettings?: () => void;
+    onNavigateToExpertPortal?: () => void;
+    showExpertPortal?: boolean; // Show expert portal nav item (for experts/demo mode)
 }
 
-export const Sidebar = ({ isExpanded, onToggle, onExpand, onCollapse, onNewChat, onNavigateToHistory, onNavigateToCommunity }: SidebarProps) => {
+export const Sidebar = (props: SidebarProps) => {
+    const {
+        isExpanded,
+        onToggle,
+        onExpand,
+        onCollapse,
+        onNewChat,
+        onNavigateToHistory,
+        // onNavigateToCommunity - Community feature is parked/hidden
+        onNavigateToSettings,
+        onNavigateToExpertPortal,
+        showExpertPortal = false,
+    } = props;
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         'Today': true,
         'Yesterday': false,
@@ -109,7 +124,8 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onCollapse, onNewChat,
                     <NewChatButton isExpanded={isExpanded} onClick={onNewChat} />
                     <NavItem icon={MessageSquare} label="Conversations" isExpanded={isExpanded} onClick={onNavigateToHistory} />
                     <NavItem icon={Compass} label="Discovery" isExpanded={isExpanded} />
-                    <NavItem icon={MessagesSquare} label="Community" isExpanded={isExpanded} onClick={onNavigateToCommunity} />
+                    {/* Community has been parked - hiding from nav */}
+                    {/* <NavItem icon={MessagesSquare} label="Community" isExpanded={isExpanded} onClick={onNavigateToCommunity} /> */}
                     <NavItem icon={Bot} label="Agents" isExpanded={isExpanded} />
                 </nav>
 
@@ -170,7 +186,17 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onCollapse, onNewChat,
 
                 {/* Footer */}
                 <div className={`flex flex-col gap-1 mt-auto pb-2 ${isExpanded ? 'px-2' : 'px-1'}`}>
-                    <NavItem icon={Settings} label="Settings" isExpanded={isExpanded} />
+                    {/* Expert Portal - shown for experts or in demo mode */}
+                    {showExpertPortal && (
+                        <NavItem
+                            icon={Crown}
+                            label="Expert Portal"
+                            isExpanded={isExpanded}
+                            onClick={onNavigateToExpertPortal}
+                            isHighlighted
+                        />
+                    )}
+                    <NavItem icon={Settings} label="Settings" isExpanded={isExpanded} onClick={onNavigateToSettings} />
                     <NavItem icon={HelpCircle} label="Help" isExpanded={isExpanded} />
 
                     {/* User Profile */}
@@ -192,7 +218,7 @@ export const Sidebar = ({ isExpanded, onToggle, onExpand, onCollapse, onNewChat,
 };
 
 interface NavItemProps {
-    icon: any;
+    icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
     label: string;
     isExpanded: boolean;
     isActive?: boolean;
@@ -218,13 +244,15 @@ const NewChatButton = ({ isExpanded, onClick }: { isExpanded: boolean; onClick?:
     </button>
 );
 
-const NavItem = ({ icon: Icon, label, isExpanded, isActive, onClick }: NavItemProps) => (
+const NavItem = ({ icon: Icon, label, isExpanded, isActive, isHighlighted, onClick }: NavItemProps) => (
     <button
         onClick={onClick}
         className={`h-10 rounded-xl flex items-center transition-all duration-200 ${
-            isActive
-                ? 'bg-slate-200/50 text-primary'
-                : 'text-secondary hover:bg-slate-200/50 hover:text-primary'
+            isHighlighted
+                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                : isActive
+                    ? 'bg-slate-200/50 text-primary'
+                    : 'text-secondary hover:bg-slate-200/50 hover:text-primary'
         } ${isExpanded ? 'w-full gap-3 px-2.5' : 'w-10 justify-center mx-auto'}`}
     >
         <div className="shrink-0 flex items-center justify-center">

@@ -120,7 +120,8 @@ export function renderMarkdown(content: string, options: RenderOptions = {}): st
   const { highlightNumbers: doHighlight, suppressTables, maxParagraphs } = options;
 
   // Build the unified processor pipeline
-  let processor = unified()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let processor: any = unified()
     .use(remarkParse)
     .use(remarkGfm);
 

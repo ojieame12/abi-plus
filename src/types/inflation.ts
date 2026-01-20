@@ -886,63 +886,63 @@ import type { WidgetSelectionRule } from './widgets';
 
 export const INFLATION_WIDGET_RULES: WidgetSelectionRule[] = [
   {
-    widget: 'inflation_summary_card' as any,
+    widget: 'inflation_summary_card' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_summary'],
     requiredData: ['inflation_summary'],
     priority: 10,
     description: 'Monthly inflation overview with key metrics and portfolio impact',
   },
   {
-    widget: 'price_movement_table' as any,
+    widget: 'price_movement_table' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_summary'],
     requiredData: ['commodity_prices'],
     priority: 8,
     description: 'Table of commodity price changes with exposure amounts',
   },
   {
-    widget: 'commodity_gauge' as any,
+    widget: 'commodity_gauge' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_summary', 'inflation_drivers'],
     requiredData: ['single_commodity'],
     priority: 9,
     description: 'Single commodity price gauge with changes and portfolio exposure',
   },
   {
-    widget: 'driver_breakdown_card' as any,
+    widget: 'driver_breakdown_card' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_drivers'],
     requiredData: ['commodity_drivers'],
     priority: 10,
     description: 'Root cause analysis showing factors driving price changes',
   },
   {
-    widget: 'spend_impact_card' as any,
+    widget: 'spend_impact_card' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_impact'],
     requiredData: ['portfolio_exposure'],
     priority: 10,
     description: 'Portfolio spend impact from inflation with breakdown by category',
   },
   {
-    widget: 'justification_card' as any,
+    widget: 'justification_card' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_justification'],
     requiredData: ['price_justification'],
     priority: 10,
     description: 'Price increase validation with market comparison and verdict',
   },
   {
-    widget: 'scenario_card' as any,
+    widget: 'scenario_card' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_scenarios'],
     requiredData: ['scenario'],
     priority: 10,
     description: 'What-if scenario result showing projected impact',
   },
   {
-    widget: 'executive_brief_card' as any,
+    widget: 'executive_brief_card' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_communication'],
     requiredData: ['inflation_summary'],
     priority: 10,
     description: 'Shareable executive summary with key metrics and highlights',
   },
   {
-    widget: 'market_fairness_gauge' as any,
+    widget: 'market_fairness_gauge' as WidgetSelectionRule['widget'],
     useWhen: ['inflation_benchmark', 'inflation_justification'],
     requiredData: ['market_benchmark'],
     priority: 8,
@@ -1050,8 +1050,7 @@ const detectInflationSubIntent = (
  * Get widget type for inflation intent
  */
 export const getInflationWidgetType = (
-  category: InflationIntentCategory,
-  _subIntent: InflationSubIntent
+  category: InflationIntentCategory
 ): InflationWidgetType => {
   const widgetMap: Record<InflationIntentCategory, InflationWidgetType> = {
     inflation_summary: 'inflation_summary_card',

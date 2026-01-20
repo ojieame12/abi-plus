@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatInput, type BuilderMetadata } from '../components/chat/ChatInput';
@@ -35,13 +35,14 @@ const TAB_SUGGESTIONS: Record<TabType, string[]> = {
     ],
 };
 
-export const HomeView = ({ onOpenArtifact, onStartChat, isTransitioning = false, selectedQuestion = '' }: HomeViewProps) => {
+export const HomeView = ({ onStartChat, isTransitioning = false, selectedQuestion = '' }: HomeViewProps) => {
     const [inputMessage, setInputMessage] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('recommended');
 
     const isTyping = inputMessage.length > 0;
 
-    const handleSend = (message: string, files: File[], inputMode?: 'ask' | 'find', builderMeta?: BuilderMetadata) => {
+    type ChatInputOnSend = NonNullable<ComponentProps<typeof ChatInput>['onSend']>;
+    const handleSend: ChatInputOnSend = (message, files, inputMode, builderMeta) => {
         console.log('Send:', message, files, 'mode:', inputMode, 'builderMeta:', builderMeta);
         if (message.trim()) {
             // TODO: Handle 'find' mode differently - show search results view

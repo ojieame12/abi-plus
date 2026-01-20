@@ -1249,6 +1249,11 @@ export function getActionConfig(domain: BuilderDomain, subject: string, actionId
   return actions.find(a => a.id === actionId);
 }
 
+export function getModifiersForPath(domain: BuilderDomain, subject: string, actionId: string): InputConfig[] {
+  const actionConfig = getActionConfig(domain, subject, actionId);
+  return actionConfig?.inputs || [];
+}
+
 export function getInputOptions(dataSource: InputConfig['dataSource']): { id: string; name: string }[] {
   switch (dataSource) {
     case 'suppliers':

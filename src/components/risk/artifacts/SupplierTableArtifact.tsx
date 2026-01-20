@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/static-components -- SortIcon is a simple render helper, safe pattern */
 import { useState } from 'react';
-import { Search, Filter, Download, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { RiskScoreBadge } from '../RiskScoreBadge';
 
 interface Supplier {
@@ -48,7 +49,6 @@ export const SupplierTableArtifact = ({
     suppliers,
     totalCount,
     categories,
-    locations,
     onSupplierClick,
     onFilterChange,
     onExport,

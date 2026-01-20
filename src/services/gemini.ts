@@ -1,6 +1,7 @@
 // Gemini API Service for fast conversational responses
 import { composeSystemPrompt, parseAIResponse, buildContentGenerationPrompt } from './prompts';
 import type { ChatMessage, Suggestion } from '../types/chat';
+import type { ResponseSources } from '../types/aiResponse';
 import { generateId } from '../types/chat';
 import {
   fetchPortfolioData,
@@ -124,7 +125,7 @@ function tryParseJSON(text: string): unknown | null {
   }
 
   // Strategy 5: Fix common LLM JSON issues
-  let repaired = cleaned
+  const repaired = cleaned
     // Remove trailing commas before } or ]
     .replace(/,\s*([\]}])/g, '$1')
     // Fix unquoted keys (simple cases)
@@ -187,10 +188,11 @@ export interface ArtifactContent {
 }
 
 export interface GeminiResponse {
+  id?: string;
   content: string;
   responseType: 'widget' | 'table' | 'summary' | 'alert' | 'handoff';
   suggestions: Suggestion[];
-  sources?: Array<{ type: 'web' | 'beroe' | 'dnd' | 'ecovadis'; name?: string; url?: string }>;
+  sources?: ResponseSources | Array<{ type: 'web' | 'beroe' | 'dnd' | 'ecovadis'; name?: string; url?: string }>;
   artifact?: {
     type: string;
     title?: string;
@@ -221,7 +223,7 @@ export interface GeminiResponse {
 }
 
 // Generate contextual acknowledgement based on intent and extracted entities
-const generateAcknowledgement = (intent: DetectedIntent, query: string): string => {
+const generateAcknowledgement = (intent: DetectedIntent): string => {
   // Extract entity names for personalization
   const supplierName = intent.extractedEntities.supplierName;
   const commodity = intent.extractedEntities.commodity;
@@ -377,7 +379,7 @@ const parseGeminiResponse = (text: string): Partial<GeminiResponse> => {
       type: widgetRaw.type as WidgetData['type'],
       title: widgetRaw.title,
       data: widgetRaw.data || {},
-    } : undefined;
+    } as unknown as WidgetData : undefined;
 
     return {
       content: (response.response as string) || '',
@@ -560,7 +562,7 @@ async function fetchDataForIntent(
         let foundSupplier: Supplier | undefined;
 
         if (supplierName) {
-          foundSupplier = await getSupplierByName(supplierName);
+          foundSupplier = await getSupplierByName(supplierName) ?? undefined;
         }
 
         if (!foundSupplier) {
@@ -576,12 +578,14 @@ async function fetchDataForIntent(
         } else if (supplierName) {
           // Create synthetic supplier for external research queries
           // This allows widgets to render even when supplier isn't in our database
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const extractedEntities = intent.extractedEntities as any;
           const syntheticSupplier: Supplier = {
             id: `synthetic-${supplierName.toLowerCase().replace(/\s+/g, '-')}`,
             name: supplierName,
             duns: 'N/A',
-            category: intent.extractedEntities.category || 'Technology',
-            industry: intent.extractedEntities.industry || 'Manufacturing',
+            category: extractedEntities.category || 'Technology',
+            industry: extractedEntities.industry || 'Manufacturing',
             location: {
               city: 'Unknown',
               country: intent.extractedEntities.region || 'Global',
@@ -755,9 +759,8 @@ async function fetchDataForIntent(
   // Fetch spend exposure data for spend_weighted sub-intent
   if (intent.subIntent === 'spend_weighted' ||
       (intent.category === 'portfolio_overview' && route.widgetType === 'spend_exposure')) {
-    const portfolio = data.portfolio || await getPortfolioSummary();
     const allSuppliers = data.suppliers || await getAllSuppliers();
-    data.spendExposureData = generateSpendExposureData(portfolio, allSuppliers);
+    data.spendExposureData = generateSpendExposureData(allSuppliers);
   }
 
   return data;
@@ -992,33 +995,42 @@ async function generateAIContent(
 }
 
 // Step 4: Build widget data based on type and fetched data
+// Returns WidgetData extended with optional title for display purposes
 function buildWidgetData(
   widgetType: WidgetType,
   data: FetchedData,
   aiContent: AIContentSlots | null
-): WidgetData | undefined {
+): (WidgetData & { title?: string }) | undefined {
   if (widgetType === 'none') return undefined;
 
   switch (widgetType) {
-    case 'risk_distribution':
+    case 'risk_distribution': {
       if (!data.portfolio) return undefined;
-      // Widget expects distribution with {count} objects and totalSpendFormatted
+      // Widget expects distribution with {count, spend, percent} objects
       const dist = data.portfolio.distribution;
+      const totalCount = dist.high + dist.mediumHigh + dist.medium + dist.low + dist.unrated;
+      const mkDist = (count: number) => ({
+        count,
+        spend: 0, // Spend not available from portfolio, default to 0
+        percent: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
+      });
       return {
         type: 'risk_distribution',
         title: aiContent?.widgetContent?.headline || 'Portfolio Risk Overview',
         data: {
           distribution: {
-            high: { count: dist.high },
-            mediumHigh: { count: dist.mediumHigh },
-            medium: { count: dist.medium },
-            low: { count: dist.low },
-            unrated: { count: dist.unrated },
+            high: mkDist(dist.high),
+            mediumHigh: mkDist(dist.mediumHigh),
+            medium: mkDist(dist.medium),
+            low: mkDist(dist.low),
+            unrated: mkDist(dist.unrated),
           },
           totalSuppliers: data.portfolio.totalSuppliers,
+          totalSpend: data.portfolio.totalSpend || 0,
           totalSpendFormatted: data.portfolio.totalSpendFormatted,
         },
       };
+    }
 
     case 'supplier_table':
       if (!data.suppliers?.length) return undefined;
@@ -1032,7 +1044,7 @@ function buildWidgetData(
         },
       };
 
-    case 'supplier_risk_card':
+    case 'supplier_risk_card': {
       if (!data.targetSupplier) return undefined;
       const riskCardData = transformSupplierToRiskCardData(data.targetSupplier);
       // Mark synthetic suppliers (not in our database - researched externally)
@@ -1046,6 +1058,7 @@ function buildWidgetData(
           : `${data.targetSupplier.name} Risk Profile`,
         data: riskCardData,
       };
+    }
 
     case 'alert_card':
       if (!data.riskChanges?.length) return undefined;
@@ -1065,10 +1078,11 @@ function buildWidgetData(
             id: s.id,
             name: s.name,
             riskScore: s.srs?.score ?? 0,
-            riskLevel: s.srs?.level || 'unrated',
-            trend: s.srs?.trend || 'stable',
+            riskLevel: (s.srs?.level || 'unrated') as string,
+            trend: (s.srs?.trend || 'stable') as string,
             spend: s.spendFormatted,
             category: s.category,
+            location: s.location?.country || s.location?.region || 'Unknown',
             // UI requires strengths/weaknesses arrays for .slice() calls
             strengths: generateStrengths(s),
             weaknesses: generateWeaknesses(s),
@@ -1127,29 +1141,87 @@ function buildWidgetData(
 
     case 'executive_brief_card':
       if (!data.inflationSummary) return undefined;
-      return {
-        type: 'executive_brief_card',
-        title: aiContent?.widgetContent?.headline || 'Executive Brief',
-        data: {
-          period: data.inflationSummary.period,
-          headline: data.inflationSummary.headline,
-          portfolioImpact: data.inflationSummary.portfolioImpact,
-          keyDrivers: data.inflationSummary.keyDrivers,
-          recommendations: aiContent?.artifactContent?.recommendations || [
-            'Monitor steel and aluminum contracts',
-            'Explore alternative suppliers',
-            'Review hedging strategies',
-          ],
-        },
-      };
+      {
+        const summary = aiContent?.artifactContent?.overview || data.inflationSummary.headline;
+        const overallChange = data.inflationSummary.overallChange;
+        const portfolioImpact = data.inflationSummary.portfolioImpact;
+        const topIncrease = data.inflationSummary.topIncreases?.[0];
+        const topDecrease = data.inflationSummary.topDecreases?.[0];
+        const recommendations = aiContent?.artifactContent?.recommendations || [];
+        const title = aiContent?.widgetContent?.headline || 'Executive Brief';
+
+        const highlights = [
+          topIncrease ? {
+            type: 'concern' as const,
+            text: `${topIncrease.commodity} up ${topIncrease.change}% (${topIncrease.impact})`,
+          } : null,
+          topDecrease ? {
+            type: 'opportunity' as const,
+            text: `${topDecrease.commodity} down ${Math.abs(topDecrease.change)}% (${topDecrease.benefit})`,
+          } : null,
+          recommendations[0] ? {
+            type: 'action' as const,
+            text: recommendations[0],
+          } : null,
+        ].filter(Boolean) as Array<{ type: 'concern' | 'opportunity' | 'action'; text: string }>;
+
+        return {
+          type: 'executive_brief_card',
+          title,
+          data: {
+            title,
+            period: data.inflationSummary.period,
+            summary,
+            keyMetrics: [
+              {
+                label: 'Overall Change',
+                value: `${overallChange.percent}%`,
+                change: overallChange,
+                status: overallChange.direction === 'down' ? 'positive' : overallChange.direction === 'up' ? 'negative' : 'neutral',
+              },
+              {
+                label: 'Portfolio Impact',
+                value: portfolioImpact.amount,
+                change: {
+                  absolute: 0,
+                  percent: portfolioImpact.percent,
+                  direction: portfolioImpact.direction === 'increase' ? 'up' : 'down',
+                },
+                status: portfolioImpact.direction === 'increase' ? 'negative' : 'positive',
+              },
+              {
+                label: 'Top Driver',
+                value: data.inflationSummary.keyDrivers?.[0] || '—',
+                status: 'neutral',
+              },
+              {
+                label: 'Last Updated',
+                value: data.inflationSummary.lastUpdated,
+                status: 'neutral',
+              },
+            ],
+            highlights,
+            outlook: aiContent?.artifactContent?.keyPoints?.[0] || summary,
+          },
+        };
+      }
 
     case 'justification_card':
       if (!data.justificationData) return undefined;
-      return {
-        type: 'justification_card',
-        title: aiContent?.widgetContent?.headline || `Price Increase Analysis: ${data.justificationData.supplierName}`,
-        data: data.justificationData,
-      };
+      {
+        const recommendation = data.justificationData.recommendation
+          || aiContent?.artifactContent?.recommendations?.[0]
+          || 'Review supplier justification against market benchmarks.';
+
+        return {
+          type: 'justification_card',
+          title: aiContent?.widgetContent?.headline || `Price Increase Analysis: ${data.justificationData.supplierName}`,
+          data: {
+            ...data.justificationData,
+            recommendation,
+          },
+        };
+      }
 
     case 'scenario_card':
       if (!data.scenarioData) return undefined;
@@ -1213,37 +1285,45 @@ function buildWidgetData(
 
     case 'category_breakdown':
       if (!data.categoryBreakdown?.length) return undefined;
-      return {
-        type: 'category_breakdown',
-        title: aiContent?.widgetContent?.headline || 'Risk by Category',
-        data: {
-          categories: data.categoryBreakdown.map(c => ({
-            name: c.category,
-            count: c.count,
-            spend: `$${(c.spend / 1000000).toFixed(1)}M`,
-            highRisk: c.highRisk,
-            avgScore: c.avgScore,
-          })),
-          totalCategories: data.categoryBreakdown.length,
-        },
-      };
+      {
+        const getRiskLevelFromScore = (score: number): string =>
+          score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low';
+
+        return {
+          type: 'category_breakdown',
+          title: aiContent?.widgetContent?.headline || 'Risk by Category',
+          data: {
+            categories: data.categoryBreakdown.map(c => ({
+              name: c.category,
+              supplierCount: c.count,
+              totalSpend: c.spend,
+              spendFormatted: `$${(c.spend / 1000000).toFixed(1)}M`,
+              avgRiskScore: c.avgScore,
+              riskLevel: getRiskLevelFromScore(c.avgScore),
+            })),
+            sortBy: 'spend',
+          },
+        };
+      }
 
     case 'region_list':
       if (!data.regionBreakdown?.length) return undefined;
-      return {
-        type: 'region_list',
-        title: aiContent?.widgetContent?.headline || 'Risk by Region',
-        data: {
-          regions: data.regionBreakdown.map(r => ({
-            name: r.region,
-            count: r.count,
-            spend: `$${(r.spend / 1000000).toFixed(1)}M`,
-            highRisk: r.highRisk,
-            avgScore: r.avgScore,
-          })),
-          totalRegions: data.regionBreakdown.length,
-        },
-      };
+      {
+        const totalSuppliers = data.regionBreakdown.reduce((sum, r) => sum + r.count, 0);
+        return {
+          type: 'region_list',
+          title: aiContent?.widgetContent?.headline || 'Risk by Region',
+          data: {
+            regions: data.regionBreakdown.map(r => ({
+              name: r.region,
+              code: r.region.split(' ').map(word => word[0]).join('').toUpperCase(),
+              supplierCount: r.count,
+              avgRiskScore: r.avgScore,
+            })),
+            totalSuppliers,
+          },
+        };
+      }
 
     case 'events_feed':
       if (!data.marketEvents?.length) return undefined;
@@ -1261,7 +1341,6 @@ function buildWidgetData(
             timestamp: e.timestamp,
             impact: e.impact,
           })),
-          totalEvents: data.marketEvents.length,
         },
       };
 
@@ -1377,8 +1456,8 @@ function transformPortfolioToWidgetData(portfolio: RiskPortfolio): {
 function buildDataSources(
   intent: DetectedIntent,
   data: FetchedData
-): { web: never[]; internal: Array<{ name: string; type: 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' }>; totalWebCount: number; totalInternalCount: number } {
-  const internal: Array<{ name: string; type: 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' }> = [];
+): ResponseSources {
+  const internal: ResponseSources['internal'] = [];
 
   // Risk Watch data sources
   if (data.portfolio) {
@@ -1427,10 +1506,12 @@ function buildDataSources(
 // Step 5: Assemble final response
 export async function callGeminiV2(
   userMessage: string,
-  _conversationHistory: ChatMessage[] = [],
+  conversationHistory: ChatMessage[] = [], // Preserved for future context awareness
   intentOverride?: DetectedIntent,
   builderOptions?: { promptTemplate?: string; routePath?: string }
 ): Promise<GeminiResponse> {
+  // Mark conversationHistory as intentionally unused (preserved for future multi-turn support)
+  void conversationHistory;
   console.log('[GeminiV2] Processing:', userMessage);
 
   // 1. Classify intent
@@ -1444,7 +1525,7 @@ export async function callGeminiV2(
       id: generateId(),
       content: `This supplier's risk score is calculated from multiple weighted factors including financial health, operational metrics, and compliance indicators.\n\nTo see the full breakdown of contributing factors and scores, you'll need to view the detailed risk profile in the dashboard, as some data comes from partners with viewing restrictions.`,
       responseType: 'handoff',
-      acknowledgement: generateAcknowledgement(intent, userMessage),
+      acknowledgement: generateAcknowledgement(intent),
       suggestions: [
         { id: '1', text: 'Find alternatives', icon: 'search' },
         { id: '2', text: 'Compare with others', icon: 'compare' },
@@ -1568,7 +1649,7 @@ export async function callGeminiV2(
   const sources = buildDataSources(intent, data);
 
   // 12. Use AI-generated acknowledgement if available, else fall back to local
-  const acknowledgement = aiContent?.acknowledgement || generateAcknowledgement(intent, userMessage);
+  const acknowledgement = aiContent?.acknowledgement || generateAcknowledgement(intent);
 
   return {
     id: generateId(),
@@ -1728,7 +1809,7 @@ const enhanceResponseWithData = async (
     artifact: parsed.artifact,
     widget: parsed.widget, // Preserve AI's widget spec
     insight: parsed.insight,
-    acknowledgement: generateAcknowledgement(intent, query),
+    acknowledgement: generateAcknowledgement(intent),
     handoff: parsed.handoff,
   };
 
@@ -2116,7 +2197,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content: `You're monitoring **${portfolio.totalSuppliers} suppliers** with **${portfolio.totalSpendFormatted}** total spend.${portfolio.distribution.unrated > 2 ? ` The ${portfolio.distribution.unrated} unrated suppliers may need risk assessment.` : portfolio.distribution.high > 0 ? ` You have ${portfolio.distribution.high} high-risk suppliers requiring attention.` : ''}`,
         responseType: 'widget',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'Show high-risk suppliers', icon: 'search' },
           { id: '2', text: 'Why are some unrated?', icon: 'lightbulb' },
@@ -2141,7 +2222,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content: `Found **${suppliers.length} supplier(s)** matching your criteria.`,
         responseType: 'table',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'Compare these suppliers', icon: 'compare' },
           { id: '2', text: 'Find alternatives', icon: 'search' },
@@ -2176,7 +2257,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content: `**${riskChangesData.length} suppliers** had risk score changes recently.${critical ? ` ${critical.supplierName}'s increase to ${critical.currentScore} (${critical.currentLevel}) requires attention.` : ''}`,
         responseType: 'alert',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'View affected suppliers', icon: 'search' },
           { id: '2', text: 'Find alternatives', icon: 'search' },
@@ -2212,7 +2293,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
           return {
             content: `**${supplier.name}** is currently ${supplier.srs.level} risk and ${trendText}.${supplier.srs.level === 'high' || supplier.srs.level === 'medium-high' ? ' You may want to review their risk factors or find alternatives.' : ''}`,
             responseType: 'widget',
-            acknowledgement: generateAcknowledgement(intent, query),
+            acknowledgement: generateAcknowledgement(intent),
             suggestions: [
               { id: '1', text: `Why is ${supplier.name.split(' ')[0]} this risk level?`, icon: 'lightbulb' },
               { id: '2', text: 'Find alternatives', icon: 'search' },
@@ -2336,7 +2417,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content,
         responseType: 'table',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'Compare these suppliers', icon: 'compare' },
           { id: '2', text: 'Show alternatives in this category', icon: 'search' },
@@ -2369,7 +2450,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
         return {
           content: `You have **${unratedCount} unrated suppliers**. Suppliers are typically unrated when they're newly added to your portfolio, haven't been assessed by our risk intelligence partners, or don't have sufficient public data for scoring. Consider requesting assessments for critical suppliers.`,
           responseType: 'table',
-          acknowledgement: generateAcknowledgement(intent, query),
+          acknowledgement: generateAcknowledgement(intent),
           suggestions: [
             { id: '1', text: 'Request risk assessment', icon: 'alert' },
             { id: '2', text: 'Show high-risk suppliers', icon: 'search' },
@@ -2395,7 +2476,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content: "I can help explain risk scores, supplier ratings, and portfolio metrics. Could you be more specific about what you'd like me to explain?",
         responseType: 'summary',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'Show portfolio overview', icon: 'chart' },
           { id: '2', text: 'How are scores calculated?', icon: 'lightbulb' },
@@ -2409,7 +2490,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content: `This supplier's risk score is calculated from multiple weighted factors including financial health, operational metrics, and compliance indicators.\n\nTo see the full breakdown of contributing factors and scores, you'll need to view the detailed risk profile in the dashboard, as some data comes from partners with viewing restrictions.`,
         responseType: 'handoff',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'Find alternatives', icon: 'search' },
           { id: '2', text: 'Compare with others', icon: 'compare' },
@@ -2428,7 +2509,7 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
       return {
         content: "I'd be happy to help you analyze your supplier risk portfolio. What would you like to know?",
         responseType: 'summary',
-        acknowledgement: generateAcknowledgement(intent, query),
+        acknowledgement: generateAcknowledgement(intent),
         suggestions: [
           { id: '1', text: 'Show my risk overview', icon: 'chart' },
           { id: '2', text: 'Which suppliers are high risk?', icon: 'search' },

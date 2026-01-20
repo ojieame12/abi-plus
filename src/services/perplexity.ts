@@ -4,7 +4,6 @@ import type { ChatMessage, Suggestion, Source } from '../types/chat';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import { getPortfolioSummary, MOCK_SUPPLIERS } from './mockData';
-import type { Supplier } from '../types/supplier';
 import { extractJSONFromResponse } from './prompts';
 import { normalizeUrl } from '../utils/sources';
 

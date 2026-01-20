@@ -1,6 +1,6 @@
 // AI Orchestration Layer - Routes between Gemini and Perplexity
 import type { GeminiResponse } from './gemini';
-import { callGemini, callGeminiV2, isGeminiConfigured } from './gemini';
+import { callGeminiV2, isGeminiConfigured } from './gemini';
 import type { PerplexityResponse } from './perplexity';
 import { callPerplexity, isPerplexityConfigured } from './perplexity';
 import type { ChatMessage, Suggestion, Source } from '../types/chat';
@@ -38,6 +38,7 @@ import { getWidgetRouteFromRegistry } from './widgetRouter';
 import { transformToCanonical } from '../utils/responseTransform';
 import { validateAndRepair } from '../utils/responseValidator';
 import type { CanonicalResponse } from '../types/responseSchema';
+import type { ResponseInsight } from '../types/aiResponse';
 
 export type ThinkingMode = 'fast' | 'reasoning';
 
@@ -77,7 +78,7 @@ export interface AIResponse {
   };
   // AI-generated content for the artifact panel
   artifactContent?: ArtifactContent;
-  insight?: string | { text?: string; headline?: string; detail?: string; trend?: string; sentiment?: string };
+  insight?: string | { text?: string; headline?: string; summary?: string; detail?: string; trend?: string; sentiment?: string };
   handoff?: {
     required: boolean;
     reason: string;
@@ -198,61 +199,7 @@ export interface SendMessageOptions {
   onMilestone?: MilestoneCallback;
 }
 
-// Simulate thinking duration for UX
-const simulateThinkingDuration = (mode: ThinkingMode): string => {
-  if (mode === 'fast') {
-    const seconds = Math.floor(Math.random() * 3) + 1;
-    return `${seconds}s`;
-  } else {
-    const minutes = Math.floor(Math.random() * 2) + 1;
-    const seconds = Math.floor(Math.random() * 30);
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-  }
-};
-
-// Generate thinking steps for display
-const generateThinkingSteps = (
-  intent: DetectedIntent,
-  mode: ThinkingMode
-): AIResponse['thinkingSteps'] => {
-  const baseSteps = [
-    {
-      title: 'Query Analysis',
-      content: `Intent: ${intent.category.replace('_', ' ')}`,
-      status: 'complete' as const,
-    },
-  ];
-
-  if (mode === 'reasoning') {
-    return [
-      ...baseSteps,
-      {
-        title: 'Research Strategy',
-        content: 'Searching market intelligence and industry sources',
-        status: 'complete' as const,
-      },
-      {
-        title: 'Data Synthesis',
-        content: 'Combining portfolio data with external research',
-        status: 'complete' as const,
-      },
-      {
-        title: 'Response Generation',
-        content: 'Formulating actionable insights',
-        status: 'complete' as const,
-      },
-    ];
-  }
-
-  return [
-    ...baseSteps,
-    {
-      title: 'Portfolio Analysis',
-      content: 'Analyzing your supplier data',
-      status: 'complete' as const,
-    },
-  ];
-};
+// Note: simulateThinkingDuration and generateThinkingSteps removed - using real timing instead
 
 // Main orchestration function
 export const sendMessage = async (
@@ -291,7 +238,7 @@ export const sendMessage = async (
     console.log('[AI] Using builder metadata for intent:', builderMeta.intent, builderMeta.subIntent);
     intent = {
       category: builderMeta.intent as IntentCategory,
-      subIntent: builderMeta.subIntent as any,
+      subIntent: builderMeta.subIntent as DetectedIntent['subIntent'],
       confidence: 1.0, // Deterministic from builder
       responseType: 'widget',
       artifactType: 'none',
@@ -328,7 +275,7 @@ export const sendMessage = async (
   // 2. User enabled web search
   // 3. Intent automatically requires research (market context, news, benchmarks, etc.)
   const usePerplexity = mode === 'reasoning' || webSearchEnabled || intent.requiresResearch;
-  const effectiveMode = intent.requiresResearch ? 'reasoning' : mode;
+  // Note: effectiveMode removed as it was unused
 
   // Emit provider selection milestone
   const providerName = usePerplexity && isPerplexityConfigured()
@@ -339,7 +286,8 @@ export const sendMessage = async (
   emitMilestone('provider_selected', providerName, providerName);
 
   try {
-    let response: AIResponse;
+    // Transform functions return response without id/provider/thinkingDuration - those are added at the end
+    let response: Omit<AIResponse, 'id' | 'provider' | 'thinkingDuration' | 'milestones' | 'canonical'>;
     let provider: AIResponse['provider'];
 
     console.log('[AI] Intent classified:', intent.category, '| SubIntent:', intent.subIntent);
@@ -480,7 +428,7 @@ const buildCanonicalResponse = (
     responseType: response.responseType,
     insight: typeof response.insight === 'string'
       ? { headline: response.insight, sentiment: 'neutral' as const }
-      : response.insight as any,
+      : response.insight as ResponseInsight | undefined,
     widget: response.widget,
     artifact: response.artifact,
     sources: response.sources,
@@ -534,7 +482,8 @@ const transformGeminiResponse = (
     content: response.content,
     responseType: response.responseType,
     suggestions: response.suggestions,
-    sources: response.sources,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sources: response.sources as any,
     artifact: response.artifact,
     artifactContent: response.artifactContent, // AI-generated artifact content
     insight: response.insight,
@@ -591,8 +540,7 @@ const cleanMarkdownContent = (content: string): string => {
 
 // Build widget for Perplexity research responses based on intent
 const buildPerplexityWidget = (
-  intent: DetectedIntent,
-  route: { widgetType: string }
+  intent: DetectedIntent
 ): AIResponse['widget'] | undefined => {
   const commodity = intent.extractedEntities?.commodity;
 
@@ -659,12 +607,12 @@ const buildPerplexityWidget = (
           events: events.slice(0, 5).map(e => ({
             id: e.id,
             title: e.title,
-            summary: e.description,
-            timestamp: e.date,
-            type: (e.type === 'price_movement' ? 'news' :
-                  e.type === 'supply_disruption' ? 'alert' :
-                  e.type === 'policy_change' ? 'update' : 'news') as 'news' | 'risk_change' | 'alert' | 'update',
-            impact: e.impact as 'positive' | 'negative' | 'neutral',
+            summary: e.summary,
+            timestamp: e.timestamp,
+            type: (e.category === 'price' ? 'news' :
+                  e.category === 'supply' ? 'alert' :
+                  e.category === 'regulation' ? 'update' : 'news') as 'news' | 'risk_change' | 'alert' | 'update',
+            impact: e.impact,
             source: e.source,
           })),
         },
@@ -771,7 +719,7 @@ const transformPerplexityResponse = (
     : firstParagraph;
 
   // Build insight from content
-  const insight: RichInsight = {
+  const insight: ResponseInsight = {
     headline: headline || 'Research Results',
     summary: paragraphs.slice(0, 2).join(' ').slice(0, 300),
     type: 'info',
@@ -780,7 +728,7 @@ const transformPerplexityResponse = (
   };
 
   // Build widget based on intent using mock data
-  const widget = buildPerplexityWidget(intent, route);
+  const widget = buildPerplexityWidget(intent);
 
   // Attach portfolio and suppliers data for artifact expansion
   // This ensures "View Details" works for Perplexity responses too
@@ -1364,7 +1312,8 @@ const generateLocalResponse = (
           sentiment: summary.overallChange.direction === 'up' ? 'negative' : 'positive',
         },
         artifact: { type: 'inflation_dashboard', title: 'Inflation Dashboard' },
-        escalation: determineEscalation(summary.categories?.length || 5, 'inflation_summary'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        escalation: determineEscalation((summary as any).categories?.length || 5, 'inflation_summary'),
         intent,
       };
     }
@@ -1423,7 +1372,8 @@ const generateLocalResponse = (
           sentiment: impact.totalImpactDirection === 'increase' ? 'negative' : 'positive',
         },
         artifact: { type: 'impact_analysis', title: 'Impact Analysis' },
-        escalation: determineEscalation(impact.categories?.length || 4, 'inflation_impact'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        escalation: determineEscalation((impact as any).categories?.length || 4, 'inflation_impact'),
         intent,
       };
     }
@@ -1448,9 +1398,9 @@ const generateLocalResponse = (
         acknowledgement: "Validating the price increase request.",
         insight: {
           headline: `Verdict: ${justification.verdictLabel}`,
-          summary: `${justification.supplierName}'s requested ${justification.requestedIncrease}% increase on ${justification.commodity} is ${Math.abs(justification.requestedIncrease - justification.marketBenchmark).toFixed(1)}% ${justification.requestedIncrease > justification.marketBenchmark ? 'above' : 'below'} the current market benchmark of ${justification.marketBenchmark}%. ${justification.verdict === 'reject' ? 'Consider negotiating or seeking alternative quotes.' : justification.verdict === 'accept' ? 'The request aligns with market conditions.' : 'Additional analysis recommended before decision.'}`,
+          summary: `${justification.supplierName}'s requested ${justification.requestedIncrease}% increase on ${justification.commodity} is ${Math.abs(justification.requestedIncrease - justification.marketBenchmark).toFixed(1)}% ${justification.requestedIncrease > justification.marketBenchmark ? 'above' : 'below'} the current market benchmark of ${justification.marketBenchmark}%. ${justification.verdict === 'questionable' ? 'Consider negotiating or seeking alternative quotes.' : justification.verdict === 'justified' ? 'The request aligns with market conditions.' : 'Additional analysis recommended before decision.'}`,
           detail: `Request ${Math.abs(justification.requestedIncrease - justification.marketBenchmark).toFixed(1)}% ${justification.requestedIncrease > justification.marketBenchmark ? 'above' : 'below'} market`,
-          sentiment: justification.verdict === 'reject' ? 'negative' : justification.verdict === 'accept' ? 'positive' : 'neutral',
+          sentiment: justification.verdict === 'questionable' ? 'negative' : justification.verdict === 'justified' ? 'positive' : 'neutral',
         },
         artifact: { type: 'justification_report', title: 'Justification Report' },
         escalation: determineEscalation(1, 'inflation_justification'),
@@ -1535,8 +1485,9 @@ const generateLocalResponse = (
 
       // Default scenario handling
       const scenario = getScenarioData();
+      const deltaLabel = `${scenario.delta.direction === 'up' ? '+' : '-'}${scenario.delta.amount} (${scenario.delta.percent}%)`;
       return {
-        content: `Scenario: ${scenario.scenarioName}. ${scenario.description} Projected impact: ${scenario.delta.label}.`,
+        content: `Scenario: ${scenario.scenarioName}. ${scenario.description} Projected impact: ${deltaLabel}.`,
         responseType: 'widget',
         suggestions: generateSuggestions(intent, {}),
         sources: [
@@ -1550,13 +1501,14 @@ const generateLocalResponse = (
         },
         acknowledgement: "Here's the scenario analysis.",
         insight: {
-          headline: scenario.delta.label,
-          summary: `${scenario.description} Under the "${scenario.scenarioName}" scenario, the projected impact is ${scenario.delta.label}. Use this analysis to inform budget planning and risk mitigation strategies.`,
+          headline: deltaLabel,
+          summary: `${scenario.description} Under the "${scenario.scenarioName}" scenario, the projected impact is ${deltaLabel}. Use this analysis to inform budget planning and risk mitigation strategies.`,
           detail: scenario.description,
-          sentiment: scenario.delta.direction === 'increase' ? 'negative' : 'positive',
+          sentiment: scenario.delta.direction === 'up' ? 'negative' : 'positive',
         },
         artifact: { type: 'scenario_planner', title: 'Scenario Planner' },
-        escalation: determineEscalation(scenario.variables?.length || 3, 'inflation_scenarios'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        escalation: determineEscalation((scenario as any).variables?.length || 3, 'inflation_scenarios'),
         intent,
       };
     }

@@ -17,7 +17,6 @@ import {
   BarChart3,
   Calendar,
   Users,
-  DollarSign,
 } from 'lucide-react';
 import { ArtifactSection, ArtifactFooter } from '../primitives';
 import type { PriceChange } from '../../../types/inflation';
@@ -345,7 +344,6 @@ export const ExecutivePresentationArtifact = ({
   shareableUrl,
   onExport,
   onShare,
-  onClose,
 }: ExecutivePresentationArtifactProps) => {
   // Group highlights by type
   const concerns = highlights.filter(h => h.type === 'concern');

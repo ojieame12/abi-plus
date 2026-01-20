@@ -626,7 +626,6 @@ export const RiskComponentsShowcase = () => {
                             supplierName="Apple Inc."
                             previousScore={72}
                             currentScore={85}
-                            currentLevel="high"
                             changeDate="May 3"
                             onClick={() => console.log('Alert clicked')}
                         />

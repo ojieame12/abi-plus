@@ -97,7 +97,7 @@ const SELECTION_RULES: SelectionRule[] = [
       componentType: 'SpendExposureWidget',
       size: renderCtx === 'panel' ? 'lg' : 'md',
       props: {
-        data: ctx.widget?.data || {},
+        data: ctx.widget?.data || ({} as Record<string, unknown>),
       },
       expandsTo: 'PortfolioDashboardArtifact',
     }),
@@ -126,7 +126,7 @@ const SELECTION_RULES: SelectionRule[] = [
             unrated: { count: ctx.portfolio!.distribution.unrated },
           },
           totalSuppliers: ctx.portfolio!.totalSuppliers,
-          totalSpendFormatted: ctx.portfolio!.spendFormatted || (ctx.portfolio as any).totalSpendFormatted || `$${ctx.portfolio!.totalSpend}`,
+          totalSpendFormatted: ctx.portfolio!.spendFormatted || (ctx.portfolio as Portfolio & { totalSpendFormatted?: string }).totalSpendFormatted || `$${ctx.portfolio!.totalSpend}`,
         },
       },
       expandsTo: 'PortfolioDashboardArtifact',
@@ -162,7 +162,7 @@ const SELECTION_RULES: SelectionRule[] = [
       size: renderCtx === 'panel_expanded' ? 'full' : 'lg',
       props: {
         totalSuppliers: ctx.portfolio?.totalSuppliers || 0,
-        distribution: ctx.portfolio?.distribution || {},
+        distribution: ctx.portfolio?.distribution || ({} as Record<string, unknown>),
         trends: [],
         alerts: [],
         topMovers: [],
@@ -408,7 +408,7 @@ const SELECTION_RULES: SelectionRule[] = [
         riskLevel: mapRiskLevelToMarketContext('medium'), // 'moderate' not 'medium'
         keyFactors: [],
         exposedSuppliers: ctx.suppliers?.length || 0,
-        totalSpend: ctx.portfolio?.spendFormatted || (ctx.portfolio as any)?.totalSpendFormatted || '$0',
+        totalSpend: ctx.portfolio?.spendFormatted || (ctx.portfolio as Portfolio & { totalSpendFormatted?: string } | undefined)?.totalSpendFormatted || '$0',
       },
     }),
   },
@@ -461,7 +461,7 @@ const SELECTION_RULES: SelectionRule[] = [
       ctx.intent === 'action_trigger' &&
       renderCtx === 'chat' &&
       ctx.widget?.type === 'alternatives_preview' &&
-      ctx.widget?.data, // Widget data has the correct values from buildWidgetData
+      !!ctx.widget?.data, // Widget data has the correct values from buildWidgetData
     priority: 115, // Higher than supplier table fallback
     getConfig: (ctx) => {
       // Use widget.data which has correct currentSupplier/currentScore/alternatives
@@ -585,7 +585,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'InflationSummaryCard',
       size: 'md',
-      props: ctx.widget?.data || ctx.inflationSummary || {},
+      props: (ctx.widget?.data || ctx.inflationSummary || {}) as Record<string, unknown>,
       expandsTo: 'InflationDashboardArtifact',
     }),
   },
@@ -599,7 +599,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'DriverBreakdownCard',
       size: 'md',
-      props: ctx.widget?.data || ctx.commodityDrivers || {},
+      props: (ctx.widget?.data || ctx.commodityDrivers || {}) as Record<string, unknown>,
       expandsTo: 'DriverAnalysisArtifact',
     }),
   },
@@ -613,7 +613,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'SpendImpactCard',
       size: 'md',
-      props: ctx.widget?.data || ctx.portfolioExposure || {},
+      props: (ctx.widget?.data || ctx.portfolioExposure || {}) as Record<string, unknown>,
       expandsTo: 'ImpactAnalysisArtifact',
     }),
   },
@@ -627,7 +627,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'JustificationCard',
       size: 'md',
-      props: ctx.widget?.data || ctx.justificationData || {},
+      props: (ctx.widget?.data || ctx.justificationData || {}) as Record<string, unknown>,
       expandsTo: 'JustificationReportArtifact',
     }),
   },
@@ -641,7 +641,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'ScenarioCard',
       size: 'md',
-      props: ctx.widget?.data || ctx.scenarioData || {},
+      props: (ctx.widget?.data || ctx.scenarioData || {}) as Record<string, unknown>,
       expandsTo: 'ScenarioPlannerArtifact',
     }),
   },
@@ -655,7 +655,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'ExecutiveBriefCard',
       size: 'md',
-      props: ctx.widget?.data || ctx.inflationSummary || {},
+      props: (ctx.widget?.data || ctx.inflationSummary || {}) as Record<string, unknown>,
       expandsTo: 'ExecutivePresentationArtifact',
     }),
   },
@@ -669,7 +669,7 @@ const SELECTION_RULES: SelectionRule[] = [
     getConfig: (ctx) => ({
       componentType: 'CommodityGaugeCard',
       size: 'md',
-      props: ctx.widget?.data || {},
+      props: (ctx.widget?.data || {}) as Record<string, unknown>,
       expandsTo: 'commodity_dashboard',
     }),
   },

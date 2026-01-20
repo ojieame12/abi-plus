@@ -4,6 +4,7 @@ import { MainLayout } from '../components/layout/MainLayout';
 import { ChatInput } from '../components/chat/ChatInput';
 import { UserMessage } from '../components/chat/UserMessage';
 import { AIResponse, Highlight } from '../components/chat/AIResponse';
+import type { Milestone } from '../services/ai';
 
 interface Message {
     id: string;
@@ -12,33 +13,16 @@ interface Message {
     isLatest?: boolean;
 }
 
+const demoMilestones: Milestone[] = [
+    { id: 'm1', event: 'intent_classified', label: 'Classified intent', timestamp: 180 },
+    { id: 'm2', event: 'data_retrieved', label: 'Retrieved market data', timestamp: 520 },
+    { id: 'm3', event: 'sources_found', label: 'Verified sources', timestamp: 980 },
+    { id: 'm4', event: 'response_ready', label: 'Drafted response', timestamp: 1450 },
+];
+
 const demoThoughtProcess = {
     duration: '2min',
-    content: {
-        queryAnalysis: {
-            commodity: 'Lithium carbonate',
-            informationNeeded: 'Pricing (current), Supply dynamics (factors), Outlook (forecast)',
-            timeSensitivity: 'High - user needs "current" data',
-            depthRequired: 'Comprehensive - multiple aspects requested',
-        },
-        searchStrategy: {
-            priority: 'Priority 1 - Beroe Intelligence:',
-            bullets: [
-                'Check Beroe Lithium Market Reports (Q4 2024)',
-                'Look for: pricing data, capacity analysis, forecast models',
-                'Advantage: Beroe has deep commodity intelligence with historical context',
-            ],
-        },
-        informationRetrieval: {
-            sources: [
-                'Beroe Lithium Market Report Q4 2024 (comprehensive)',
-                'Reuters commodity pricing (Nov 15, 2024)',
-                'Bloomberg energy analysis (Nov 18, 2024)',
-                'S&P Global supply forecasts (Nov 17, 2024)',
-            ],
-            dataQuality: 'All sources current (within 10 days), authoritative publishers',
-        },
-    },
+    milestones: demoMilestones,
 };
 
 const demoFollowUps = [
@@ -217,12 +201,11 @@ export const ChatView = ({ userQuestion = "Give me a summary of my supplier risk
         <MainLayout
             headerVariant="conversation"
             conversationTitle="Supplier risk portfolio summary"
-            fileCount={6}
             artifactCount={4}
         >
             <div ref={scrollRef} className="max-w-3xl mx-auto px-4 py-6">
                 <AnimatePresence mode="sync">
-                    {messages.map((message, index) => (
+                    {messages.map((message) => (
                         <motion.div
                             key={message.id}
                             initial={{ opacity: 0, y: 20 }}

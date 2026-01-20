@@ -1,9 +1,9 @@
-import { ArrowRight, MessageCircle, Search, FileText, BarChart3, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowRight, MessageCircle, Search, FileText, BarChart3, AlertTriangle, GitCompare, Lightbulb } from 'lucide-react';
 
 interface FollowUpItem {
     id: string;
     text: string;
-    icon?: 'chat' | 'search' | 'document' | 'chart' | 'alert' | 'lightbulb' | 'message';
+    icon?: 'chat' | 'search' | 'document' | 'chart' | 'alert' | 'lightbulb' | 'message' | 'compare';
 }
 
 interface SuggestedFollowUpsProps {
@@ -14,11 +14,12 @@ interface SuggestedFollowUpsProps {
 const iconMap = {
     chat: MessageCircle,
     message: MessageCircle,
-    lightbulb: MessageCircle,
+    lightbulb: Lightbulb,
     search: Search,
     document: FileText,
     chart: BarChart3,
     alert: AlertTriangle,
+    compare: GitCompare,
 };
 
 export const SuggestedFollowUps = ({ items, onItemClick }: SuggestedFollowUpsProps) => {

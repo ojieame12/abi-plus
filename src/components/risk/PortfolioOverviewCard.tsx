@@ -1,4 +1,4 @@
-import { ChevronRight, Users, DollarSign, AlertTriangle, HelpCircle } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { RiskDistributionChart } from './RiskDistributionChart';
 
 interface RiskDistribution {

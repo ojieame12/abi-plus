@@ -18,6 +18,7 @@ export interface ArtifactFooterProps {
   actions?: FooterAction[];
   primaryAction?: FooterAction;
   secondaryAction?: FooterAction;
+  secondaryActions?: FooterAction[]; // Multiple secondary actions
   children?: ReactNode; // For custom footer content
   variant?: 'default' | 'compact' | 'split';
   className?: string;
@@ -27,6 +28,7 @@ export const ArtifactFooter = ({
   actions,
   primaryAction,
   secondaryAction,
+  secondaryActions,
   children,
   variant = 'default',
   className = '',
@@ -66,12 +68,18 @@ export const ArtifactFooter = ({
     </button>
   );
 
+  // Combine single and array secondary actions
+  const allSecondaryActions = [
+    ...(secondaryAction ? [secondaryAction] : []),
+    ...(secondaryActions || []),
+  ];
+
   // Split variant: secondary on left, primary on right
-  if (variant === 'split' && (primaryAction || secondaryAction)) {
+  if (variant === 'split' && (primaryAction || allSecondaryActions.length > 0)) {
     return (
       <div className={`px-5 py-4 border-t border-slate-100 flex items-center justify-between bg-white ${className}`}>
-        <div>
-          {secondaryAction && renderButton(secondaryAction)}
+        <div className="flex items-center gap-2">
+          {allSecondaryActions.map(action => renderButton(action))}
         </div>
         <div>
           {primaryAction && renderButton(primaryAction)}
@@ -87,7 +95,7 @@ export const ArtifactFooter = ({
         <div className="flex items-center gap-3">
           {/* Render explicit primary/secondary actions */}
           {primaryAction && renderButton(primaryAction, true)}
-          {secondaryAction && renderButton(secondaryAction, true)}
+          {allSecondaryActions.map(action => renderButton(action, true))}
 
           {/* Or render actions array */}
           {actions?.map((action) => renderButton(action, actions.length <= 2))}

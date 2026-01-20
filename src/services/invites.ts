@@ -1,5 +1,6 @@
 // Invite Service - Invite code management logic
 import crypto from 'crypto';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { eq, and, lt, sql, or, isNull } from 'drizzle-orm';
 import type { Invite } from '../db/schema.js';
 import { invites, inviteUses } from '../db/schema.js';
@@ -196,7 +197,7 @@ interface AtomicUseInviteResult {
  * ```
  */
 export async function atomicUseInvite(
-  db: any, // Drizzle database instance
+  db: NeonHttpDatabase<Record<string, never>>,
   inviteId: string,
   userId: string
 ): Promise<AtomicUseInviteResult> {
@@ -238,9 +239,9 @@ export async function atomicUseInvite(
       inviteId,
       userId,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     // If unique constraint violation, user already used this invite
-    if (err.code === '23505') {
+    if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
       // Rollback the use_count increment
       await db
         .update(invites)

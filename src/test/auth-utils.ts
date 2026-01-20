@@ -49,6 +49,9 @@ export function createTestProfile(userId: string, overrides: Partial<NewProfile>
     isPublic: overrides.isPublic ?? true,
     anonymousDefault: overrides.anonymousDefault ?? false,
     onboardingStep: overrides.onboardingStep ?? 'profile',
+    currentStreak: overrides.currentStreak ?? 0,
+    longestStreak: overrides.longestStreak ?? 0,
+    lastActiveAt: overrides.lastActiveAt ?? null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

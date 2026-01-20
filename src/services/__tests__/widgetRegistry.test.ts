@@ -14,11 +14,9 @@ import {
   getWidgetsForIntent,
   validateIntentCoverage,
   CATEGORY_ORDER,
-  type WidgetCategory,
-  type RequiredData,
 } from '../widgetRegistry';
 
-import type { IntentCategory, SubIntent } from '../../types/intents';
+import type { IntentCategory } from '../../types/intents';
 
 // ============================================
 // ALL INTENTS FROM THE SYSTEM
@@ -364,7 +362,7 @@ describe('Lookup Functions', () => {
     });
 
     it('should return undefined for unknown type', () => {
-      const widget = getWidgetByType('non_existent_type' as any);
+      const widget = getWidgetByType('non_existent_type' as Parameters<typeof getWidgetByType>[0]);
       expect(widget).toBeUndefined();
     });
   });

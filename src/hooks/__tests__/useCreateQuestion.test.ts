@@ -114,7 +114,7 @@ describe('useCreateQuestion', () => {
     });
 
     it('throws error after setting state', async () => {
-      const error = new api.ApiError('Invalid input');
+      const error = new api.ApiError('Invalid input', 400);
       mockApiFetch.mockRejectedValue(error);
 
       const { result } = renderHook(() => useCreateQuestion());
@@ -127,7 +127,7 @@ describe('useCreateQuestion', () => {
     });
 
     it('clears previous error on new request', async () => {
-      mockApiFetch.mockRejectedValueOnce(new api.ApiError('First error'));
+      mockApiFetch.mockRejectedValueOnce(new api.ApiError('First error', 500));
 
       const { result } = renderHook(() => useCreateQuestion());
 
@@ -155,7 +155,7 @@ describe('useCreateQuestion', () => {
 
   describe('clearError', () => {
     it('clears the error state', async () => {
-      mockApiFetch.mockRejectedValue(new api.ApiError('Some error'));
+      mockApiFetch.mockRejectedValue(new api.ApiError('Some error', 500));
 
       const { result } = renderHook(() => useCreateQuestion());
 

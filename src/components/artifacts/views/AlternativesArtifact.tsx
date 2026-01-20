@@ -5,7 +5,6 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  Filter,
   ArrowUpDown,
   Check,
   Plus,
@@ -256,7 +255,6 @@ export const AlternativesArtifact = ({
   onRequestAssessment,
   onAddToShortlist,
   onSelectSupplier,
-  onClose,
 }: AlternativesArtifactProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

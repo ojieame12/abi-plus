@@ -1,10 +1,10 @@
+/* eslint-disable react-refresh/only-export-components -- Context files export hooks alongside providers by design */
 // Chat Context - Global state management for conversations
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import type { ChatMessage, Conversation } from '../types/chat';
 import { generateId } from '../types/chat';
 import type { AIResponse, ThinkingMode } from '../services/ai';
 import type { Supplier } from '../types/supplier';
-import { getPortfolioSummary } from '../services/mockData';
 
 // State shape
 interface ChatState {

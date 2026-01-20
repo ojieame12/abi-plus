@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Context files export hooks alongside providers by design */
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 type ViewState = 'home' | 'transitioning' | 'chat';

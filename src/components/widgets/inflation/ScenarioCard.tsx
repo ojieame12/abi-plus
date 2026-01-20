@@ -1,11 +1,10 @@
 // ScenarioCard - What-if scenario result widget
 import { motion } from 'framer-motion';
-import { GitBranch, TrendingUp, TrendingDown, ArrowRight, ChevronRight, AlertCircle, CheckCircle, Minus } from 'lucide-react';
+import { GitBranch, TrendingUp, TrendingDown, ArrowRight, ChevronRight } from 'lucide-react';
 import type { ScenarioCardData } from '../../../types/inflation';
 
 interface ScenarioCardProps extends ScenarioCardData {
   onViewDetails?: () => void;
-  onRunScenario?: () => void;
   delay?: number;
   beroeSourceCount?: number;
   hideFooter?: boolean;
@@ -27,7 +26,6 @@ export const ScenarioCard = ({
   confidence,
   topImpacts,
   onViewDetails,
-  onRunScenario,
   delay = 0,
   beroeSourceCount = 0,
   hideFooter = false,

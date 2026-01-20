@@ -19,10 +19,6 @@ import {
   getTagBySlug,
 } from '../communityService';
 import {
-  createTestQuestion,
-  createTestAnswer,
-  createTestTag,
-  createTestUserProfile,
   createQuestionInput,
   createAnswerInput,
   resetTestCounters,
@@ -35,7 +31,6 @@ import {
 // Create chainable mock
 function createChainableMock(returnValue: unknown = []) {
   const mock: Record<string, Mock> = {};
-  const chain = () => mock;
 
   mock.from = vi.fn().mockReturnThis();
   mock.leftJoin = vi.fn().mockReturnThis();

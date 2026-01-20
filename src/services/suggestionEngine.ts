@@ -1,7 +1,7 @@
 // Dynamic Suggestion Engine
 // Generates contextual, data-driven follow-up suggestions
 
-import type { Supplier, RiskLevel } from '../types/supplier';
+import type { Supplier } from '../types/supplier';
 import type { DetectedIntent, IntentCategory } from '../types/intents';
 import type { Suggestion } from '../types/chat';
 

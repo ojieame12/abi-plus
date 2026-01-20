@@ -51,7 +51,8 @@ import {
   ActionConfirmationCard,
 } from '../../components/risk';
 
-// Component registry
+// Component registry - using any for props since each widget has different prop requirements
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   RiskDistributionWidget,
   MetricRowWidget,
@@ -118,7 +119,7 @@ export const WidgetCard = ({ widget }: WidgetCardProps) => {
       // Handle different prop structures
       const props = widget.demoData;
       return <Component {...props} />;
-    } catch (error) {
+    } catch {
       return (
         <div className="flex items-center justify-center h-32 bg-rose-50 rounded-lg text-rose-500 text-sm">
           Error rendering widget

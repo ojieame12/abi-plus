@@ -6,7 +6,7 @@ import { MOCK_ANSWERS } from '../../../services/communityMockData';
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, className, ...props }: any) => (
+    div: ({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
       <div className={className} {...props}>
         {children}
       </div>
@@ -48,8 +48,8 @@ describe('AnswerCard', () => {
 
   it('shows author reputation when showReputation is true in AuthorBadge', () => {
     render(<AnswerCard answer={mockAnswer} />);
-    // AuthorBadge with showReputation=true should show the reputation
-    expect(screen.getByText(`(${mockAnswer.author!.reputation.toLocaleString()})`)).toBeInTheDocument();
+    // InlineReputationBadge renders just the formatted number without parentheses
+    expect(screen.getByText(mockAnswer.author!.reputation.toLocaleString())).toBeInTheDocument();
   });
 
   it('applies left border for accepted answers', () => {

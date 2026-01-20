@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './components/layout/MainLayout';
 import { ArtifactPanel } from './components/panel/ArtifactPanel';
@@ -8,26 +8,61 @@ import { ChatHistoryView } from './views/ChatHistoryView';
 import { CommunityView } from './views/CommunityView';
 import { QuestionDetailView } from './views/QuestionDetailView';
 import { AskQuestionView } from './views/AskQuestionView';
+import { ManagedCategoriesView } from './views/ManagedCategoriesView';
+import { ExpertDashboardView } from './views/ExpertDashboardView';
+import { ApprovalWorkflowView } from './views/ApprovalWorkflowView';
+import { SettingsView } from './views/SettingsView';
 import { useSession } from './hooks/useSession';
 import { usePreloader } from './hooks/usePreloader';
 import { Preloader } from './components/Preloader';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
 import { ChatInput, type BuilderMetadata } from './components/chat/ChatInput';
-import { ThoughtProcess, buildThoughtContent } from './components/chat/ThoughtProcess';
-import { PortfolioOverviewCard } from './components/risk';
 import type { AIResponse as AIResponseType, Milestone } from './services/ai';
 import { sendMessage } from './services/ai';
+import { submitRequest } from './services/approvalService';
 import { buildResponseSources } from './utils/sources';
 import { buildArtifactPayload, resolveArtifactType } from './services/artifactBuilder';
 // Artifact system imports
 import { ArtifactRenderer } from './components/artifacts/ArtifactRenderer';
-import type { ArtifactType, ArtifactPayload } from './components/artifacts/registry';
+import type {
+  ArtifactType,
+  ArtifactPayload,
+  AnalystConnectPayload,
+  ExpertRequestPayload,
+  ReportViewerPayload,
+} from './components/artifacts/registry';
 import { getArtifactTitle, getArtifactMeta } from './components/artifacts/registry';
 import { ResponseBody } from './components/response';
+import type { ContentLayer, LayerMetadata } from './types/layers';
+// Phase 2: Subscription & Organization
+import { CreditDrawer } from './components/subscription/CreditDrawer';
+import { UpgradeRequestForm } from './components/upgrade/UpgradeRequestForm';
+import { ToastContainer, useToasts } from './components/ui/Toast';
+import { MOCK_SUBSCRIPTION, MOCK_TRANSACTIONS } from './services/mockSubscription';
+import { fetchCreditData } from './services/creditService';
+import type { CreditTransaction } from './types/subscription';
+import { MOCK_SLOT_SUMMARY } from './services/mockCategories';
+import type { CompanySubscription } from './types/subscription';
+import { CREDIT_COSTS } from './types/subscription';
+import type { RequestContext } from './types/requests';
+import type { Supplier, RiskChange, RiskPortfolio } from './types/supplier';
+import type { Portfolio } from './types/data';
+import type { InsightDetailData } from './utils/insightBuilder';
+import type { ResponseInsight } from './types/aiResponse';
+import { PersonaSwitcher } from './components/demo/PersonaSwitcher';
+import { DEMO_COMPANY_ID, DEMO_DEFAULT_TEAM_ID } from './constants/demo';
 import './App.css';
 
-type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail' | 'ask-question';
+// Type for database message with metadata
+interface DatabaseMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  metadata?: Record<string, unknown>;
+}
+
+type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail' | 'ask-question' | 'expert-dashboard' | 'managed-categories' | 'approval-workflow' | 'settings';
 
 interface Message {
   id: string;
@@ -106,20 +141,113 @@ function intentToCategory(intent?: { category?: string }): string {
   return mapping[intent.category] || 'general';
 }
 
+function getArtifactLayerInfo(
+  type: ArtifactType | null,
+  payload: ArtifactPayload | null
+): { contentLayer?: ContentLayer; layerMetadata?: LayerMetadata } {
+  if (!type) return {};
+
+  // L2a - Analyst-verified content
+  if (type === 'analyst_connect' && payload) {
+    const analystPayload = payload as AnalystConnectPayload;
+    const analystName = analystPayload.analystConnect?.analyst?.name;
+    return {
+      contentLayer: 'L2a',
+      layerMetadata: analystName ? { analystName } : undefined,
+    };
+  }
+
+  // L3 - Expert content
+  if (type === 'expert_request' && payload) {
+    const expertPayload = payload as ExpertRequestPayload;
+    const expertName = expertPayload.expertDeepDive?.matchedExpert?.name;
+    return {
+      contentLayer: 'L3',
+      layerMetadata: expertName ? { expertName } : undefined,
+    };
+  }
+
+  // L2a - Report viewer (analyst-authored reports)
+  if (type === 'report_viewer' && payload) {
+    const reportPayload = payload as ReportViewerPayload;
+    const analystName = reportPayload.report?.author;
+    return {
+      contentLayer: 'L2a',
+      layerMetadata: analystName ? { analystName } : undefined,
+    };
+  }
+
+  // Utility/action artifacts - no badge
+  const utilityArtifacts: ArtifactType[] = [
+    'export_builder',
+    'watchlist_manage',
+    'alert_config',
+    'assessment_request',
+    'community_embed',
+  ];
+  if (utilityArtifacts.includes(type)) {
+    return {}; // No layer badge for utility artifacts
+  }
+
+  // L1 - AI-generated content artifacts
+  const aiContentArtifacts: ArtifactType[] = [
+    'insight_detail',
+    'trend_analysis',
+    'factor_breakdown',
+    'news_events',
+    'supplier_detail',
+    'supplier_comparison',
+    'supplier_table',
+    'supplier_alternatives',
+    'category_overview',
+    'portfolio_dashboard',
+    'regional_analysis',
+    'spend_analysis',
+    'inflation_dashboard',
+    'commodity_dashboard',
+    'driver_analysis',
+    'impact_analysis',
+    'justification_report',
+    'scenario_planner',
+    'executive_presentation',
+  ];
+  if (aiContentArtifacts.includes(type)) {
+    return { contentLayer: 'L1' };
+  }
+
+  // Default: no badge for unknown types
+  return {};
+}
+
 function App() {
   // Preloader state
-  const { phase, progress, isDone, isExiting } = usePreloader();
+  const { progress, isDone, isExiting } = usePreloader();
+
+  // Auth session - needed early for view gating
+  const { isAuthenticated, userId, permissions, persona, isDemoMode } = useSession();
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
-  const [viewState, setViewState] = useState<ViewState>('home');
+  const [viewState, setViewStateRaw] = useState<ViewState>('home');
+
+  // Community views are parked in demo mode - gate navigation
+  const COMMUNITY_VIEWS: ViewState[] = ['community', 'community-detail', 'ask-question'];
+  const setViewState = useCallback((newState: ViewState) => {
+    // Block community views in demo mode
+    if (isDemoMode && COMMUNITY_VIEWS.includes(newState)) {
+      console.log('[App] Community views parked, redirecting to home');
+      setViewStateRaw('home');
+      return;
+    }
+    setViewStateRaw(newState);
+  }, [isDemoMode]);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [conversationTitle, setConversationTitle] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
 
-  // Auth session
-  const { isAuthenticated, userId, permissions } = useSession();
+  // Map demo persona to user role for UI components
+  const userRole = persona === 'admin' ? 'admin' : persona === 'approver' ? 'approver' : 'user';
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -128,11 +256,75 @@ function App() {
   const [mode, setMode] = useState<'fast' | 'reasoning'>('fast');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [currentArtifact, setCurrentArtifact] = useState<AIResponseType['artifact'] | null>(null);
-  const [artifactData, setArtifactData] = useState<{ suppliers?: any[]; portfolio?: any; insight?: any } | null>(null);
+  const [artifactData, setArtifactData] = useState<{ suppliers?: Supplier[]; portfolio?: Portfolio | RiskPortfolio; insight?: InsightDetailData } | null>(null);
 
   // New artifact system state
   const [artifactType, setArtifactType] = useState<ArtifactType | null>(null);
   const [artifactPayload, setArtifactPayload] = useState<ArtifactPayload | null>(null);
+
+  // Phase 2: Subscription state - fetched from live API
+  const [subscription, setSubscription] = useState<CompanySubscription>(MOCK_SUBSCRIPTION);
+  const [transactions, setTransactions] = useState<CreditTransaction[]>(MOCK_TRANSACTIONS);
+  const [isCreditLoading, setIsCreditLoading] = useState(false);
+  const [creditError, setCreditError] = useState<string | null>(null);
+  const [isCreditDrawerOpen, setIsCreditDrawerOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<RequestContext | undefined>(undefined);
+
+  // Fetch credit balance from live API
+  const refreshCredits = useCallback(async () => {
+    try {
+      setIsCreditLoading(true);
+      setCreditError(null);
+      const data = await fetchCreditData();
+      setSubscription(data.subscription);
+      setTransactions(data.transactions);
+    } catch (err) {
+      console.warn('[App] Failed to fetch credit data, using mock:', err);
+      // Keep using mock data on failure
+      setCreditError(err instanceof Error ? err.message : 'Failed to load credits');
+    } finally {
+      setIsCreditLoading(false);
+    }
+  }, []);
+
+  // Fetch credits when authenticated (wait for demo-login to complete)
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshCredits();
+    }
+  }, [isAuthenticated, refreshCredits]);
+
+  // Handle URL deep-linking for reports
+  // Example: ?report=steel-market-2025
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reportId = params.get('report');
+
+    if (reportId && isAuthenticated) {
+      // Open report viewer artifact
+      const reportPayload: ReportViewerPayload = {
+        type: 'report_viewer',
+        report: {
+          id: reportId,
+          title: `Report ${reportId}`, // Will be fetched/resolved by the artifact
+          category: 'research',
+          publishedDate: new Date().toISOString(),
+        },
+      };
+      setArtifactType('report_viewer');
+      setArtifactPayload(reportPayload);
+      setCurrentArtifact({ type: 'report_viewer', title: 'Beroe Report' });
+      setIsPanelOpen(true);
+
+      // Clean up URL without reloading
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [isAuthenticated]);
+
+  // Toast notifications
+  const { toasts, dismissToast, showSuccess, showPending } = useToasts();
 
   // Ref for auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -150,11 +342,12 @@ function App() {
   }, [messages]);
 
   // Open insight in artifact panel
-  const openInsightPanel = (insightData: any) => {
+  const openInsightPanel = (insightData: Record<string, unknown>) => {
+    const data = insightData as unknown as InsightDetailData;
     setArtifactType('insight_detail');
-    setArtifactPayload({ type: 'insight_detail', data: insightData });
+    setArtifactPayload({ type: 'insight_detail', data });
     setCurrentArtifact({ type: 'insight_detail', title: 'Insight Details' });
-    setArtifactData({ insight: insightData });
+    setArtifactData({ insight: data });
     setIsPanelOpen(true);
   };
 
@@ -240,8 +433,9 @@ function App() {
         // Open supplier detail
         if (data && typeof data === 'object' && 'id' in data) {
           const supplierId = (data as { id: string }).id;
-          const sourceSuppliers = (artifactPayload as any)?.sourceSuppliers;
-          const sourceRiskChanges = (artifactPayload as any)?.sourceRiskChanges;
+          const payloadWithSuppliers = artifactPayload as ArtifactPayload & { sourceSuppliers?: Supplier[]; sourceRiskChanges?: RiskChange[] };
+          const sourceSuppliers = payloadWithSuppliers?.sourceSuppliers;
+          const sourceRiskChanges = payloadWithSuppliers?.sourceRiskChanges;
           const matchedSupplier = Array.isArray(sourceSuppliers)
             ? sourceSuppliers.find((supplier) => supplier.id === supplierId)
             : null;
@@ -312,25 +506,11 @@ function App() {
         console.log('Request expert introduction:', data);
         // Could trigger expert network flow
         break;
+      // Community features are parked - these actions are disabled
       case 'view_thread':
-        console.log('View community thread:', data);
-        if (data && typeof data === 'object' && 'threadId' in data) {
-          const threadId = (data as { threadId: string }).threadId;
-          handleClosePanel();
-          setSelectedQuestionId(threadId);
-          setViewState('community-detail');
-        }
-        break;
       case 'start_discussion':
-        console.log('Start community discussion:', data);
-        handleClosePanel();
-        setViewState('ask-question');
-        // Pre-fill form data could be stored in state if needed
-        break;
       case 'view_all_discussions':
-        handleClosePanel();
-        setSelectedQuestionId(null);
-        setViewState('community');
+        console.log('[Community parked] Action disabled:', action, data);
         break;
       default:
         console.log('Unhandled action:', action);
@@ -364,26 +544,6 @@ function App() {
     });
   };
 
-  const handleCommunity = (response: AIResponseType) => {
-    const valueLadder = response.canonical?.valueLadder;
-    if (!valueLadder?.community) return;
-
-    // Extract topic and category from intent for context-aware community search
-    const entities = response.intent?.extractedEntities;
-    const topic = entities?.commodity || entities?.supplierName || entities?.category;
-    const category = entities?.category || response.intent?.category;
-
-    openArtifact('community_embed', {
-      community: valueLadder.community,
-      queryContext: {
-        queryId: response.id,
-        queryText: getUserMessageForResponse(response.id),
-        topic,
-        category,
-      },
-    });
-  };
-
   const handleExpertDeepDive = (response: AIResponseType) => {
     const valueLadder = response.canonical?.valueLadder;
     if (!valueLadder?.expertDeepDive) return;
@@ -396,6 +556,20 @@ function App() {
         topic: response.intent?.extractedEntities?.commodity || response.intent?.extractedEntities?.category,
       },
     });
+  };
+
+  // Handle upgrade request (L2b decision-grade upgrade)
+  const handleUpgrade = (response: AIResponseType) => {
+    // Build context from the response
+    const context: RequestContext = {
+      reportTitle: response.artifact?.title || conversationTitle,
+      categoryId: response.intent?.extractedEntities?.category,
+      categoryName: response.intent?.extractedEntities?.commodity || response.intent?.extractedEntities?.category,
+      queryText: getUserMessageForResponse(response.id),
+      conversationId: currentConversationId || undefined,
+    };
+    setUpgradeContext(context);
+    setIsUpgradeModalOpen(true);
   };
 
   // Handle starting a chat from home
@@ -638,7 +812,7 @@ function App() {
       setIsPanelOpen(false);
 
       // Convert DB messages to app Message format
-      const loadedMessages: Message[] = data.messages.map((m: any) => ({
+      const loadedMessages: Message[] = data.messages.map((m: DatabaseMessage) => ({
         id: m.id,
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -685,6 +859,7 @@ function App() {
 
   // Header variant
   const headerVariant = (viewState === 'home' || viewState === 'history' || viewState === 'community' || viewState === 'community-detail') && !isTransitioning ? 'home' : 'conversation';
+  const artifactLayerInfo = getArtifactLayerInfo(artifactType, artifactPayload);
 
   // Close panel and reset expanded state
   const handleClosePanel = () => {
@@ -717,7 +892,12 @@ function App() {
           onNewChat={handleNewChat}
           onNavigateToHistory={handleNavigateToHistory}
           onNavigateToCommunity={handleNavigateToCommunity}
+          onNavigateToSettings={() => setViewState('settings')}
+          onNavigateToExpertPortal={() => setViewState('expert-dashboard')}
+          showExpertPortal={true} // Demo mode: show expert portal access
           isArtifactExpanded={isArtifactExpanded}
+          subscription={subscription}
+          onCreditsClick={() => setIsCreditDrawerOpen(true)}
           panel={
         <ArtifactPanel
           isOpen={isPanelOpen}
@@ -727,6 +907,8 @@ function App() {
           onToggleExpand={() => setIsArtifactExpanded(!isArtifactExpanded)}
           defaultWidth={artifactType ? getArtifactMeta(artifactType).defaultWidth : '40%'}
           allowExpand={artifactType ? getArtifactMeta(artifactType).allowExpand : true}
+          contentLayer={artifactLayerInfo.contentLayer}
+          layerMetadata={artifactLayerInfo.layerMetadata}
         >
           {/* Use new ArtifactRenderer when artifactType is set */}
           {artifactType && artifactPayload ? (
@@ -741,7 +923,7 @@ function App() {
             <div className="p-6">
               {/* Legacy artifact rendering for backwards compatibility */}
               {currentArtifact?.type === 'portfolio_dashboard' && artifactData?.portfolio && (
-                <PortfolioWidget portfolio={artifactData.portfolio} />
+                <PortfolioWidget portfolio={artifactData.portfolio as Portfolio} />
               )}
               {currentArtifact?.type === 'supplier_table' && artifactData?.suppliers && (
                 <SupplierTableWidget suppliers={artifactData.suppliers} />
@@ -820,6 +1002,62 @@ function App() {
               onSuccess={handleQuestionCreated}
             />
           </motion.div>
+        ) : viewState === 'managed-categories' ? (
+          <motion.div
+            key="managed-categories"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ManagedCategoriesView
+              onBack={() => setViewState('home')}
+            />
+          </motion.div>
+        ) : viewState === 'expert-dashboard' ? (
+          <motion.div
+            key="expert-dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ExpertDashboardView
+              onBack={() => setViewState('home')}
+            />
+          </motion.div>
+        ) : viewState === 'approval-workflow' ? (
+          <motion.div
+            key="approval-workflow"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ApprovalWorkflowView
+              onBack={() => setViewState('home')}
+              userRole={userRole}
+            />
+          </motion.div>
+        ) : viewState === 'settings' ? (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <SettingsView
+              onBack={() => setViewState('home')}
+              userRole={userRole}
+              onNavigateToCategories={() => setViewState('managed-categories')}
+              onNavigateToApprovals={() => setViewState('approval-workflow')}
+            />
+          </motion.div>
         ) : viewState === 'community-detail' && selectedQuestionId ? (
           <motion.div
             key="community-detail"
@@ -893,24 +1131,24 @@ function App() {
                           // 2. Acknowledgement - show on all responses
                           acknowledgement={hasResponse ? (msg.response?.acknowledgement || undefined) : undefined}
                           // 2.5 Detail Summary - AI-generated overview (from artifactContent or insight.summary)
-                          detailSummary={hasResponse ? (msg.response?.artifactContent?.overview || (typeof msg.response?.insight === 'object' && 'summary' in msg.response.insight ? msg.response.insight.summary : undefined)) : undefined}
+                          detailSummary={hasResponse ? (msg.response?.artifactContent?.overview || (typeof msg.response?.insight === 'object' && 'summary' in msg.response.insight ? (msg.response.insight as { summary?: string }).summary : undefined)) : undefined}
                           // 3. Widget - PERSIST on all assistant messages with data
                           widgetContext={hasResponse ? {
-                            intent: msg.response!.intent?.category || 'general',
+                            intent: (msg.response!.intent?.category || 'general') as import('./types/intents').IntentCategory,
                             subIntent: msg.response!.intent?.subIntent,
                             portfolio: msg.response!.portfolio,
                             suppliers: msg.response!.suppliers,
                             supplier: msg.response!.suppliers?.[0],
                             riskChanges: msg.response!.riskChanges,
-                            widgetData: msg.response!.widget,
+                            widgetData: msg.response!.widget as import('./types/widgets').WidgetData | undefined,
                             artifactContent: msg.response!.artifactContent,
-                            renderContext: 'chat',
-                            onOpenArtifact: (type, payload) => openArtifact(type as ArtifactType, payload as Partial<ArtifactPayload>),
+                            renderContext: 'chat' as const,
+                            onOpenArtifact: (type: string, payload: Record<string, unknown>) => openArtifact(type as ArtifactType, payload as Partial<ArtifactPayload>),
                           } : undefined}
                           // 4. Insight bar - PERSIST on all responses (pass full ResponseInsight for rich rendering)
-                          insight={hasResponse ? msg.response?.insight : undefined}
+                          insight={hasResponse ? msg.response?.insight as ResponseInsight | undefined : undefined}
                           // 5. Sources - PERSIST on all responses
-                          sources={hasResponse && hasSources ? responseSources : undefined}
+                          sources={hasResponse && hasSources && responseSources ? responseSources : undefined}
                           // 6. Follow-ups - ONLY on latest message (avoid duplicate buttons)
                           followUps={showInteractive ? msg.response?.suggestions?.map(s => ({
                             id: s.id,
@@ -919,6 +1157,9 @@ function App() {
                                   s.icon === 'alert' ? 'alert' as const :
                                   s.icon === 'search' ? 'search' as const :
                                   s.icon === 'document' ? 'document' as const :
+                                  s.icon === 'lightbulb' ? 'lightbulb' as const :
+                                  s.icon === 'message' ? 'message' as const :
+                                  s.icon === 'compare' ? 'compare' as const :
                                   'chat' as const,
                           })) : undefined}
                           onFollowUpClick={handleSuggestionClick}
@@ -934,7 +1175,6 @@ function App() {
                           // 9. Value Ladder (4-layer system)
                           valueLadder={hasResponse ? msg.response?.canonical?.valueLadder : undefined}
                           onAnalystConnect={() => msg.response && handleAnalystConnect(msg.response)}
-                          onCommunity={() => msg.response && handleCommunity(msg.response)}
                           onExpertDeepDive={() => msg.response && handleExpertDeepDive(msg.response)}
                           // 10. Source Enhancement
                           sourceEnhancement={hasResponse ? msg.response?.canonical?.sourceEnhancement : undefined}
@@ -961,6 +1201,9 @@ function App() {
                                 break;
                             }
                           }}
+                          // 11. Upgrade flow (L2b decision-grade)
+                          onUpgrade={() => msg.response && handleUpgrade(msg.response)}
+                          upgradeCost={CREDIT_COSTS.report_upgrade.typical}
                         >
                           {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
                           {msg.response?.canonical ? (
@@ -1030,6 +1273,83 @@ function App() {
       </AnimatePresence>
     </MainLayout>
       </motion.div>
+
+      {/* Phase 2: Credit Drawer */}
+      <CreditDrawer
+        isOpen={isCreditDrawerOpen}
+        onClose={() => setIsCreditDrawerOpen(false)}
+        subscription={subscription}
+        slotSummary={MOCK_SLOT_SUMMARY}
+        transactions={transactions}
+        isLoading={isCreditLoading}
+        error={creditError}
+        onRetry={refreshCredits}
+        onViewAllTransactions={() => {
+          setIsCreditDrawerOpen(false);
+          // Could navigate to transactions view
+        }}
+        onManageCategories={() => {
+          setIsCreditDrawerOpen(false);
+          setViewState('managed-categories');
+        }}
+        onContactSales={() => {
+          console.log('Contact sales clicked');
+        }}
+      />
+
+      {/* Phase 2: Upgrade Request Modal */}
+      <UpgradeRequestForm
+        isOpen={isUpgradeModalOpen}
+        onClose={() => {
+          setIsUpgradeModalOpen(false);
+          setUpgradeContext(undefined);
+        }}
+        onSubmit={async (request) => {
+          console.log('[App] Upgrade request submitted:', request);
+
+          // All demo personas are in the same team (Direct Materials)
+          // The backend uses the session userId, we just specify company/team for routing
+          const response = await submitRequest({
+            companyId: DEMO_COMPANY_ID,
+            teamId: DEMO_DEFAULT_TEAM_ID,
+            type: request.type,
+            title: request.title,
+            description: request.description,
+            context: request.context,
+            estimatedCredits: request.estimatedCredits,
+          });
+
+          console.log('[App] Request API response:', response);
+
+          // Refresh credits from API to show updated balance/holds
+          await refreshCredits();
+
+          // Show notification based on approval level
+          const requiresApproval = response.approvalLevel !== 'auto';
+          if (requiresApproval) {
+            showPending(
+              'Request submitted for approval',
+              `${request.estimatedCredits} credits reserved. Awaiting team lead approval.`
+            );
+          } else {
+            showSuccess(
+              'Request approved',
+              `${request.estimatedCredits} credits deducted. Processing your request.`
+            );
+          }
+
+          setIsUpgradeModalOpen(false);
+          setUpgradeContext(undefined);
+        }}
+        subscription={subscription}
+        context={upgradeContext}
+      />
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Demo mode persona switcher */}
+      <PersonaSwitcher />
     </>
   );
 }
@@ -1088,7 +1408,7 @@ function formatMarkdown(text: string, hasWidget: boolean = false): string {
 }
 
 // Portfolio Widget
-function PortfolioWidget({ portfolio }: { portfolio: any }) {
+function PortfolioWidget({ portfolio }: { portfolio: Portfolio }) {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-primary">Risk Portfolio Overview</h3>
@@ -1098,7 +1418,7 @@ function PortfolioWidget({ portfolio }: { portfolio: any }) {
           <div className="text-sm text-muted">Total Suppliers</div>
         </div>
         <div className="p-4 bg-slate-50 rounded-xl">
-          <div className="text-2xl font-bold text-primary">{portfolio.totalSpendFormatted}</div>
+          <div className="text-2xl font-bold text-primary">{portfolio.spendFormatted}</div>
           <div className="text-sm text-muted">Total Spend</div>
         </div>
       </div>
@@ -1124,7 +1444,7 @@ function PortfolioWidget({ portfolio }: { portfolio: any }) {
 }
 
 // Supplier Table Widget
-function SupplierTableWidget({ suppliers }: { suppliers: any[] }) {
+function SupplierTableWidget({ suppliers }: { suppliers: Supplier[] }) {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-primary">Suppliers ({suppliers.length})</h3>
@@ -1156,7 +1476,7 @@ function SupplierTableWidget({ suppliers }: { suppliers: any[] }) {
 }
 
 // Supplier Detail Widget
-function SupplierDetailWidget({ supplier }: { supplier: any }) {
+function SupplierDetailWidget({ supplier }: { supplier: Supplier }) {
   return (
     <div className="space-y-4">
       <div>

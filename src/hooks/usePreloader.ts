@@ -101,6 +101,7 @@ export function usePreloader(options: UsePreloaderOptions = {}) {
   // Transition to exiting phase when ready
   useEffect(() => {
     if (state.fontsReady && state.minTimeElapsed && state.phase === 'loading') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- state machine transition is intentional
       setState(prev => ({ ...prev, phase: 'exiting' }));
     }
   }, [state.fontsReady, state.minTimeElapsed, state.phase]);

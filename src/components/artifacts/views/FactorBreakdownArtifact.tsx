@@ -10,7 +10,6 @@ import {
   Lock,
   ExternalLink,
   Download,
-  ChevronRight,
   Info,
   Clock,
 } from 'lucide-react';
@@ -248,7 +247,6 @@ const EventItem = ({ event, index }: { event: ContributingEvent; index: number }
 
 export const FactorBreakdownArtifact = ({
   supplierName,
-  supplierId,
   overallScore,
   previousScore,
   level,
@@ -259,7 +257,6 @@ export const FactorBreakdownArtifact = ({
   contributingEvents,
   onViewDashboard,
   onExport,
-  onClose,
 }: FactorBreakdownArtifactProps) => {
   const colors = RISK_COLORS[level];
 

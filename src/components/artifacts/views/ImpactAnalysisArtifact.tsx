@@ -20,6 +20,8 @@ import {
 import { ArtifactSection, ArtifactFooter } from '../primitives';
 import type { InflationExposure, CategoryExposure, SupplierExposure } from '../../../types/inflation';
 
+// Re-export types for external use
+
 // ============================================
 // TYPES
 // ============================================
@@ -368,7 +370,6 @@ export const ImpactAnalysisArtifact = ({
   mitigationOptions = [],
   onExport,
   onDrillDown,
-  onClose,
 }: ImpactAnalysisArtifactProps) => {
   const [activeTab, setActiveTab] = useState<TabType>('category');
 

@@ -2,7 +2,7 @@
 import type { VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { withAuth, withAuthenticated, type AuthRequest } from '../../_middleware/auth.js';
+import { withAuth, type AuthRequest } from '../../_middleware/auth.js';
 import {
   listQuestions,
   createQuestion,
@@ -13,8 +13,8 @@ import { checkQuestionContent } from '../../../src/services/contentModeration.js
 import type { QuestionSortBy, QuestionFilter } from '../../../src/types/community.js';
 
 function getDb() {
-  const sql = neon(process.env.DATABASE_URL!);
-  return drizzle(sql);
+  const sqlClient = neon(process.env.DATABASE_URL!);
+  return drizzle(sqlClient);
 }
 
 async function handler(req: AuthRequest, res: VercelResponse) {

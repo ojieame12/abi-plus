@@ -95,6 +95,7 @@ export interface Tag {
   name: string;
   slug: string;
   description?: string;
+  color?: string;
   questionCount: number;
 }
 
@@ -104,6 +105,7 @@ export interface Tag {
 
 export interface UserProfile {
   id: string;
+  visitorId?: string;
   displayName?: string;
   avatarUrl?: string;
   title?: string;
@@ -153,7 +155,8 @@ export interface EmbeddedWidget {
 export interface Question {
   id: string;
   author?: UserProfile;
-  userId: string;
+  userId?: string; // Optional when author is provided
+  visitorId?: string;
   title: string;
   body: string;
   aiContextSummary?: string;
@@ -162,6 +165,8 @@ export interface Question {
   attachments?: QuestionAttachment[];
   embeddedWidgets?: EmbeddedWidget[];
   // Metrics
+  upvotes?: number;
+  downvotes?: number;
   score: number;
   viewCount: number;
   answerCount: number;
@@ -186,8 +191,11 @@ export interface Answer {
   id: string;
   questionId: string;
   author?: UserProfile;
-  userId: string;
+  userId?: string; // Optional when author is provided
+  visitorId?: string;
   body: string;
+  upvotes?: number;
+  downvotes?: number;
   score: number;
   isAccepted: boolean;
   userVote?: VoteValue | null;
@@ -233,7 +241,7 @@ export interface QuestionsListResponse {
   hasMore: boolean;
 }
 
-export interface QuestionDetailResponse extends QuestionWithAnswers {}
+export type QuestionDetailResponse = QuestionWithAnswers;
 
 export interface VoteResponse {
   success: boolean;

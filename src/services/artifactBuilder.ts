@@ -489,7 +489,7 @@ export function buildArtifactPayload(
             marketHigh: 0,
             percentile: 50,
           },
-          factors: (widgetData.keyPoints || []).map((point, i) => ({
+          factors: (widgetData.keyPoints || []).map((point) => ({
             name: point.point,
             claimed: 0,
             market: 0,
