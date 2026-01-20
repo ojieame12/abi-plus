@@ -7,20 +7,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Split vendor chunks
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-ui': ['lucide-react', 'framer-motion'],
-          'vendor-charts': ['recharts'],
-          // Split heavy feature modules
-          'feature-artifacts': [
-            './src/components/artifacts/registry.ts',
-            './src/components/artifacts/ArtifactRenderer.tsx',
-          ],
-          'feature-community': [
-            './src/services/communityService.ts',
-            './src/services/communityMockData.ts',
-          ],
+        manualChunks(id) {
+          // Split node_modules into vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react-dom') || id.includes('/react/')) {
+              return 'vendor-react'
+            }
+            if (id.includes('recharts') || id.includes('d3-')) {
+              return 'vendor-charts'
+            }
+            if (id.includes('lucide-react') || id.includes('framer-motion')) {
+              return 'vendor-ui'
+            }
+          }
         },
       },
     },
