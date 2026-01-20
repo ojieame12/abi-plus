@@ -93,9 +93,13 @@ export function getPoolDb() {
   return drizzleServerless(getPool());
 }
 
+/** Transaction database type - use this for transaction callbacks */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TransactionDb = any;
+
 /** Run a function within a database transaction */
 export async function withTransaction<T>(
-  fn: (tx: ReturnType<typeof drizzleServerless>) => Promise<T>
+  fn: (tx: TransactionDb) => Promise<T>
 ): Promise<T> {
   const db = getPoolDb();
   return db.transaction(fn);
