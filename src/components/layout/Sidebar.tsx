@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { MessageSquare, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, Compass, Bot, Crown } from 'lucide-react';
+import { MessageSquare, Settings, HelpCircle, PanelLeft, Search, Plus, ChevronDown, ChevronRight, Sparkles, Compass, Bot, Crown, Users } from 'lucide-react';
 
 interface SidebarProps {
     isExpanded: boolean;
@@ -11,6 +11,7 @@ interface SidebarProps {
     onNavigateToCommunity?: () => void;
     onNavigateToSettings?: () => void;
     onNavigateToExpertPortal?: () => void;
+    onNavigateToExpertMarketplace?: () => void;
     showExpertPortal?: boolean; // Show expert portal nav item (for experts/demo mode)
 }
 
@@ -25,6 +26,7 @@ export const Sidebar = (props: SidebarProps) => {
         // onNavigateToCommunity - Community feature is parked/hidden
         onNavigateToSettings,
         onNavigateToExpertPortal,
+        onNavigateToExpertMarketplace,
         showExpertPortal = false,
     } = props;
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -127,6 +129,7 @@ export const Sidebar = (props: SidebarProps) => {
                     {/* Community has been parked - hiding from nav */}
                     {/* <NavItem icon={MessagesSquare} label="Community" isExpanded={isExpanded} onClick={onNavigateToCommunity} /> */}
                     <NavItem icon={Bot} label="Agents" isExpanded={isExpanded} />
+                    <NavItem icon={Users} label="Experts" isExpanded={isExpanded} onClick={onNavigateToExpertMarketplace} />
                 </nav>
 
                 {/* Search */}

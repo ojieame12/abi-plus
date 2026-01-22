@@ -57,7 +57,10 @@ export type ArtifactType =
   | 'analyst_message'
   | 'expert_briefing'
   // Content Viewer
-  | 'report_viewer';
+  | 'report_viewer'
+  // Expert Marketplace
+  | 'expert_profile'
+  | 'expert_booking';
 
 // ============================================
 // ARTIFACT METADATA
@@ -324,6 +327,24 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     description: 'View Beroe research report in the sidebar',
     defaultWidth: '50%',
     allowExpand: true,
+  },
+
+  // Expert Marketplace
+  expert_profile: {
+    id: 'expert_profile',
+    title: 'Expert Profile',
+    category: 'discovery',
+    description: 'Detailed expert profile with engagement options',
+    defaultWidth: '45%',
+    allowExpand: true,
+  },
+  expert_booking: {
+    id: 'expert_booking',
+    title: 'Book Expert',
+    category: 'action',
+    description: 'Book a consultation or submit a question to an expert',
+    defaultWidth: '40%',
+    allowExpand: false,
   },
 };
 

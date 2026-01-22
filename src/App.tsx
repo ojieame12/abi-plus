@@ -10,6 +10,7 @@ import { QuestionDetailView } from './views/QuestionDetailView';
 import { AskQuestionView } from './views/AskQuestionView';
 import { ManagedCategoriesView } from './views/ManagedCategoriesView';
 import { ExpertDashboardView } from './views/ExpertDashboardView';
+import { ExpertMarketplaceView } from './views/ExpertMarketplaceView';
 import { ApprovalWorkflowView } from './views/ApprovalWorkflowView';
 import { SettingsView } from './views/SettingsView';
 import { useSession } from './hooks/useSession';
@@ -66,7 +67,7 @@ interface DatabaseMessage {
   metadata?: Record<string, unknown>;
 }
 
-type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail' | 'ask-question' | 'expert-dashboard' | 'managed-categories' | 'approval-workflow' | 'settings';
+type ViewState = 'home' | 'chat' | 'history' | 'community' | 'community-detail' | 'ask-question' | 'expert-dashboard' | 'expert-marketplace' | 'managed-categories' | 'approval-workflow' | 'settings';
 
 interface Message {
   id: string;
@@ -1082,6 +1083,7 @@ function App() {
           onNavigateToCommunity={handleNavigateToCommunity}
           onNavigateToSettings={() => setViewState('settings')}
           onNavigateToExpertPortal={() => setViewState('expert-dashboard')}
+          onNavigateToExpertMarketplace={() => setViewState('expert-marketplace')}
           showExpertPortal={true} // Demo mode: show expert portal access
           isArtifactExpanded={isArtifactExpanded}
           subscription={subscription}
@@ -1215,6 +1217,19 @@ function App() {
             className="h-full"
           >
             <ExpertDashboardView
+              onBack={() => setViewState('home')}
+            />
+          </motion.div>
+        ) : viewState === 'expert-marketplace' ? (
+          <motion.div
+            key="expert-marketplace"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ExpertMarketplaceView
               onBack={() => setViewState('home')}
             />
           </motion.div>

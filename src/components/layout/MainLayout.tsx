@@ -21,6 +21,7 @@ interface MainLayoutProps {
     onNavigateToCommunity?: () => void;
     onNavigateToSettings?: () => void;
     onNavigateToExpertPortal?: () => void;
+    onNavigateToExpertMarketplace?: () => void;
     showExpertPortal?: boolean; // Show expert portal nav (for experts/demo)
     // Subscription/credits (Phase 2)
     subscription?: CompanySubscription;
@@ -46,6 +47,7 @@ export const MainLayout = (props: MainLayoutProps) => {
         onNavigateToCommunity,
         onNavigateToSettings,
         onNavigateToExpertPortal,
+        onNavigateToExpertMarketplace,
         showExpertPortal = false,
         subscription,
         onCreditsClick,
@@ -69,6 +71,7 @@ export const MainLayout = (props: MainLayoutProps) => {
                 onNavigateToCommunity={onNavigateToCommunity}
                 onNavigateToSettings={onNavigateToSettings}
                 onNavigateToExpertPortal={onNavigateToExpertPortal}
+                onNavigateToExpertMarketplace={onNavigateToExpertMarketplace}
                 showExpertPortal={showExpertPortal}
             />
 
