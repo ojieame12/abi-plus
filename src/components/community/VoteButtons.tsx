@@ -75,7 +75,7 @@ export function VoteButtons({
       </motion.button>
 
       {/* Animated Score */}
-      <div className={`${config.score} tabular-nums font-semibold text-center relative`}>
+      <div className={`${config.score} tabular-nums font-medium text-center relative`}>
         <AnimatePresence mode="popLayout">
           <motion.span
             key={score}

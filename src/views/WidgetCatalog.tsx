@@ -59,7 +59,7 @@ export const WidgetCatalog = () => {
         <div className="p-5 border-b border-slate-100">
           <div className="flex items-center gap-2 mb-1">
             <Layers size={20} className="text-violet-600" />
-            <h1 className="text-lg font-semibold text-slate-900">Widget Catalog</h1>
+            <h1 className="text-lg font-medium text-slate-900">Widget Catalog</h1>
           </div>
           <p className="text-sm text-slate-500">{totalWidgets} widgets available</p>
         </div>
@@ -119,11 +119,11 @@ export const WidgetCatalog = () => {
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Quick Stats</div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-50 rounded-lg p-2">
-              <div className="text-lg font-semibold text-slate-900">{totalWidgets}</div>
+              <div className="text-lg font-medium text-slate-900">{totalWidgets}</div>
               <div className="text-xs text-slate-500">Widgets</div>
             </div>
             <div className="bg-slate-50 rounded-lg p-2">
-              <div className="text-lg font-semibold text-slate-900">{CATEGORY_ORDER.length}</div>
+              <div className="text-lg font-medium text-slate-900">{CATEGORY_ORDER.length}</div>
               <div className="text-xs text-slate-500">Categories</div>
             </div>
           </div>
@@ -139,7 +139,7 @@ export const WidgetCatalog = () => {
             <ChevronRight size={14} />
             <span className="text-slate-700">Widget Catalog</span>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Widget Components</h1>
+          <h1 className="text-3xl font-medium text-slate-900 mb-2">Widget Components</h1>
           <p className="text-slate-600 max-w-2xl">
             Browse all available widgets with live demos, prop documentation, and usage examples.
             Click on any widget to see its props and copy the code snippet.
@@ -159,7 +159,7 @@ export const WidgetCatalog = () => {
         {Object.entries(widgetsByCategory).map(([category, widgets]) => (
           <section key={category} id={`category-${category}`} className="mb-12">
             <div className="flex items-center gap-3 mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">
+              <h2 className="text-xl font-medium text-slate-900">
                 {CATEGORY_LABELS[category as WidgetCategory]}
               </h2>
               <span className="text-sm text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">

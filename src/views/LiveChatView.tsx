@@ -20,8 +20,8 @@ interface LiveChatViewProps {
   initialQuestion?: string;
   onArtifactChange?: (artifact: AIResponseType['artifact'], suppliers?: Supplier[], portfolio?: unknown) => void;
   // Value Ladder callbacks
-  onAnalystConnect?: (response: AIResponseType) => void;
-  onExpertDeepDive?: (response: AIResponseType) => void;
+  onOpenDeeperAnalysis?: (response: AIResponseType) => void;
+  onAskAnalyst?: (response: AIResponseType) => void;
   onSourceEnhancement?: (type: string, response: AIResponseType) => void;
 }
 
@@ -35,8 +35,8 @@ interface Message {
 export const LiveChatView = ({
   initialQuestion,
   onArtifactChange,
-  onAnalystConnect,
-  onExpertDeepDive,
+  onOpenDeeperAnalysis,
+  onAskAnalyst,
   onSourceEnhancement,
 }: LiveChatViewProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -238,10 +238,10 @@ export const LiveChatView = ({
                       icon: mapIcon(s.icon),
                     }))}
                     onFollowUpClick={handleSuggestionClick}
-                    // Value Ladder (4-layer system)
+                    // Value Ladder - Progressive disclosure triggers
                     valueLadder={msg.response?.canonical?.valueLadder}
-                    onAnalystConnect={() => msg.response && onAnalystConnect?.(msg.response)}
-                    onExpertDeepDive={() => msg.response && onExpertDeepDive?.(msg.response)}
+                    onOpenDeeperAnalysis={() => msg.response && onOpenDeeperAnalysis?.(msg.response)}
+                    onAskAnalyst={() => msg.response && onAskAnalyst?.(msg.response)}
                     // Source Enhancement
                     sourceEnhancement={msg.response?.canonical?.sourceEnhancement}
                     onSourceEnhancement={(type) => msg.response && onSourceEnhancement?.(type, msg.response)}

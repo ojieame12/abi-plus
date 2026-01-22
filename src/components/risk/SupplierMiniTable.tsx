@@ -52,7 +52,7 @@ export const SupplierMiniTable = ({
         <div className="bg-white border border-slate-200/60 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
             {/* Header */}
             <div className="px-5 py-3 bg-white border-b border-slate-100">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="flex items-center justify-between text-[11px] font-medium text-slate-400 uppercase tracking-wider">
                     <span className="flex-1">Supplier</span>
                     <span className="w-20 text-right">SRS</span>
                     {showSpend && <span className="w-24 text-right">Spend</span>}
@@ -150,7 +150,7 @@ export const SupplierRiskList = ({
                             {supplier.name}
                         </span>
                     </div>
-                    <span className="text-sm font-semibold text-slate-700 ml-2">
+                    <span className="text-sm font-medium text-slate-700 ml-2">
                         {supplier.srs?.score ?? '—'}
                     </span>
                 </button>

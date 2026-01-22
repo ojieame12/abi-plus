@@ -7,7 +7,7 @@ import { SourcesDisplay } from './SourcesDisplay';
 import { SourceAttribution } from './SourceAttribution';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
-import { ValueLadderActionsInline } from './ValueLadderActions';
+import { ValueLadderTriggers } from './ValueLadderActions';
 // SourceEnhancementChips import removed - currently not used but kept for reference
 // import { SourceEnhancementChips } from './SourceEnhancementChips';
 import { WidgetRenderer } from '../widgets/WidgetRenderer';
@@ -110,12 +110,10 @@ interface AIResponseProps {
     contentLayer?: ContentLayer;
     layerMetadata?: LayerMetadata;
 
-    // Value Ladder - 3-layer system actions (Upgrade, Analyst, Expert)
+    // Value Ladder - Progressive disclosure triggers
     valueLadder?: ValueLadder;
-    onUpgrade?: () => void;
-    onAnalystConnect?: () => void;
-    onExpertDeepDive?: () => void;
-    upgradeCost?: number;
+    onOpenDeeperAnalysis?: () => void;  // Opens artifact panel with all options
+    onAskAnalyst?: () => void;          // Direct analyst access
 
     // Source Enhancement - suggestions when using limited sources
     sourceEnhancement?: SourceEnhancement;
@@ -176,10 +174,8 @@ export const AIResponse = ({
     contentLayer,
     layerMetadata,
     valueLadder,
-    onUpgrade,
-    onAnalystConnect,
-    onExpertDeepDive,
-    upgradeCost,
+    onOpenDeeperAnalysis,
+    onAskAnalyst,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sourceEnhancement,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -532,9 +528,9 @@ export const AIResponse = ({
                 </div>
             )}
 
-            {/* 1.5 Content Layer Badge - shows provenance (L1/L2a/L2b/L3) */}
+            {/* 1.5 Content Layer Badge - DISABLED for now, showing "Pure AI" everywhere is not useful
             <AnimatePresence>
-                {showBody && resolvedLayer && (
+                {showBody && resolvedLayer && resolvedLayer !== 'L1' && (
                     <motion.div
                         initial={{ opacity: 0, y: -5 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -551,6 +547,7 @@ export const AIResponse = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+            */}
 
             {/* 2. Acknowledgement Header (Optional) */}
             <AnimatePresence>
@@ -639,15 +636,13 @@ export const AIResponse = ({
                             onThumbsDown={() => onFeedback?.('down')}
                             onRefresh={onRefresh}
                         />
-                        {/* Right side: Value Ladder Actions (Upgrade, Ask Analyst, Request Expert) */}
+                        {/* Right side: Value Ladder Triggers (Get Deeper Analysis, Ask Analyst) */}
                         <div className="flex items-center gap-3">
                             {showValueLadder && valueLadder && (
-                                <ValueLadderActionsInline
+                                <ValueLadderTriggers
                                     valueLadder={valueLadder}
-                                    onUpgrade={onUpgrade}
-                                    onAnalystConnect={onAnalystConnect}
-                                    onExpertDeepDive={onExpertDeepDive}
-                                    upgradeCost={upgradeCost}
+                                    onOpenDeeperAnalysis={onOpenDeeperAnalysis}
+                                    onAskAnalyst={onAskAnalyst}
                                 />
                             )}
                         </div>

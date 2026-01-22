@@ -100,7 +100,7 @@ export function BadgeUnlockModal({ badge, isOpen, onClose }: BadgeUnlockModalPro
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-xl font-semibold text-slate-900 mb-2"
+                  className="text-xl font-medium text-slate-900 mb-2"
                 >
                   {badge.name}
                 </motion.h2>

@@ -156,7 +156,7 @@ export function ApprovalWorkflowView({ onBack, userRole = 'approver' }: Approval
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-lg font-semibold text-primary">Approval Queue</h1>
+              <h1 className="text-lg font-medium text-primary">Approval Queue</h1>
               <p className="text-sm text-secondary">
                 Review and approve upgrade requests
               </p>
@@ -456,7 +456,7 @@ function RequestDetailPanel({ request, canApprove, isActionLoading, onClose, onA
             <TypeIcon className={`w-6 h-6 ${statusDisplay.color}`} />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-primary">{request.title}</h2>
+            <h2 className="text-xl font-medium text-primary">{request.title}</h2>
             <p className="text-sm text-secondary mt-1">{typeDisplay.label}</p>
           </div>
         </div>
@@ -553,7 +553,7 @@ function RequestDetailPanel({ request, canApprove, isActionLoading, onClose, onA
           <span className="text-sm text-violet-700">Estimated Cost</span>
           <div className="flex items-center gap-1.5">
             <Coins className="w-4 h-4 text-violet-600" />
-            <span className="text-lg font-bold text-violet-700 tabular-nums">
+            <span className="text-lg font-medium text-violet-700 tabular-nums">
               {formatCredits(request.estimatedCredits)}
             </span>
             <span className="text-sm text-violet-500">credits</span>

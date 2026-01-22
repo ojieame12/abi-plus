@@ -98,7 +98,7 @@ export function CreditTicker({
         </div>
         <div className="flex-1 text-left">
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-lg font-semibold ${styles.text} tabular-nums`}>
+            <span className={`text-lg font-medium ${styles.text} tabular-nums`}>
               <AnimatedNumber value={subscription.remainingCredits} format />
             </span>
             <span className="text-xs text-slate-500">

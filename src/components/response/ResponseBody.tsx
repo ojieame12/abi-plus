@@ -49,11 +49,11 @@ export const ResponseBody: React.FC<ResponseBodyProps> = ({
         className={`
           prose prose-slate max-w-none
           prose-p:mb-3 prose-p:leading-relaxed
-          prose-strong:font-semibold prose-strong:text-slate-800
+          prose-strong:font-medium prose-strong:text-slate-800
           prose-ul:list-disc prose-ul:list-inside prose-ul:space-y-1 prose-ul:my-3
           prose-ol:list-decimal prose-ol:list-inside prose-ol:space-y-1 prose-ol:my-3
           prose-li:text-slate-700
-          prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:mb-2
+          prose-headings:font-medium prose-headings:text-slate-900 prose-headings:mb-2
           prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
           prose-a:text-violet-600 prose-a:no-underline hover:prose-a:underline
           prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
@@ -76,7 +76,7 @@ export const ResponseBody: React.FC<ResponseBodyProps> = ({
 const ResponseDebugPanel: React.FC<{ canonical: CanonicalResponse }> = ({ canonical }) => {
   return (
     <div className="mt-4 p-3 bg-slate-100 rounded-lg text-xs font-mono">
-      <div className="font-bold mb-2 text-slate-700">Debug Info</div>
+      <div className="font-medium mb-2 text-slate-700">Debug Info</div>
       <div className="grid grid-cols-2 gap-2 text-slate-600">
         <div>
           Provider: <span className="text-blue-600">{canonical.provider}</span>

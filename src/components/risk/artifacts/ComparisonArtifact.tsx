@@ -107,7 +107,7 @@ export const ComparisonArtifact = ({
                                 <ChevronLeft size={20} />
                             </button>
                         )}
-                        <h3 className="text-lg font-semibold text-[#1d1d1f] tracking-tight">
+                        <h3 className="text-lg font-medium text-[#1d1d1f] tracking-tight">
                             Compare Suppliers
                             <span className="ml-2 text-sm font-normal text-slate-400">({suppliers.length})</span>
                         </h3>
@@ -162,7 +162,7 @@ export const ComparisonArtifact = ({
                                         <div className="text-center">
                                             <button
                                                 onClick={() => onSelectSupplier?.(supplier)}
-                                                className="font-bold text-[#1d1d1f] hover:text-violet-600 transition-colors tracking-tight text-[15px] mb-0.5 block"
+                                                className="font-medium text-[#1d1d1f] hover:text-violet-600 transition-colors tracking-tight text-[15px] mb-0.5 block"
                                             >
                                                 {supplier.name}
                                             </button>
@@ -191,7 +191,7 @@ export const ComparisonArtifact = ({
                         {/* Basic Info */}
                         <tr className="bg-slate-50/50">
                             <td colSpan={suppliers.length + 2} className="px-6 py-2.5 border-b border-slate-100">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                                     Basic Info
                                 </span>
                             </td>
@@ -239,7 +239,7 @@ export const ComparisonArtifact = ({
                         {/* Risk Metrics - Tier 2 */}
                         <tr className="bg-slate-50/50">
                             <td colSpan={suppliers.length + 2} className="px-6 py-2.5 border-b border-slate-100">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                                     Risk Factors (Available)
                                 </span>
                             </td>
@@ -276,10 +276,10 @@ export const ComparisonArtifact = ({
                         <tr className="bg-slate-50/50">
                             <td colSpan={suppliers.length + 2} className="px-6 py-2.5 border-b border-slate-100">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                                         Partner Data
                                     </span>
-                                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-amber-600/80 bg-amber-50 px-1.5 py-0.5 rounded">
+                                    <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-widest text-amber-600/80 bg-amber-50 px-1.5 py-0.5 rounded">
                                         <Lock size={10} />
                                         Locked
                                     </span>
@@ -311,7 +311,7 @@ export const ComparisonArtifact = ({
                         {/* Pros/Cons */}
                         <tr className="bg-slate-50/50">
                             <td colSpan={suppliers.length + 2} className="px-6 py-2.5 border-b border-slate-100">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                                     Assessment
                                 </span>
                             </td>
@@ -369,7 +369,7 @@ export const ComparisonArtifact = ({
                     </span>
                     <button
                         onClick={onViewDashboard}
-                        className="ml-auto text-[13px] font-bold text-amber-700 hover:text-amber-900 transition-colors"
+                        className="ml-auto text-[13px] font-medium text-amber-700 hover:text-amber-900 transition-colors"
                     >
                         Open Dashboard →
                     </button>

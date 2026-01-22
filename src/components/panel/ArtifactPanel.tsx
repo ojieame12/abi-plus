@@ -59,7 +59,8 @@ export const ArtifactPanel = ({
                         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-sm z-10">
                             <div className="flex items-center gap-3 min-w-0">
                                 <h2 className="font-medium text-primary truncate">{title}</h2>
-                                {contentLayer && (
+                                {/* Layer badge only shown for non-L1 (upgraded/managed/bespoke content) */}
+                                {contentLayer && contentLayer !== 'L1' && (
                                     <LayerBadge
                                         layer={contentLayer}
                                         size="sm"

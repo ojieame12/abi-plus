@@ -55,7 +55,7 @@ export const ValueLadderActions = ({
           <Star className="w-4 h-4 text-violet-500" />
           <span>Upgrade Report</span>
           <span className="flex items-center gap-1 px-1.5 py-0.5 bg-violet-600 text-white text-[10px]
-                          rounded font-semibold">
+                          rounded font-medium">
             <Coins className="w-3 h-3" />
             {upgradeCost.toLocaleString()}
           </span>
@@ -84,7 +84,7 @@ export const ValueLadderActions = ({
           )}
           <span>Ask Analyst</span>
           <span className="px-1.5 py-0.5 bg-teal-600 text-white text-[10px]
-                          rounded font-semibold uppercase tracking-wide">
+                          rounded font-medium uppercase tracking-wide">
             Beroe
           </span>
           <ChevronRight className="w-3 h-3 opacity-0 -ml-1 group-hover:opacity-100
@@ -106,7 +106,7 @@ export const ValueLadderActions = ({
           <Crown className="w-4 h-4 text-amber-500" />
           <span>Request Expert</span>
           <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-500
-                          text-white text-[10px] rounded font-semibold uppercase tracking-wide
+                          text-white text-[10px] rounded font-medium uppercase tracking-wide
                           shadow-sm">
             Bespoke
           </span>
@@ -256,6 +256,73 @@ export const ValueLadderActionsInline = ({
         </button>
       )}
     </div>
+  );
+};
+
+// Triggers variant - Minimal buttons that open the deeper analysis artifact panel
+// Design: Progressive disclosure - minimal in response, detailed in artifact
+export const ValueLadderTriggers = ({
+  valueLadder,
+  onOpenDeeperAnalysis,
+  onAskAnalyst,
+  className = '',
+}: {
+  valueLadder: ValueLadder;
+  onOpenDeeperAnalysis?: () => void;
+  onAskAnalyst?: () => void;
+  className?: string;
+}) => {
+  const { analystConnect } = valueLadder;
+  const analyst = analystConnect?.analyst;
+
+  // Only show if we have at least one action
+  if (!onOpenDeeperAnalysis && !onAskAnalyst) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: 0.1 }}
+      className={`flex items-center gap-2 ${className}`}
+    >
+      {/* Get Deeper Analysis - Opens artifact panel with all options */}
+      {onOpenDeeperAnalysis && (
+        <button
+          onClick={onOpenDeeperAnalysis}
+          className="group flex items-center gap-2 px-3 py-2 rounded-lg
+                     bg-teal-50 hover:bg-teal-100 border border-teal-200
+                     text-teal-700 text-sm font-medium transition-all
+                     hover:shadow-sm"
+        >
+          <Star className="w-4 h-4 text-teal-500" />
+          <span>Get Deeper Analysis</span>
+          <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+        </button>
+      )}
+
+      {/* Ask Analyst - Quick access with photo preview */}
+      {onAskAnalyst && analystConnect?.available && (
+        <button
+          onClick={onAskAnalyst}
+          className="group flex items-center gap-2 px-3 py-2 rounded-lg
+                     bg-slate-50 hover:bg-slate-100 border border-slate-200
+                     text-slate-700 text-sm font-medium transition-all
+                     hover:shadow-sm"
+        >
+          {analyst?.photo ? (
+            <img
+              src={analyst.photo}
+              alt={analyst.name}
+              className="w-5 h-5 rounded-full object-cover border border-white shadow-sm"
+            />
+          ) : (
+            <UserCircle className="w-4 h-4 text-slate-500" />
+          )}
+          <span>Ask Analyst</span>
+          <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+        </button>
+      )}
+    </motion.div>
   );
 };
 

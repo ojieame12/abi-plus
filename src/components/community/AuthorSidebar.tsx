@@ -83,7 +83,7 @@ export function AuthorSidebar({
                 <div className="flex items-center gap-1 text-slate-400 mb-0.5">
                   <HelpCircle size={12} />
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{stats.questionCount}</span>
+                <span className="text-sm font-medium text-slate-900">{stats.questionCount}</span>
                 <span className="text-[10px] text-slate-400">questions</span>
               </div>
               <div className="w-px h-8 bg-slate-100" />
@@ -91,7 +91,7 @@ export function AuthorSidebar({
                 <div className="flex items-center gap-1 text-slate-400 mb-0.5">
                   <MessageSquare size={12} />
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{stats.answerCount}</span>
+                <span className="text-sm font-medium text-slate-900">{stats.answerCount}</span>
                 <span className="text-[10px] text-slate-400">answers</span>
               </div>
               <div className="w-px h-8 bg-slate-100" />
@@ -99,7 +99,7 @@ export function AuthorSidebar({
                 <div className="flex items-center gap-1 text-slate-400 mb-0.5">
                   <ThumbsUp size={12} />
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{stats.upvotesReceived}</span>
+                <span className="text-sm font-medium text-slate-900">{stats.upvotesReceived}</span>
                 <span className="text-[10px] text-slate-400">upvotes</span>
               </div>
             </div>

@@ -122,7 +122,7 @@ export const ChatView = ({ userQuestion = "Give me a summary of my supplier risk
                     </p>
 
                     <div className="mb-6">
-                        <h4 className="font-semibold text-slate-900 mb-3">Risk Breakdown:</h4>
+                        <h4 className="font-medium text-slate-900 mb-3">Risk Breakdown:</h4>
                         <ul className="space-y-1.5 text-[15px]" style={{ color: '#1D1D1D' }}>
                             <li>• 2 suppliers are High Risk</li>
                             <li>• 1 supplier is Medium-High Risk</li>
@@ -150,14 +150,14 @@ export const ChatView = ({ userQuestion = "Give me a summary of my supplier risk
                         <div className="space-y-3">
                             <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
                                 <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-slate-900">Apple Inc.</span>
+                                    <span className="font-medium text-slate-900">Apple Inc.</span>
                                     <span className="text-sm font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded">SRS: 85</span>
                                 </div>
                                 <p className="text-sm text-slate-600 mt-1">Score increased from 72 → 85 in the last 30 days</p>
                             </div>
                             <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
                                 <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-slate-900">Coca Cola Corp</span>
+                                    <span className="font-medium text-slate-900">Coca Cola Corp</span>
                                     <span className="text-sm font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded">SRS: 85</span>
                                 </div>
                                 <p className="text-sm text-slate-600 mt-1">Consistent high risk level over the past 90 days</p>

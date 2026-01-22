@@ -136,7 +136,7 @@ export const ReportViewerArtifact = ({
             <span className="text-xs font-medium text-violet-600 uppercase tracking-wider">
               {report.category}
             </span>
-            <h2 className="text-lg font-semibold text-slate-900 mt-1 leading-tight">
+            <h2 className="text-lg font-medium text-slate-900 mt-1 leading-tight">
               {report.title}
             </h2>
 

@@ -113,7 +113,7 @@ export const JustificationCard = ({
         <div className={`p-3 rounded-xl border ${style.bg} ${style.border}`}>
           <div className="flex items-center gap-2">
             <VerdictIcon size={18} className={style.iconColor} strokeWidth={1.5} />
-            <span className={`text-sm font-semibold ${style.text}`}>{verdictLabel}</span>
+            <span className={`text-sm font-medium ${style.text}`}>{verdictLabel}</span>
           </div>
         </div>
       </div>
@@ -123,18 +123,18 @@ export const JustificationCard = ({
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2.5 bg-slate-50 rounded-xl text-center">
             <p className="text-xs text-slate-500 mb-1">Requested</p>
-            <p className="text-lg font-semibold text-slate-900">+{requestedIncrease}%</p>
+            <p className="text-lg font-medium text-slate-900">+{requestedIncrease}%</p>
           </div>
           <div className="p-2.5 bg-slate-50 rounded-xl text-center">
             <p className="text-xs text-slate-500 mb-1">Market Avg</p>
-            <p className="text-lg font-semibold text-slate-700">+{marketBenchmark}%</p>
+            <p className="text-lg font-medium text-slate-700">+{marketBenchmark}%</p>
           </div>
           <div className={`
             p-2.5 rounded-xl text-center
             ${variance > 0 ? 'bg-red-50' : 'bg-emerald-50'}
           `}>
             <p className="text-xs text-slate-500 mb-1">Variance</p>
-            <p className={`text-lg font-semibold ${variance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+            <p className={`text-lg font-medium ${variance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
               {variance > 0 ? '+' : ''}{variance.toFixed(1)}%
             </p>
           </div>
@@ -191,7 +191,7 @@ export const JustificationCard = ({
           {beroeSourceCount > 0 && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-white">B</span>
+                <span className="text-[8px] font-medium text-white">B</span>
               </div>
               <span>{beroeSourceCount} Beroe Data Sources</span>
             </div>

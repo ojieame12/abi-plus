@@ -84,7 +84,7 @@ export function ImageGallery({ images, maxPreview = 4 }: ImageGalleryProps) {
             {/* Show remaining count on last preview image */}
             {index === maxPreview - 1 && remainingCount > 0 && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <span className="text-white text-xl font-semibold">+{remainingCount}</span>
+                <span className="text-white text-xl font-medium">+{remainingCount}</span>
               </div>
             )}
           </motion.button>

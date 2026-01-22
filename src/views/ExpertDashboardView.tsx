@@ -96,17 +96,17 @@ export function ExpertDashboardView({ onBack }: ExpertDashboardViewProps) {
               <div className="flex items-center gap-6">
                 <div>
                   <p className="text-xs text-slate-500 mb-0.5">Lifetime Earnings</p>
-                  <p className="text-xl font-bold text-slate-900">${lifetimeEarnings.toLocaleString()}</p>
+                  <p className="text-xl font-medium text-slate-900">${lifetimeEarnings.toLocaleString()}</p>
                 </div>
                 <div className="w-px h-10 bg-slate-200" />
                 <div>
                   <p className="text-xs text-slate-500 mb-0.5">Total Engagements</p>
-                  <p className="text-xl font-bold text-slate-900">{lifetimeEngagements}</p>
+                  <p className="text-xl font-medium text-slate-900">{lifetimeEngagements}</p>
                 </div>
                 <div className="w-px h-10 bg-slate-200" />
                 <div>
                   <p className="text-xs text-slate-500 mb-0.5">Acceptance Rate</p>
-                  <p className="text-xl font-bold text-emerald-600">{acceptanceRate}%</p>
+                  <p className="text-xl font-medium text-emerald-600">{acceptanceRate}%</p>
                 </div>
               </div>
               <div className="text-right">
@@ -130,7 +130,7 @@ export function ExpertDashboardView({ onBack }: ExpertDashboardViewProps) {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-blue-500" />
                     Upcoming Engagements
                   </h2>
@@ -159,7 +159,7 @@ export function ExpertDashboardView({ onBack }: ExpertDashboardViewProps) {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-emerald-500" />
                     Earnings Breakdown
                   </h2>
@@ -180,7 +180,7 @@ export function ExpertDashboardView({ onBack }: ExpertDashboardViewProps) {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
                     <Phone className="w-5 h-5 text-slate-500" />
                     Call History
                   </h2>
@@ -237,7 +237,7 @@ export function ExpertDashboardView({ onBack }: ExpertDashboardViewProps) {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-base font-medium text-slate-900 flex items-center gap-2">
                     <Star className="w-4 h-4 text-amber-500" />
                     Recent Reviews
                   </h2>
@@ -296,13 +296,13 @@ function ExpertHeader({ expert, onBack }: { expert: Expert; pendingRequests?: nu
           />
         ) : (
           <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center ring-4 ring-white shadow-md">
-            <span className="text-xl font-semibold text-violet-600">
+            <span className="text-xl font-medium text-violet-600">
               {expert.name.split(' ').map(n => n[0]).join('')}
             </span>
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{expert.name}</h1>
+          <h1 className="text-2xl font-medium text-slate-900">{expert.name}</h1>
           <p className="text-sm text-slate-500">{expert.title}</p>
           <div className="flex items-center gap-3 mt-1">
             {expert.isTopVoice && (
@@ -368,7 +368,7 @@ function StatCard({
         <span className="text-xs text-slate-500">{label}</span>
       </div>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-slate-900">{value}</span>
+        <span className="text-2xl font-medium text-slate-900">{value}</span>
         {change !== undefined && (
           <span className={`text-xs font-medium flex items-center gap-0.5 ${
             change >= 0 ? 'text-emerald-600' : 'text-red-500'
@@ -416,7 +416,7 @@ function EngagementCard({ engagement, index }: { engagement: ExpertEngagement; i
         <p className={`text-xs font-medium ${isToday ? 'text-blue-600' : 'text-slate-500'}`}>
           {!date ? 'TBD' : isToday ? 'Today' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </p>
-        <p className="text-lg font-semibold text-slate-900">
+        <p className="text-lg font-medium text-slate-900">
           {date ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--'}
         </p>
       </div>
@@ -437,7 +437,7 @@ function EngagementCard({ engagement, index }: { engagement: ExpertEngagement; i
 
       {/* Credits */}
       <div className="text-right">
-        <p className="text-sm font-semibold text-emerald-600">
+        <p className="text-sm font-medium text-emerald-600">
           ${engagement.credits.toLocaleString()}
         </p>
         <p className="text-xs text-slate-400 capitalize">{engagement.type.replace('_', ' ')}</p>
@@ -512,7 +512,7 @@ function CompletedEngagementCard({ engagement, index }: { engagement: ExpertEnga
 
       {/* Earnings */}
       <div className="text-right">
-        <p className="text-sm font-semibold text-emerald-600">
+        <p className="text-sm font-medium text-emerald-600">
           +${(engagement.earnings || 0).toLocaleString()}
         </p>
         <p className="text-[10px] text-slate-400">
@@ -594,21 +594,21 @@ function EarningsChart({
       <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
         <div>
           <p className="text-xs text-slate-500 mb-1">Consultations</p>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-medium text-slate-900">
             ${earnings.consultations.earnings.toLocaleString()}
           </p>
           <p className="text-xs text-slate-400">{earnings.consultations.count} calls</p>
         </div>
         <div>
           <p className="text-xs text-slate-500 mb-1">Deep Dives</p>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-medium text-slate-900">
             ${earnings.deepDives.earnings.toLocaleString()}
           </p>
           <p className="text-xs text-slate-400">{earnings.deepDives.count} sessions</p>
         </div>
         <div>
           <p className="text-xs text-slate-500 mb-1">Bespoke</p>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-medium text-slate-900">
             ${earnings.bespokeProjects.earnings.toLocaleString()}
           </p>
           <p className="text-xs text-slate-400">{earnings.bespokeProjects.count} projects</p>

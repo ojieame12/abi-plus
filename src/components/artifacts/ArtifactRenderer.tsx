@@ -36,6 +36,10 @@ import { CommodityDashboardArtifact } from './views/CommodityDashboardArtifact';
 import { AnalystConnectArtifact } from '../panel/AnalystConnectArtifact';
 import { ExpertRequestArtifact } from '../panel/ExpertRequestArtifact';
 import { CommunityEmbedArtifact } from '../panel/CommunityEmbedArtifact';
+import { DeeperAnalysisArtifact } from './views/DeeperAnalysisArtifact';
+import { UpgradeConfirmArtifact } from './views/UpgradeConfirmArtifact';
+import { AnalystMessageArtifact } from './views/AnalystMessageArtifact';
+import { ExpertBriefingArtifact } from './views/ExpertBriefingArtifact';
 
 // Import content viewer artifacts
 import { ReportViewerArtifact } from '../panel/ReportViewerArtifact';
@@ -89,7 +93,7 @@ const AIContentSection = ({ aiContent }: { aiContent?: AIContent }) => {
   return (
     <div className="px-5 py-4 bg-gradient-to-br from-violet-50/50 to-slate-50 border-b border-slate-100">
       {aiContent.title && (
-        <h4 className="text-sm font-semibold text-slate-900 mb-2">{aiContent.title}</h4>
+        <h4 className="text-sm font-medium text-slate-900 mb-2">{aiContent.title}</h4>
       )}
       {aiContent.overview && (
         <p className="text-sm text-slate-600 leading-relaxed mb-3">{aiContent.overview}</p>
@@ -608,6 +612,69 @@ export const ArtifactRenderer = ({
             onViewThread={(threadId) => onAction?.('view_thread', { threadId })}
             onStartDiscussion={(title, body) => onAction?.('start_discussion', { title, body })}
             onViewAll={() => onAction?.('view_all_discussions')}
+          />
+        );
+      }
+
+    case 'deeper_analysis':
+      {
+        const deeperPayload = payload as unknown as import('./registry').DeeperAnalysisPayload;
+        return (
+          <DeeperAnalysisArtifact
+            queryText={deeperPayload.queryText}
+            category={deeperPayload.category}
+            valueLadder={deeperPayload.valueLadder}
+            isManaged={deeperPayload.isManaged}
+            credits={deeperPayload.credits}
+            onRequestUpgrade={() => onAction?.('open_upgrade_confirm', deeperPayload)}
+            onMessageAnalyst={() => onAction?.('open_analyst_message', deeperPayload)}
+            onRequestExpert={() => onAction?.('open_expert_briefing', deeperPayload)}
+          />
+        );
+      }
+
+    case 'upgrade_confirm':
+      {
+        const upgradePayload = payload as unknown as import('./registry').UpgradeConfirmPayload;
+        return (
+          <UpgradeConfirmArtifact
+            category={upgradePayload.category}
+            credits={upgradePayload.credits}
+            balanceAfter={upgradePayload.balanceAfter}
+            onConfirm={(context) => onAction?.('confirm_upgrade', { context })}
+            onBack={() => onAction?.('back_to_deeper_analysis')}
+          />
+        );
+      }
+
+    case 'analyst_message':
+      {
+        const analystPayload = payload as unknown as import('./registry').AnalystMessagePayload;
+        return (
+          <AnalystMessageArtifact
+            analyst={analystPayload.analyst}
+            category={analystPayload.category}
+            isManaged={analystPayload.isManaged}
+            queryContext={analystPayload.queryContext}
+            credits={analystPayload.credits}
+            onSend={(message) => onAction?.('send_analyst_message', { message })}
+            onBack={() => onAction?.('back_to_deeper_analysis')}
+          />
+        );
+      }
+
+    case 'expert_briefing':
+      {
+        const expertPayload = payload as unknown as import('./registry').ExpertBriefingPayload;
+        return (
+          <ExpertBriefingArtifact
+            expert={expertPayload.expert}
+            category={expertPayload.category}
+            credits={expertPayload.credits}
+            balanceAfter={expertPayload.balanceAfter}
+            requiresApproval={expertPayload.requiresApproval}
+            onSubmit={(briefing, scheduling) => onAction?.('submit_expert_request', { briefing, scheduling })}
+            onBack={() => onAction?.('back_to_deeper_analysis')}
           />
         );
       }

@@ -14,7 +14,7 @@ export interface ArtifactMeta {
   title: string;
   category: ArtifactCategory;
   description: string;
-  defaultWidth?: '40%' | '45%' | '50%' | '60%' | '100%';
+  defaultWidth?: '35%' | '40%' | '45%' | '50%' | '60%' | '100%';
   allowExpand?: boolean;
 }
 
@@ -52,6 +52,10 @@ export type ArtifactType =
   | 'analyst_connect'
   | 'expert_request'
   | 'community_embed'
+  | 'deeper_analysis'
+  | 'upgrade_confirm'
+  | 'analyst_message'
+  | 'expert_briefing'
   // Content Viewer
   | 'report_viewer';
 
@@ -279,6 +283,38 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     defaultWidth: '45%',
     allowExpand: true,
   },
+  deeper_analysis: {
+    id: 'deeper_analysis',
+    title: 'Deeper Analysis',
+    category: 'action',
+    description: 'Explore premium options: upgrade report, analyst consultation, or expert deep-dive',
+    defaultWidth: '35%',
+    allowExpand: false,
+  },
+  upgrade_confirm: {
+    id: 'upgrade_confirm',
+    title: 'Upgrade Report',
+    category: 'action',
+    description: 'Confirm decision-grade report upgrade request',
+    defaultWidth: '35%',
+    allowExpand: false,
+  },
+  analyst_message: {
+    id: 'analyst_message',
+    title: 'Message Analyst',
+    category: 'action',
+    description: 'Send a question to your assigned analyst',
+    defaultWidth: '35%',
+    allowExpand: false,
+  },
+  expert_briefing: {
+    id: 'expert_briefing',
+    title: 'Expert Deep-Dive',
+    category: 'action',
+    description: 'Request an expert consultation session',
+    defaultWidth: '35%',
+    allowExpand: false,
+  },
 
   // Content Viewer
   report_viewer: {
@@ -458,6 +494,61 @@ export interface CommunityEmbedPayload extends BaseArtifactPayload {
   };
 }
 
+export interface DeeperAnalysisPayload extends BaseArtifactPayload {
+  type: 'deeper_analysis';
+  // Query context
+  queryText?: string;
+  category?: string;
+  // Use existing ValueLadder - no type changes needed
+  valueLadder: import('../../types/aiResponse').ValueLadder;
+  // App state passed as props (not baked into ValueLadder)
+  isManaged: boolean;
+  // Credits from CREDIT_COSTS (centralized)
+  credits: {
+    upgrade: number;
+    analyst: number;
+    expert: number;
+  };
+}
+
+export interface UpgradeConfirmPayload extends BaseArtifactPayload {
+  type: 'upgrade_confirm';
+  category: string;
+  credits: number;
+  balanceAfter: number;
+}
+
+export interface AnalystMessagePayload extends BaseArtifactPayload {
+  type: 'analyst_message';
+  analyst: {
+    name: string;
+    specialty: string;
+    photo?: string;
+    availability?: 'available' | 'busy' | 'offline';
+    responseTime?: string;
+  };
+  category: string;
+  isManaged: boolean;
+  queryContext?: string;
+  credits: number;
+}
+
+export interface ExpertBriefingPayload extends BaseArtifactPayload {
+  type: 'expert_briefing';
+  expert: {
+    id: string;
+    name: string;
+    title: string;
+    formerCompany?: string;
+    expertise?: string;
+    isTopVoice?: boolean;
+  };
+  category: string;
+  credits: number;
+  balanceAfter: number;
+  requiresApproval?: boolean;
+}
+
 export interface ReportViewerPayload extends BaseArtifactPayload {
   type: 'report_viewer';
   report: {
@@ -493,6 +584,10 @@ export type ArtifactPayload =
   | AnalystConnectPayload
   | ExpertRequestPayload
   | CommunityEmbedPayload
+  | DeeperAnalysisPayload
+  | UpgradeConfirmPayload
+  | AnalystMessagePayload
+  | ExpertBriefingPayload
   | ReportViewerPayload
   | (BaseArtifactPayload & { [key: string]: unknown });
 

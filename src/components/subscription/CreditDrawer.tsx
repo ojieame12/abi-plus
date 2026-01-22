@@ -110,7 +110,7 @@ function CreditDrawerError({ error, onRetry }: { error: string | null; onRetry?:
       <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center">
         <X className="w-6 h-6 text-red-500" />
       </div>
-      <h3 className="text-base font-semibold text-primary mb-2">Failed to load</h3>
+      <h3 className="text-base font-medium text-primary mb-2">Failed to load</h3>
       <p className="text-sm text-secondary mb-4">{error || 'Unable to load subscription data'}</p>
       {onRetry && (
         <button
@@ -204,7 +204,7 @@ export function CreditDrawer({
                   <Coins className={`w-5 h-5 ${colors.text}`} />
                 </div>
                 <div>
-                  <h2 id="credit-drawer-title" className="text-lg font-semibold text-primary">Subscription</h2>
+                  <h2 id="credit-drawer-title" className="text-lg font-medium text-primary">Subscription</h2>
                   <p className="text-xs text-secondary">{subscription.tierConfig.name} Plan</p>
                 </div>
               </div>
@@ -235,7 +235,7 @@ export function CreditDrawer({
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm text-slate-500 mb-1">Available Credits</p>
-                      <p className={`text-3xl font-bold ${colors.text} tabular-nums`}>
+                      <p className={`text-3xl font-light ${colors.text} tabular-nums`}>
                         {formatCredits(subscription.remainingCredits)}
                       </p>
                       <p className="text-sm text-slate-500 mt-1">
@@ -400,7 +400,7 @@ export function CreditSummary({ subscription, className = '' }: CreditSummaryPro
       <div className="flex items-center gap-2">
         <Coins className="w-4 h-4 text-slate-400" />
         <span className="text-sm text-secondary">
-          <span className="font-semibold text-primary tabular-nums">
+          <span className="font-medium text-primary tabular-nums">
             {formatCredits(subscription.remainingCredits)}
           </span>
           {' credits remaining'}

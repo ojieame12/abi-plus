@@ -34,7 +34,7 @@ export const DataTable = ({
         <div className="border border-slate-200 rounded-xl overflow-hidden my-4">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
-                <h4 className="font-semibold text-primary">{title}</h4>
+                <h4 className="font-medium text-primary">{title}</h4>
                 <div className="flex items-center gap-2">
                     {showViewToggle && (
                         <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">

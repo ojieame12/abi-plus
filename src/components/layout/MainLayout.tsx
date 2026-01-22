@@ -25,6 +25,7 @@ interface MainLayoutProps {
     // Subscription/credits (Phase 2)
     subscription?: CompanySubscription;
     onCreditsClick?: () => void;
+    onNotificationsClick?: () => void;
 }
 
 export const MainLayout = (props: MainLayoutProps) => {
@@ -36,7 +37,7 @@ export const MainLayout = (props: MainLayoutProps) => {
         headerVariant = 'home',
         conversationTitle = '',
         artifactCount = 0,
-        notificationCount = 2,
+        notificationCount = 0,
         backgroundOpacity = 100,
         isHeaderLoading = false,
         hideHeader = false,
@@ -48,6 +49,7 @@ export const MainLayout = (props: MainLayoutProps) => {
         showExpertPortal = false,
         subscription,
         onCreditsClick,
+        onNotificationsClick,
     } = props;
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
@@ -157,6 +159,7 @@ export const MainLayout = (props: MainLayoutProps) => {
                                         isLoading={isHeaderLoading}
                                         subscription={subscription}
                                         onCreditsClick={onCreditsClick}
+                                        onNotificationsClick={onNotificationsClick}
                                     />
                                 )}
 

@@ -79,7 +79,7 @@ export const AnalystConnectArtifact = ({
         <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center mb-4">
           <Check className="w-8 h-8 text-teal-600" />
         </div>
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">
+        <h3 className="text-xl font-medium text-slate-900 mb-2">
           {activeTab === 'schedule' ? 'Call Scheduled!' : 'Question Sent!'}
         </h3>
         <p className="text-slate-600 text-center max-w-sm">
@@ -109,8 +109,8 @@ export const AnalystConnectArtifact = ({
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-slate-900">{analyst.name}</h3>
-              <span className="px-2 py-0.5 bg-teal-600 text-white text-[10px] font-semibold rounded uppercase">
+              <h3 className="font-medium text-slate-900">{analyst.name}</h3>
+              <span className="px-2 py-0.5 bg-teal-600 text-white text-[10px] font-medium rounded uppercase">
                 Beroe
               </span>
             </div>

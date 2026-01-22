@@ -84,7 +84,7 @@ export const DriverBreakdownCard = ({
             ${isUp ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}
           `}>
             {isUp ? <TrendingUp size={14} strokeWidth={1.5} /> : <TrendingDown size={14} strokeWidth={1.5} />}
-            <span className="text-sm font-semibold">
+            <span className="text-sm font-medium">
               {isUp ? '+' : ''}{priceChange.percent}%
             </span>
           </div>
@@ -130,7 +130,7 @@ export const DriverBreakdownCard = ({
                     ) : (
                       <TrendingDown size={12} className="text-emerald-500" />
                     )}
-                    <span className="text-sm font-semibold text-slate-700">
+                    <span className="text-sm font-medium text-slate-700">
                       {driver.contribution}%
                     </span>
                   </div>
@@ -181,7 +181,7 @@ export const DriverBreakdownCard = ({
           {beroeSourceCount > 0 && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-white">B</span>
+                <span className="text-[8px] font-medium text-white">B</span>
               </div>
               <span>{beroeSourceCount} Beroe Data Sources</span>
             </div>

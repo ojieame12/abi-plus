@@ -138,7 +138,7 @@ export const WidgetCard = ({ widget }: WidgetCardProps) => {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">{widget.name}</h3>
+          <h3 className="text-lg font-medium text-slate-900">{widget.name}</h3>
           <div className="flex items-center gap-1">
             {widget.sizes.map(size => (
               <button

@@ -810,7 +810,7 @@ function AnswerCardEnhanced({
                 // Bold headers
                 if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
                   return (
-                    <h4 key={i} className="text-[15px] font-semibold text-slate-900 mt-4 mb-2">
+                    <h4 key={i} className="text-[15px] font-medium text-slate-900 mt-4 mb-2">
                       {paragraph.replace(/\*\*/g, '')}
                     </h4>
                   );

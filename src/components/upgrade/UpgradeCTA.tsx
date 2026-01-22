@@ -99,7 +99,7 @@ export function UpgradeCTA({
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-primary mb-1">
+            <h4 className="text-sm font-medium text-primary mb-1">
               Want decision-grade insights?
             </h4>
             <p className="text-sm text-secondary mb-3">
@@ -153,7 +153,7 @@ export function UpgradeCTA({
           <Sparkles className="w-4 h-4 text-violet-600" />
         </div>
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-primary">{typeInfo.label}</h4>
+          <h4 className="text-sm font-medium text-primary">{typeInfo.label}</h4>
           <p className="text-xs text-secondary mt-0.5">{typeInfo.description}</p>
         </div>
       </div>

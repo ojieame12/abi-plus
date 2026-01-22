@@ -116,7 +116,7 @@ export const ExecutiveBriefCard = ({
             >
               <p className="text-xs text-slate-500 mb-1">{metric.label}</p>
               <div className="flex items-center gap-2">
-                <span className={`text-lg font-semibold ${statusColors[metric.status]}`}>
+                <span className={`text-lg font-medium ${statusColors[metric.status]}`}>
                   {metric.value}
                 </span>
                 {metric.change && (

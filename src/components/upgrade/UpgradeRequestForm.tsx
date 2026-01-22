@@ -173,7 +173,7 @@ export function UpgradeRequestForm({
                   <Star className="w-5 h-5 text-violet-600" />
                 </div>
                 <div>
-                  <h2 id="upgrade-modal-title" className="text-lg font-semibold text-primary">Request Upgrade</h2>
+                  <h2 id="upgrade-modal-title" className="text-lg font-medium text-primary">Request Upgrade</h2>
                   <p className="text-xs text-secondary">
                     {step === 'type' && 'Choose upgrade type'}
                     {step === 'details' && 'Add details'}
@@ -317,7 +317,7 @@ export function UpgradeRequestForm({
                         })()}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-primary">{title || typeInfo.label}</h3>
+                        <h3 className="font-medium text-primary">{title || typeInfo.label}</h3>
                         <p className="text-sm text-secondary">{typeInfo.description}</p>
                       </div>
                     </div>
@@ -330,7 +330,7 @@ export function UpgradeRequestForm({
 
                     <div className="flex items-center justify-between py-3 border-t border-violet-200">
                       <span className="text-sm text-slate-600">Estimated cost</span>
-                      <span className="text-lg font-semibold text-violet-700 tabular-nums flex items-center gap-1.5">
+                      <span className="text-lg font-medium text-violet-700 tabular-nums flex items-center gap-1.5">
                         <Coins className="w-4 h-4" />
                         {formatCredits(cost?.typical || 0)}
                       </span>

@@ -103,7 +103,11 @@ export const SourceAttribution = ({
                         onClick={() => handleClick('internal')}
                         className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
                     >
-                        <Database size={16} className="text-violet-500" />
+                        <img
+                            src="/bero-logo.svg"
+                            alt="Beroe"
+                            className="w-4 h-4"
+                        />
                         <span className="text-sm text-slate-600">{dataSources} {dataSourceName}</span>
                     </button>
                 )}
@@ -287,7 +291,11 @@ export const SourceAttributionSimple = ({
         onClick={onSourceClick}
         className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 rounded-lg transition-colors"
     >
-        <Database size={16} className="text-violet-500" />
+        <img
+            src="/bero-logo.svg"
+            alt="Beroe"
+            className="w-4 h-4"
+        />
         <span className="text-sm text-slate-600">{sourceCount} {sourceName}</span>
     </button>
 );

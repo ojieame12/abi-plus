@@ -42,6 +42,10 @@ import { ToastContainer, useToasts } from './components/ui/Toast';
 import { MOCK_SUBSCRIPTION, MOCK_TRANSACTIONS } from './services/mockSubscription';
 import { fetchCreditData } from './services/creditService';
 import type { CreditTransaction } from './types/subscription';
+// Notifications
+import { NotificationDrawer } from './components/notifications/NotificationDrawer';
+import { getMockNotifications } from './services/notificationService';
+import type { AppNotification } from './types/notifications';
 import { MOCK_SLOT_SUMMARY } from './services/mockCategories';
 import type { CompanySubscription } from './types/subscription';
 import { CREDIT_COSTS } from './types/subscription';
@@ -271,6 +275,10 @@ function App() {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [upgradeContext, setUpgradeContext] = useState<RequestContext | undefined>(undefined);
 
+  // Notifications state
+  const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
   // Fetch credit balance from live API
   const refreshCredits = useCallback(async () => {
     try {
@@ -294,6 +302,11 @@ function App() {
       refreshCredits();
     }
   }, [isAuthenticated, refreshCredits]);
+
+  // Load notifications on mount
+  useEffect(() => {
+    setNotifications(getMockNotifications());
+  }, []);
 
   // Handle URL deep-linking for reports
   // Example: ?report=steel-market-2025
@@ -512,6 +525,107 @@ function App() {
       case 'view_all_discussions':
         console.log('[Community parked] Action disabled:', action, data);
         break;
+
+      // Deeper Analysis artifact swaps
+      case 'open_upgrade_confirm':
+        {
+          const deeperData = data as {
+            category?: string;
+            credits?: { upgrade: number };
+          };
+          openArtifact('upgrade_confirm', {
+            category: deeperData?.category || 'General',
+            credits: deeperData?.credits?.upgrade || CREDIT_COSTS.report_upgrade.typical,
+            balanceAfter: subscription.remainingCredits - (deeperData?.credits?.upgrade || CREDIT_COSTS.report_upgrade.typical),
+          });
+        }
+        break;
+
+      case 'open_analyst_message':
+        {
+          const deeperData = data as {
+            category?: string;
+            isManaged?: boolean;
+            queryText?: string;
+            valueLadder?: { analystConnect?: { analyst?: unknown } };
+            credits?: { analyst: number };
+          };
+          const analyst = deeperData?.valueLadder?.analystConnect?.analyst as {
+            name?: string;
+            specialty?: string;
+            photo?: string;
+            availability?: 'available' | 'busy' | 'offline';
+            responseTime?: string;
+          } | undefined;
+          openArtifact('analyst_message', {
+            analyst: analyst || {
+              name: 'Dr. James Morrison',
+              specialty: 'Metals & Mining',
+              availability: 'available',
+              responseTime: '~4 hours',
+            },
+            category: deeperData?.category || 'General',
+            isManaged: deeperData?.isManaged || false,
+            queryContext: deeperData?.queryText,
+            credits: deeperData?.credits?.analyst || CREDIT_COSTS.analyst_call.typical,
+          });
+        }
+        break;
+
+      case 'open_expert_briefing':
+        {
+          const deeperData = data as {
+            category?: string;
+            valueLadder?: { expertDeepDive?: { matchedExpert?: unknown } };
+            credits?: { expert: number };
+          };
+          const expert = deeperData?.valueLadder?.expertDeepDive?.matchedExpert as {
+            id?: string;
+            name?: string;
+            title?: string;
+            formerCompany?: string;
+            expertise?: string;
+            isTopVoice?: boolean;
+          } | undefined;
+          const expertCredits = deeperData?.credits?.expert || CREDIT_COSTS.expert_deepdive.typical;
+          openArtifact('expert_briefing', {
+            expert: expert || {
+              id: 'expert-001',
+              name: 'Sarah Mitchell',
+              title: 'Director of Metals Research',
+              formerCompany: 'ArcelorMittal',
+              expertise: 'Steel Markets',
+              isTopVoice: true,
+            },
+            category: deeperData?.category || 'General',
+            credits: expertCredits,
+            balanceAfter: subscription.remainingCredits - expertCredits,
+            requiresApproval: expertCredits > 2000, // Approval required for high-credit items
+          });
+        }
+        break;
+
+      case 'back_to_deeper_analysis':
+        // Go back to the deeper_analysis view
+        // For now, just close the panel - in production would restore previous state
+        setIsPanelOpen(false);
+        break;
+
+      case 'confirm_upgrade':
+        console.log('Upgrade confirmed:', data);
+        showSuccess('Report upgrade request submitted');
+        break;
+
+      case 'send_analyst_message':
+        console.log('Analyst message sent:', data);
+        showSuccess('Message sent to analyst');
+        break;
+
+      case 'submit_expert_request':
+        console.log('Expert request submitted:', data);
+        showSuccess('Expert deep-dive request submitted');
+        break;
+
       default:
         console.log('Unhandled action:', action);
     }
@@ -530,8 +644,64 @@ function App() {
     return undefined;
   };
 
-  // Value Ladder Handlers - open appropriate artifact panels
-  const handleAnalystConnect = (response: AIResponseType) => {
+  const normalizeCategoryValue = (value?: string): string =>
+    value?.trim().toLowerCase() ?? '';
+
+  const isManagedCategory = (candidates: Array<string | undefined>): boolean => {
+    const normalizedCandidates = candidates
+      .map(normalizeCategoryValue)
+      .filter(Boolean);
+
+    if (normalizedCandidates.length === 0) return false;
+
+    const hasActivatedId = subscription.activatedCategories.some((categoryId) =>
+      normalizedCandidates.includes(normalizeCategoryValue(categoryId))
+    );
+    if (hasActivatedId) return true;
+
+    if (!isDemoMode) return false;
+
+    return MOCK_SLOT_SUMMARY.activatedCategories.some((activation) => {
+      const matchValues = [
+        activation.categoryId,
+        activation.category.name,
+        activation.category.slug,
+      ];
+      return matchValues.some((value) =>
+        normalizedCandidates.includes(normalizeCategoryValue(value))
+      );
+    });
+  };
+
+  // Value Ladder Handlers - Progressive disclosure pattern
+  // Opens the deeper_analysis artifact with all upgrade options
+  const handleOpenDeeperAnalysis = (response: AIResponseType) => {
+    const valueLadder = response.canonical?.valueLadder;
+    if (!valueLadder) return;
+
+    // Extract category from response
+    const extractedCategory = response.intent?.extractedEntities?.category;
+    const extractedCommodity = response.intent?.extractedEntities?.commodity;
+    const category = extractedCommodity || extractedCategory || 'General';
+
+    const isManaged = isManagedCategory([extractedCategory, extractedCommodity]);
+
+    // Build the deeper_analysis payload using centralized CREDIT_COSTS
+    openArtifact('deeper_analysis', {
+      queryText: getUserMessageForResponse(response.id) || '',
+      category,
+      valueLadder, // Pass original unchanged ValueLadder
+      isManaged,
+      credits: {
+        upgrade: CREDIT_COSTS.report_upgrade.typical,
+        analyst: CREDIT_COSTS.analyst_call.typical,
+        expert: CREDIT_COSTS.expert_deepdive.typical,
+      },
+    });
+  };
+
+  // Direct analyst access - opens analyst_connect artifact directly
+  const handleAskAnalyst = (response: AIResponseType) => {
     const valueLadder = response.canonical?.valueLadder;
     if (!valueLadder?.analystConnect) return;
 
@@ -544,18 +714,36 @@ function App() {
     });
   };
 
-  const handleExpertDeepDive = (response: AIResponseType) => {
-    const valueLadder = response.canonical?.valueLadder;
-    if (!valueLadder?.expertDeepDive) return;
+  // Notification handlers
+  const unreadNotificationCount = notifications.filter(n => !n.isRead).length;
 
-    openArtifact('expert_request', {
-      expertDeepDive: valueLadder.expertDeepDive,
-      queryContext: {
-        queryId: response.id,
-        queryText: getUserMessageForResponse(response.id),
-        topic: response.intent?.extractedEntities?.commodity || response.intent?.extractedEntities?.category,
-      },
-    });
+  const handleNotificationsClick = () => setIsNotificationDrawerOpen(true);
+
+  const handleMarkNotificationAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n =>
+      n.id === id ? { ...n, isRead: true } : n
+    ));
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleNotificationAction = (notification: AppNotification) => {
+    // Route based on notification type and action
+    console.log('[App] Notification clicked:', notification.id, notification.action?.onClick);
+
+    if (notification.type === 'approval_update' && notification.metadata?.requestId) {
+      // Navigate to approval workflow view
+      setViewState('approval-workflow');
+      setIsNotificationDrawerOpen(false);
+    } else if (notification.type === 'alert_triggered') {
+      // Could open supplier detail or alert dashboard
+      console.log('[App] Alert notification - would open alert details');
+    } else if (notification.type === 'badge_awarded' || notification.type === 'reputation_change') {
+      // Could navigate to profile/achievements
+      console.log('[App] Achievement notification - would open profile');
+    }
   };
 
   // Handle upgrade request (L2b decision-grade upgrade)
@@ -898,6 +1086,8 @@ function App() {
           isArtifactExpanded={isArtifactExpanded}
           subscription={subscription}
           onCreditsClick={() => setIsCreditDrawerOpen(true)}
+          notificationCount={unreadNotificationCount}
+          onNotificationsClick={handleNotificationsClick}
           panel={
         <ArtifactPanel
           isOpen={isPanelOpen}
@@ -1172,10 +1362,10 @@ function App() {
                           isAnimating={msg.isNew}
                           // 8. Insight click - open in artifact panel
                           onInsightClick={openInsightPanel}
-                          // 9. Value Ladder (4-layer system)
+                          // 9. Value Ladder - Progressive disclosure triggers
                           valueLadder={hasResponse ? msg.response?.canonical?.valueLadder : undefined}
-                          onAnalystConnect={() => msg.response && handleAnalystConnect(msg.response)}
-                          onExpertDeepDive={() => msg.response && handleExpertDeepDive(msg.response)}
+                          onOpenDeeperAnalysis={() => msg.response && handleOpenDeeperAnalysis(msg.response)}
+                          onAskAnalyst={() => msg.response && handleAskAnalyst(msg.response)}
                           // 10. Source Enhancement
                           sourceEnhancement={hasResponse ? msg.response?.canonical?.sourceEnhancement : undefined}
                           onSourceEnhancement={(type) => {
@@ -1193,17 +1383,14 @@ function App() {
                                 break;
                               case 'analyst':
                                 // Open analyst connect artifact
-                                handleAnalystConnect(msg.response);
+                                handleAskAnalyst(msg.response);
                                 break;
                               case 'expert':
-                                // Open expert request artifact
-                                handleExpertDeepDive(msg.response);
+                                // Open deeper analysis artifact (has expert option)
+                                handleOpenDeeperAnalysis(msg.response);
                                 break;
                             }
                           }}
-                          // 11. Upgrade flow (L2b decision-grade)
-                          onUpgrade={() => msg.response && handleUpgrade(msg.response)}
-                          upgradeCost={CREDIT_COSTS.report_upgrade.typical}
                         >
                           {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
                           {msg.response?.canonical ? (
@@ -1297,6 +1484,16 @@ function App() {
         }}
       />
 
+      {/* Notification Drawer */}
+      <NotificationDrawer
+        isOpen={isNotificationDrawerOpen}
+        onClose={() => setIsNotificationDrawerOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkNotificationAsRead}
+        onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+        onNotificationClick={handleNotificationAction}
+      />
+
       {/* Phase 2: Upgrade Request Modal */}
       <UpgradeRequestForm
         isOpen={isUpgradeModalOpen}
@@ -1382,7 +1579,7 @@ function formatMarkdown(text: string, hasWidget: boolean = false): string {
     return `<table class="w-full text-sm border-collapse my-4">
       <thead>
         <tr class="border-b border-slate-200">
-          ${headers.map((h: string) => `<th class="text-left py-2 px-3 font-semibold text-slate-700">${h}</th>`).join('')}
+          ${headers.map((h: string) => `<th class="text-left py-2 px-3 font-medium text-slate-700">${h}</th>`).join('')}
         </tr>
       </thead>
       <tbody>
@@ -1401,7 +1598,7 @@ function formatMarkdown(text: string, hasWidget: boolean = false): string {
   processed = processed.replace(/(?<![-\w])(\$[\d,.]+[BMK]?|\d{1,3}(?:,\d{3})*(?:\.\d+)?%?)(?![\w-])/g, '<span class="font-medium">$1</span>');
 
   return processed
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-800">$1</strong>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium text-slate-800">$1</strong>')
     .replace(/\n- /g, '<br/>• ')
     .replace(/\n\* /g, '<br/>• ')
     .replace(/\n/g, '<br/>');
@@ -1411,14 +1608,14 @@ function formatMarkdown(text: string, hasWidget: boolean = false): string {
 function PortfolioWidget({ portfolio }: { portfolio: Portfolio }) {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-primary">Risk Portfolio Overview</h3>
+      <h3 className="text-lg font-medium text-primary">Risk Portfolio Overview</h3>
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 bg-slate-50 rounded-xl">
-          <div className="text-2xl font-bold text-primary">{portfolio.totalSuppliers}</div>
+          <div className="text-2xl font-medium text-primary">{portfolio.totalSuppliers}</div>
           <div className="text-sm text-muted">Total Suppliers</div>
         </div>
         <div className="p-4 bg-slate-50 rounded-xl">
-          <div className="text-2xl font-bold text-primary">{portfolio.spendFormatted}</div>
+          <div className="text-2xl font-medium text-primary">{portfolio.spendFormatted}</div>
           <div className="text-sm text-muted">Total Spend</div>
         </div>
       </div>
@@ -1447,7 +1644,7 @@ function PortfolioWidget({ portfolio }: { portfolio: Portfolio }) {
 function SupplierTableWidget({ suppliers }: { suppliers: Supplier[] }) {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-primary">Suppliers ({suppliers.length})</h3>
+      <h3 className="text-lg font-medium text-primary">Suppliers ({suppliers.length})</h3>
       <div className="space-y-2">
         {suppliers.map((supplier) => (
           <div key={supplier.id} className="p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
@@ -1457,7 +1654,7 @@ function SupplierTableWidget({ suppliers }: { suppliers: Supplier[] }) {
                 <div className="text-xs text-muted">{supplier.category} · {supplier.location?.country}</div>
               </div>
               <div className="text-right">
-                <div className={`font-bold ${
+                <div className={`font-medium ${
                   supplier.srs?.level === 'high' ? 'text-red-600' :
                   supplier.srs?.level === 'medium-high' ? 'text-orange-600' :
                   supplier.srs?.level === 'medium' ? 'text-yellow-600' :
@@ -1480,11 +1677,11 @@ function SupplierDetailWidget({ supplier }: { supplier: Supplier }) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-primary">{supplier.name}</h3>
+        <h3 className="text-lg font-medium text-primary">{supplier.name}</h3>
         <p className="text-sm text-muted">{supplier.category} · {supplier.location?.city}, {supplier.location?.country}</p>
       </div>
       <div className="p-4 bg-slate-50 rounded-xl text-center">
-        <div className={`text-4xl font-bold ${
+        <div className={`text-4xl font-medium ${
           supplier.srs?.level === 'high' ? 'text-red-600' :
           supplier.srs?.level === 'medium-high' ? 'text-orange-600' :
           supplier.srs?.level === 'medium' ? 'text-yellow-600' :

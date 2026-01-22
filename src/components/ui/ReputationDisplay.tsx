@@ -28,7 +28,7 @@ export function ReputationDisplay({
         <AnimatedNumber
           value={reputation}
           format
-          className="text-lg font-semibold text-slate-900"
+          className="text-lg font-medium text-slate-900"
         />
         <span className="text-sm text-slate-500">reputation</span>
       </div>

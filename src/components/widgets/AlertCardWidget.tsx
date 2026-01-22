@@ -105,8 +105,8 @@ export const AlertCardWidget = ({ data }: Props) => {
                   <span className="text-slate-400">→</span>
                   <span className={
                     supplier.currentScore > supplier.previousScore
-                      ? 'text-red-600 font-semibold'
-                      : 'text-green-600 font-semibold'
+                      ? 'text-red-600 font-medium'
+                      : 'text-green-600 font-medium'
                   }>
                     {supplier.currentScore}
                   </span>

@@ -87,7 +87,7 @@ export const ScenarioCard = ({
           {/* Current State */}
           <div className="flex-1 p-3 bg-slate-50 rounded-xl text-center">
             <p className="text-xs text-slate-500 mb-1">{currentState.label}</p>
-            <p className="text-xl font-semibold text-slate-700">{currentState.value}</p>
+            <p className="text-xl font-medium text-slate-700">{currentState.value}</p>
           </div>
 
           {/* Arrow */}
@@ -103,7 +103,7 @@ export const ScenarioCard = ({
             <p className={`text-xs mb-1 ${isIncrease ? 'text-red-500' : 'text-emerald-500'}`}>
               {projectedState.label}
             </p>
-            <p className={`text-xl font-semibold ${isIncrease ? 'text-red-700' : 'text-emerald-700'}`}>
+            <p className={`text-xl font-medium ${isIncrease ? 'text-red-700' : 'text-emerald-700'}`}>
               {projectedState.value}
             </p>
           </div>
@@ -127,7 +127,7 @@ export const ScenarioCard = ({
             </span>
           </div>
           <div className="text-right">
-            <span className={`text-lg font-semibold ${isIncrease ? 'text-red-700' : 'text-emerald-700'}`}>
+            <span className={`text-lg font-medium ${isIncrease ? 'text-red-700' : 'text-emerald-700'}`}>
               {delta.amount}
             </span>
             <span className={`text-xs ml-1 ${isIncrease ? 'text-red-600' : 'text-emerald-600'}`}>
@@ -164,7 +164,7 @@ export const ScenarioCard = ({
           {beroeSourceCount > 0 && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-white">B</span>
+                <span className="text-[8px] font-medium text-white">B</span>
               </div>
               <span>{beroeSourceCount} Beroe Data Sources</span>
             </div>

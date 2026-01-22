@@ -156,7 +156,7 @@ export function SlotAllowanceCard({
                 <Grid3X3 className={`w-5 h-5 ${styles.text}`} />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-primary">Managed Categories</h3>
+                <h3 className="text-base font-medium text-primary">Managed Categories</h3>
                 <p className="text-xs text-secondary">L2a analyst-validated coverage</p>
               </div>
             </div>
@@ -168,7 +168,7 @@ export function SlotAllowanceCard({
           {/* Progress section */}
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-bold text-primary tabular-nums">{usedSlots}</span>
+              <span className="text-2xl font-medium text-primary tabular-nums">{usedSlots}</span>
               <span className="text-sm text-secondary">of {totalSlots} slots used</span>
             </div>
             <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -267,7 +267,7 @@ export function SlotAllowanceCard({
           <span className="text-sm font-medium text-primary">Managed Categories</span>
         </div>
         <span className="text-sm text-secondary">
-          <span className="font-semibold text-primary tabular-nums">{usedSlots}</span>
+          <span className="font-medium text-primary tabular-nums">{usedSlots}</span>
           {' / '}{totalSlots} slots
         </span>
       </div>
@@ -381,7 +381,7 @@ export function MiniSlotCard({ slotSummary, onClick, className = '' }: MiniSlotC
         </div>
         <div className="flex-1">
           <p className="text-xs text-secondary">Category Slots</p>
-          <p className="text-lg font-semibold text-primary tabular-nums">
+          <p className="text-lg font-medium text-primary tabular-nums">
             {usedSlots} <span className="text-sm font-normal text-secondary">/ {totalSlots}</span>
           </p>
         </div>

@@ -65,7 +65,7 @@ export function SettingsView({
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-semibold text-primary">Settings</h1>
+            <h1 className="text-lg font-medium text-primary">Settings</h1>
             <p className="text-sm text-secondary">
               Manage your account and preferences
             </p>
@@ -149,7 +149,7 @@ function ProfileSection() {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-primary mb-6">Profile Settings</h2>
+      <h2 className="text-lg font-medium text-primary mb-6">Profile Settings</h2>
 
       {/* Avatar & Name */}
       <div className="flex items-center gap-4 mb-8">
@@ -196,7 +196,7 @@ function NotificationsSection() {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-primary mb-6">Notification Preferences</h2>
+      <h2 className="text-lg font-medium text-primary mb-6">Notification Preferences</h2>
 
       <div className="space-y-4">
         <ToggleItem
@@ -252,7 +252,7 @@ function TeamSection() {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-primary mb-6">Team Members</h2>
+      <h2 className="text-lg font-medium text-primary mb-6">Team Members</h2>
 
       {teams.map(team => {
         const members = getMockTeamMembers(team.id);
@@ -309,7 +309,7 @@ function OrganizationSection() {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-primary mb-6">Organization Settings</h2>
+      <h2 className="text-lg font-medium text-primary mb-6">Organization Settings</h2>
 
       <div className="p-6 rounded-xl bg-slate-50 border border-slate-100 mb-6">
         <div className="flex items-center gap-4">
@@ -342,14 +342,14 @@ function OrganizationSection() {
 function BillingSection() {
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-primary mb-6">Billing & Credits</h2>
+      <h2 className="text-lg font-medium text-primary mb-6">Billing & Credits</h2>
 
       {/* Current Plan */}
       <div className="p-6 rounded-xl bg-violet-50 border border-violet-100 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-sm text-violet-600">Current Plan</p>
-            <h3 className="text-xl font-bold text-violet-700">Business</h3>
+            <h3 className="text-xl font-medium text-violet-700">Business</h3>
           </div>
           <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-sm font-medium">
             Active
@@ -414,7 +414,7 @@ function BillingSection() {
 function SecuritySection() {
   return (
     <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-primary mb-6">Security Settings</h2>
+      <h2 className="text-lg font-medium text-primary mb-6">Security Settings</h2>
 
       <div className="space-y-4">
         <div className="p-4 rounded-xl border border-slate-200">

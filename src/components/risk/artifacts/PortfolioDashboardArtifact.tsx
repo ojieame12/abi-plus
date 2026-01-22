@@ -83,7 +83,7 @@ export const PortfolioDashboardArtifact = ({
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-sm z-20">
                 <div>
-                    <h3 className="text-lg font-semibold text-[#1d1d1f] tracking-tight">Portfolio Overview</h3>
+                    <h3 className="text-lg font-medium text-[#1d1d1f] tracking-tight">Portfolio Overview</h3>
                     <div className="flex items-center gap-1.5 mt-1">
                         <span className="flex items-center justify-center w-4 h-4 rounded-full bg-green-50 text-green-600">
                             <Clock size={10} />
@@ -127,8 +127,8 @@ export const PortfolioDashboardArtifact = ({
                 {alerts.length > 0 && (
                     <section>
                         <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-[13px] font-semibold text-[#1d1d1f] uppercase tracking-wide">Active Alerts</h4>
-                            <span className="px-2.5 py-0.5 bg-red-50 text-red-700 text-[11px] font-bold uppercase tracking-wider rounded-full border border-red-100">
+                            <h4 className="text-[13px] font-medium text-[#1d1d1f] uppercase tracking-wide">Active Alerts</h4>
+                            <span className="px-2.5 py-0.5 bg-red-50 text-red-700 text-[11px] font-medium uppercase tracking-wider rounded-full border border-red-100">
                                 {alerts.length} New
                             </span>
                         </div>
@@ -148,7 +148,7 @@ export const PortfolioDashboardArtifact = ({
                                             <AlertTriangle size={18} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[14px] font-semibold text-[#1d1d1f] truncate group-hover:text-violet-600 transition-colors">
+                                            <p className="text-[14px] font-medium text-[#1d1d1f] truncate group-hover:text-violet-600 transition-colors">
                                                 {alert.headline}
                                             </p>
                                             <p className="text-[12px] text-slate-500 mt-1 font-medium">
@@ -166,7 +166,7 @@ export const PortfolioDashboardArtifact = ({
                 {/* Trend Summary */}
                 <section>
                     <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-[13px] font-semibold text-[#1d1d1f] uppercase tracking-wide">Risk Trends</h4>
+                        <h4 className="text-[13px] font-medium text-[#1d1d1f] uppercase tracking-wide">Risk Trends</h4>
                         <div className="flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/50">
                             {(['7d', '30d', '90d'] as const).map((period) => (
                                 <button
@@ -188,7 +188,7 @@ export const PortfolioDashboardArtifact = ({
                         <div className="p-5 bg-white border border-slate-200/60 rounded-xl shadow-sm">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="p-1 rounded bg-red-50 text-red-600"><TrendingUp size={12} /></span>
-                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">New High Risk</span>
+                                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">New High Risk</span>
                             </div>
                             <div className="text-3xl font-light text-[#1d1d1f] tracking-tight">
                                 +{trends.newHighRisk}
@@ -197,7 +197,7 @@ export const PortfolioDashboardArtifact = ({
                         <div className="p-5 bg-white border border-slate-200/60 rounded-xl shadow-sm">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="p-1 rounded bg-green-50 text-green-600"><TrendingDown size={12} /></span>
-                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Improved</span>
+                                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Improved</span>
                             </div>
                             <div className="text-3xl font-light text-[#1d1d1f] tracking-tight">
                                 {trends.improved}
@@ -206,7 +206,7 @@ export const PortfolioDashboardArtifact = ({
                         <div className="p-5 bg-white border border-slate-200/60 rounded-xl shadow-sm">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="p-1 rounded bg-amber-50 text-amber-600"><TrendingUp size={12} /></span>
-                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Deteriorated</span>
+                                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Deteriorated</span>
                             </div>
                             <div className="text-3xl font-light text-[#1d1d1f] tracking-tight">
                                 {trends.deteriorated}
@@ -218,7 +218,7 @@ export const PortfolioDashboardArtifact = ({
                 {/* Top Movers */}
                 <section>
                     <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-[13px] font-semibold text-[#1d1d1f] uppercase tracking-wide">Biggest Score Changes</h4>
+                        <h4 className="text-[13px] font-medium text-[#1d1d1f] uppercase tracking-wide">Biggest Score Changes</h4>
                         <button
                             onClick={onViewAllMovers}
                             className="text-[12px] font-medium text-violet-600 hover:text-violet-700 hover:underline"
@@ -248,7 +248,7 @@ export const PortfolioDashboardArtifact = ({
 
                 {/* Quick Actions */}
                 <section>
-                    <h4 className="text-[13px] font-semibold text-[#1d1d1f] uppercase tracking-wide mb-4">Quick Actions</h4>
+                    <h4 className="text-[13px] font-medium text-[#1d1d1f] uppercase tracking-wide mb-4">Quick Actions</h4>
                     <div className="grid grid-cols-2 gap-4">
                         <button
                             onClick={() => onViewAllRisks?.('high')}
@@ -307,12 +307,12 @@ export const PortfolioSummaryWidget = ({
 
             <div className="flex items-center gap-4 mb-3">
                 <div>
-                    <div className="text-3xl font-bold text-slate-900">{totalSuppliers}</div>
+                    <div className="text-3xl font-medium text-slate-900">{totalSuppliers}</div>
                     <div className="text-xs text-slate-500">Total suppliers</div>
                 </div>
                 <div className="flex-1 h-px bg-slate-200" />
                 <div className="text-right">
-                    <div className="text-xl font-semibold text-red-600">{highRiskPercent}%</div>
+                    <div className="text-xl font-medium text-red-600">{highRiskPercent}%</div>
                     <div className="text-xs text-slate-500">High risk</div>
                 </div>
             </div>

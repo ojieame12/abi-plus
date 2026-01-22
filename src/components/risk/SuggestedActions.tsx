@@ -104,7 +104,7 @@ export const QuickPrompts = ({
     return (
         <div className="space-y-3">
             {title && (
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest pl-1">
+                <div className="text-[10px] font-medium text-slate-400 uppercase tracking-widest pl-1">
                     {title}
                 </div>
             )}

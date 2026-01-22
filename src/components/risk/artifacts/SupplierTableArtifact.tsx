@@ -163,7 +163,7 @@ export const SupplierTableArtifact = ({
                         <Filter size={14} strokeWidth={1.5} />
                         Filters
                         {activeFilterCount > 0 && (
-                            <span className="ml-0.5 w-4 h-4 flex items-center justify-center bg-violet-600 text-white text-[10px] font-bold rounded-full">
+                            <span className="ml-0.5 w-4 h-4 flex items-center justify-center bg-violet-600 text-white text-[10px] font-medium rounded-full">
                                 {activeFilterCount}
                             </span>
                         )}

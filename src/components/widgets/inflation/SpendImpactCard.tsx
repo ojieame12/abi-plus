@@ -64,7 +64,7 @@ export const SpendImpactCard = ({
             ${isIncrease ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}
           `}>
             {isIncrease ? <TrendingUp size={14} strokeWidth={1.5} /> : <TrendingDown size={14} strokeWidth={1.5} />}
-            <span className="text-sm font-semibold">
+            <span className="text-sm font-medium">
               {isIncrease ? '+' : ''}{impactPercent}%
             </span>
           </div>
@@ -85,7 +85,7 @@ export const SpendImpactCard = ({
               <span className="text-xs text-amber-600 capitalize">{mostAffected.type}</span>
               <p className="text-sm font-medium text-amber-800">{mostAffected.name}</p>
             </div>
-            <span className="text-sm font-semibold text-amber-700">{mostAffected.impact}</span>
+            <span className="text-sm font-medium text-amber-700">{mostAffected.impact}</span>
           </div>
         </div>
       </div>
@@ -133,7 +133,7 @@ export const SpendImpactCard = ({
           {beroeSourceCount > 0 && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-white">B</span>
+                <span className="text-[8px] font-medium text-white">B</span>
               </div>
               <span>{beroeSourceCount} Beroe Data Sources</span>
             </div>

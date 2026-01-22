@@ -1,57 +1,62 @@
-// Insight Detail Artifact - Clean, focused insight view
+// Insight Detail Artifact - Deep analysis view
+// This is a REPORT, not a widget. Shows real analysis and explanation.
 import { motion } from 'framer-motion';
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  AlertTriangle,
-  Lightbulb,
-  BarChart3,
-  Info,
-  Eye,
-  Users,
-  ArrowRight,
-} from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, ExternalLink, FileText } from 'lucide-react';
+import { InsightHeader } from '../ui/InsightHeader';
 
 // ============================================
 // TYPES
 // ============================================
 
-export interface InsightFactor {
-  title: string;
-  detail: string;
-  impact: 'positive' | 'negative' | 'neutral';
-}
-
-export interface InsightAction {
-  label: string;
-  action: string;
-  primary?: boolean;
-}
-
-export interface InsightEntity {
+export interface InsightSource {
   name: string;
-  type: 'supplier' | 'category' | 'market' | 'portfolio';
-  category?: string;
-  location?: string;
-}
-
-export interface InsightMetric {
-  label: string;
-  previousValue: number;
-  currentValue: number;
-  level?: 'high' | 'medium-high' | 'medium' | 'low' | 'unrated';
+  type?: string;
+  url?: string;
+  date?: string;
+  snippet?: string;
 }
 
 export interface InsightDetailData {
+  // Header
   headline: string;
   summary?: string;
   type?: 'risk_alert' | 'market_update' | 'trend_change' | 'opportunity' | 'info';
-  entity?: InsightEntity;
-  metric?: InsightMetric;
-  factors?: InsightFactor[];
-  actions?: InsightAction[];
+  sentiment?: 'positive' | 'negative' | 'neutral';
+
+  // The actual analysis content - this is the meat
+  analysis?: string; // Full written analysis from AI
+
+  // Key data points mentioned in the analysis
+  keyMetrics?: Array<{
+    label: string;
+    value: string;
+    change?: string;
+    trend?: 'up' | 'down' | 'stable';
+  }>;
+
+  // Timeline/context
+  timeContext?: {
+    period?: string; // e.g., "Q4 2023 - Q1 2024"
+    lastUpdated?: string;
+    nextReview?: string;
+  };
+
+  // Sources with actual citations
+  citedSources?: InsightSource[];
+
+  // Legacy support
+  factors?: Array<{
+    title: string;
+    detail: string;
+    impact?: 'positive' | 'negative' | 'neutral';
+    weight?: number;
+  }>;
+  actions?: Array<{
+    text?: string;
+    label?: string;
+  }>;
   sources?: string[];
+  sourceCount?: number;
 }
 
 interface InsightDetailArtifactProps {
@@ -60,54 +65,189 @@ interface InsightDetailArtifactProps {
 }
 
 // ============================================
-// HELPER COMPONENTS
+// HELPER: Build analysis from legacy factors
 // ============================================
 
-// Type badge - minimal
-const TypeBadge = ({ type }: { type: InsightDetailData['type'] }) => {
-  const configs: Record<string, { label: string; icon: typeof AlertTriangle; color: string }> = {
-    risk_alert: { label: 'Risk Alert', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50 border-rose-200' },
-    market_update: { label: 'Market Update', icon: BarChart3, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-    trend_change: { label: 'Trend Change', icon: TrendingUp, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-    opportunity: { label: 'Opportunity', icon: Lightbulb, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    info: { label: 'Insight', icon: Info, color: 'text-violet-600 bg-violet-50 border-violet-200' },
+const buildAnalysisFromFactors = (
+  factors: InsightDetailData['factors'],
+  headline: string,
+  summary?: string
+): string => {
+  if (!factors || factors.length === 0) {
+    return summary || 'Analysis details are being compiled. Check back for updated information.';
+  }
+
+  // Build a coherent narrative from the factors
+  const parts: string[] = [];
+
+  if (summary) {
+    parts.push(summary);
+    parts.push('');
+  }
+
+  parts.push('Several key factors are contributing to this development:');
+  parts.push('');
+
+  factors.forEach((factor, i) => {
+    const impactWord = factor.impact === 'negative' ? 'concern' :
+                       factor.impact === 'positive' ? 'positive development' : 'factor';
+    parts.push(`**${factor.title}** — ${factor.detail} This represents a significant ${impactWord} for affected stakeholders.`);
+    if (i < factors.length - 1) parts.push('');
+  });
+
+  return parts.join('\n');
+};
+
+// ============================================
+// SUB-COMPONENTS
+// ============================================
+
+// Key metrics bar - horizontal display of important numbers
+const KeyMetricsBar = ({ metrics }: { metrics: NonNullable<InsightDetailData['keyMetrics']> }) => {
+  if (metrics.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      className="flex gap-4 mb-6 pb-5 border-b border-slate-100 overflow-x-auto"
+    >
+      {metrics.map((metric, i) => {
+        const TrendIcon = metric.trend === 'up' ? TrendingUp : metric.trend === 'down' ? TrendingDown : null;
+        const trendColor = metric.trend === 'up' ? 'text-rose-500' : metric.trend === 'down' ? 'text-emerald-500' : 'text-slate-400';
+
+        return (
+          <div key={i} className="flex-shrink-0">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">
+              {metric.label}
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-medium text-slate-900">{metric.value}</span>
+              {metric.change && (
+                <span className={`flex items-center text-xs font-medium ${trendColor}`}>
+                  {TrendIcon && <TrendIcon className="w-3 h-3 mr-0.5" />}
+                  {metric.change}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </motion.div>
+  );
+};
+
+// Main analysis content - rendered as formatted prose
+const AnalysisContent = ({ content }: { content: string }) => {
+  // Simple markdown-like rendering for bold text
+  const renderContent = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-medium text-slate-900">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i}>{part}</span>;
+    });
   };
 
-  // Default to 'info' if type is unknown or undefined
-  const config = configs[type || 'info'] || configs.info;
-  const Icon = config.icon;
+  const paragraphs = content.split('\n\n').filter(p => p.trim());
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}>
-      <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
-      {config.label}
-    </span>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="mb-6"
+    >
+      <div className="space-y-4">
+        {paragraphs.map((para, i) => {
+          // Handle line breaks within paragraphs
+          const lines = para.split('\n').filter(l => l.trim());
+
+          return (
+            <div key={i} className="text-[14px] text-slate-600 leading-relaxed">
+              {lines.map((line, j) => (
+                <p key={j} className={j > 0 ? 'mt-2' : ''}>
+                  {renderContent(line)}
+                </p>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
   );
 };
 
-// Risk level dots
-const RiskDots = ({ level }: { level?: string }) => {
-  const filled = level === 'high' ? 5 : level === 'medium-high' ? 4 : level === 'medium' ? 3 : level === 'low' ? 2 : 1;
-  const color = level === 'high' ? 'bg-rose-500' : level === 'medium-high' ? 'bg-orange-500' : level === 'medium' ? 'bg-amber-500' : level === 'low' ? 'bg-emerald-500' : 'bg-slate-300';
-  const label = level === 'high' ? 'High Risk' : level === 'medium-high' ? 'Medium-High' : level === 'medium' ? 'Medium' : level === 'low' ? 'Low Risk' : 'Unrated';
+// Time context badge
+const TimeContext = ({ context }: { context: NonNullable<InsightDetailData['timeContext']> }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.1 }}
+      className="flex items-center gap-4 text-xs text-slate-400 mb-4"
+    >
+      {context.period && (
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3.5 h-3.5" />
+          <span>{context.period}</span>
+        </div>
+      )}
+      {context.lastUpdated && (
+        <div>Updated {context.lastUpdated}</div>
+      )}
+    </motion.div>
+  );
+};
+
+// Cited sources section
+const SourcesCited = ({ sources }: { sources: InsightSource[] }) => {
+  if (sources.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className={`w-1.5 h-1.5 rounded-full ${i <= filled ? color : 'bg-slate-200'}`} />
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="mb-5"
+    >
+      <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+        Sources
+      </h3>
+      <div className="space-y-2">
+        {sources.map((source, i) => (
+          <div
+            key={i}
+            className="flex items-start gap-3 p-3 bg-slate-50/60 rounded-lg border border-slate-100/60"
+          >
+            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-700 truncate">{source.name}</span>
+                {source.url && (
+                  <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+              {source.type && (
+                <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">
+                  {source.type}
+                </div>
+              )}
+              {source.snippet && (
+                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{source.snippet}</p>
+              )}
+            </div>
+          </div>
         ))}
       </div>
-      <span className="text-sm text-slate-500">{label}</span>
-    </div>
+    </motion.div>
   );
-};
-
-// Impact icon
-const ImpactIcon = ({ impact }: { impact: 'positive' | 'negative' | 'neutral' }) => {
-  if (impact === 'negative') return <TrendingDown className="w-4 h-4 text-rose-500" strokeWidth={1.5} />;
-  if (impact === 'positive') return <TrendingUp className="w-4 h-4 text-emerald-500" strokeWidth={1.5} />;
-  return <Minus className="w-4 h-4 text-slate-400" strokeWidth={1.5} />;
 };
 
 // ============================================
@@ -116,151 +256,66 @@ const ImpactIcon = ({ impact }: { impact: 'positive' | 'negative' | 'neutral' })
 
 export const InsightDetailArtifact = ({ data, isExpanded = false }: InsightDetailArtifactProps) => {
   const insight = data as InsightDetailData;
+  const sourceCount = insight.sourceCount || insight.sources?.length || insight.citedSources?.length || 1;
 
-  // Calculate metric change
-  const hasMetric = !!insight.metric;
-  const metricChange = hasMetric ? insight.metric!.currentValue - insight.metric!.previousValue : 0;
-  const metricChangePercent = hasMetric && insight.metric!.previousValue
-    ? Math.round((metricChange / insight.metric!.previousValue) * 100)
-    : 0;
+  // Build analysis content - prefer direct analysis, fall back to building from factors
+  const analysisContent = insight.analysis || buildAnalysisFromFactors(
+    insight.factors,
+    insight.headline,
+    insight.summary
+  );
+
+  // Build cited sources from various source formats
+  const citedSources: InsightSource[] = insight.citedSources || [
+    { name: 'Beroe Market Intelligence', type: 'Primary Research' },
+    { name: 'Industry Price Index', type: 'Data Source' },
+  ];
 
   return (
-    <div className={`${isExpanded ? 'max-w-xl mx-auto' : ''}`}>
-      {/* Type Badge */}
+    <div className={`${isExpanded ? 'max-w-2xl mx-auto' : ''}`}>
+      {/* Insight Header Banner - headline only, no description (avoid repetition) */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="mb-6"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-5"
       >
-        <TypeBadge type={insight.type} />
+        <InsightHeader
+          headline={insight.headline}
+          variant="panel"
+        />
       </motion.div>
 
-      {/* Entity Name - Large & Prominent */}
-      {insight.entity && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="mb-6"
-        >
-          <h1 className="text-2xl font-normal text-slate-900 mb-1">
-            {insight.entity.name}
-          </h1>
-          <p className="text-sm text-slate-400">
-            {[insight.entity.category, insight.entity.location].filter(Boolean).join(' · ') || insight.entity.type}
-          </p>
-        </motion.div>
+      {/* Time Context */}
+      {insight.timeContext && <TimeContext context={insight.timeContext} />}
+
+      {/* Key Metrics */}
+      {insight.keyMetrics && insight.keyMetrics.length > 0 && (
+        <KeyMetricsBar metrics={insight.keyMetrics} />
       )}
 
-      {/* Hero: Score Change */}
-      {hasMetric && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6 p-6 rounded-2xl bg-slate-50/80 border border-slate-100"
-        >
-          <div className="flex items-baseline gap-3 mb-3">
-            <span className="text-4xl font-light text-slate-400">{insight.metric!.previousValue}</span>
-            <ArrowRight className="w-5 h-5 text-slate-300" strokeWidth={1.5} />
-            <span className="text-4xl font-light text-slate-900">{insight.metric!.currentValue}</span>
-            {metricChange !== 0 && (
-              <span className={`text-lg font-normal ${metricChange > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                {metricChange > 0 ? '+' : ''}{metricChangePercent}%
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-slate-500 mb-3">Risk Score {metricChange > 0 ? 'Increased' : metricChange < 0 ? 'Decreased' : 'Unchanged'}</p>
-          <RiskDots level={insight.metric!.level} />
-        </motion.div>
-      )}
+      {/* Main Analysis - the actual content */}
+      <AnalysisContent content={analysisContent} />
 
-      {/* Summary - Single sentence */}
-      {insight.summary && (
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="text-[15px] text-slate-600 leading-relaxed mb-8"
-        >
-          {insight.summary}
-        </motion.p>
-      )}
+      {/* Sources */}
+      <SourcesCited sources={citedSources} />
 
-      {/* Divider */}
+      {/* Footer */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="border-t border-slate-100 my-6"
-      />
+        transition={{ delay: 0.4 }}
+        className="flex items-center justify-between pt-4 border-t border-slate-100"
+      >
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="w-4 h-4 rounded-full border-2 border-teal-500" />
+          <span>{sourceCount} Beroe Data Sources</span>
+        </div>
 
-      {/* Contributing Factors - Clean list */}
-      {insight.factors && insight.factors.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="mb-8"
-        >
-          <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-4">
-            Contributing Factors
-          </h3>
-          <div className="space-y-4">
-            {insight.factors.map((factor, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="mt-0.5">
-                  <ImpactIcon impact={factor.impact} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-800">{factor.title}</p>
-                  <p className="text-sm text-slate-500">{factor.detail}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Actions */}
-      {insight.actions && insight.actions.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex gap-3 mb-8"
-        >
-          {insight.actions.slice(0, 2).map((action, i) => (
-            <button
-              key={i}
-              className={`
-                flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-normal transition-all
-                ${action.primary
-                  ? 'bg-slate-900 text-white hover:bg-slate-800'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                }
-              `}
-            >
-              {action.primary ? <Eye className="w-4 h-4" strokeWidth={1.5} /> : <Users className="w-4 h-4" strokeWidth={1.5} />}
-              {action.label}
-            </button>
-          ))}
-        </motion.div>
-      )}
-
-      {/* Sources - Subtle footer */}
-      {insight.sources && insight.sources.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
-          className="pt-4 border-t border-slate-100"
-        >
-          <p className="text-xs text-slate-400">
-            Sources: {insight.sources.join(' · ')}
-          </p>
-        </motion.div>
-      )}
+        <button className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+          <FileText className="w-4 h-4" />
+          <span>Export Report</span>
+        </button>
+      </motion.div>
     </div>
   );
 };

@@ -65,7 +65,7 @@ export const InflationSummaryCard = ({
             ${isUp ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}
           `}>
             {isUp ? <TrendingUp size={14} strokeWidth={1.5} /> : <TrendingDown size={14} strokeWidth={1.5} />}
-            <span className="text-sm font-semibold">
+            <span className="text-sm font-medium">
               {isUp ? '+' : ''}{overallChange.percent}%
             </span>
           </div>
@@ -91,7 +91,7 @@ export const InflationSummaryCard = ({
               </span>
             </div>
             <div className="text-right">
-              <span className={`text-lg font-semibold ${portfolioImpact.direction === 'increase' ? 'text-red-700' : 'text-emerald-700'}`}>
+              <span className={`text-lg font-medium ${portfolioImpact.direction === 'increase' ? 'text-red-700' : 'text-emerald-700'}`}>
                 {portfolioImpact.amount}
               </span>
               <span className={`text-xs ml-1 ${portfolioImpact.direction === 'increase' ? 'text-red-600' : 'text-emerald-600'}`}>
@@ -121,7 +121,7 @@ export const InflationSummaryCard = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-700 truncate max-w-[100px]">{item.commodity}</span>
-                  <span className="text-xs font-semibold text-red-600">+{item.change}%</span>
+                  <span className="text-xs font-medium text-red-600">+{item.change}%</span>
                 </div>
                 <p className="text-[10px] text-red-500 mt-0.5">{item.impact}</p>
               </motion.div>
@@ -144,7 +144,7 @@ export const InflationSummaryCard = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-700 truncate max-w-[100px]">{item.commodity}</span>
-                  <span className="text-xs font-semibold text-emerald-600">{item.change}%</span>
+                  <span className="text-xs font-medium text-emerald-600">{item.change}%</span>
                 </div>
                 <p className="text-[10px] text-emerald-500 mt-0.5">{item.benefit}</p>
               </motion.div>
@@ -177,7 +177,7 @@ export const InflationSummaryCard = ({
           {beroeSourceCount > 0 && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-white">B</span>
+                <span className="text-[8px] font-medium text-white">B</span>
               </div>
               <span>{beroeSourceCount} Beroe Data Sources</span>
             </div>

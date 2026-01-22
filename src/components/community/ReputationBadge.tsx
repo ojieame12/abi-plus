@@ -123,19 +123,19 @@ const SIZE_CLASSES: Record<BadgeSize, { pill: string; icon: string; text: string
   sm: {
     pill: 'px-2 py-1 gap-1',
     icon: 'w-3 h-3',
-    text: 'text-xs font-semibold',
+    text: 'text-xs font-medium',
     label: 'text-[10px]',
   },
   md: {
     pill: 'px-3 py-1.5 gap-1.5',
     icon: 'w-4 h-4',
-    text: 'text-sm font-semibold',
+    text: 'text-sm font-medium',
     label: 'text-xs',
   },
   lg: {
     pill: 'px-4 py-2 gap-2',
     icon: 'w-5 h-5',
-    text: 'text-base font-semibold',
+    text: 'text-base font-medium',
     label: 'text-sm',
   },
 };

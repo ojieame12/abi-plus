@@ -235,7 +235,7 @@ function LeaderboardRow({
           value={entry.periodReputation ?? entry.reputation}
           format
           className={`
-            text-sm font-semibold tabular-nums
+            text-sm font-medium tabular-nums
             ${isTopThree ? 'text-slate-900' : 'text-slate-700'}
           `}
         />

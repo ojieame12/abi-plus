@@ -104,7 +104,7 @@ export const SupplierDetailArtifact = ({
                             <ChevronLeft size={20} />
                         </button>
                     )}
-                    <span className="font-semibold text-[#1d1d1f] tracking-tight">Supplier Details</span>
+                    <span className="font-medium text-[#1d1d1f] tracking-tight">Supplier Details</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-slate-600">
@@ -188,7 +188,7 @@ const OverviewTab = ({
         {/* Supplier Header */}
         <div className="flex items-start justify-between">
             <div>
-                <h2 className="text-2xl font-bold text-[#1d1d1f] mb-1 tracking-tight">{supplier?.name || 'Unknown Supplier'}</h2>
+                <h2 className="text-2xl font-medium text-[#1d1d1f] mb-1 tracking-tight">{supplier?.name || 'Unknown Supplier'}</h2>
                 <div className="flex items-center gap-2 text-[13px] text-slate-500 font-medium">
                     <span>{supplier?.category || 'Unknown Category'}</span>
                     <span>·</span>
@@ -227,15 +227,15 @@ const OverviewTab = ({
                 <div className="flex-1 border-l border-slate-100 pl-8">
                     <div className="grid grid-cols-2 gap-y-6 gap-x-8">
                         <div>
-                            <div className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Total Spend</div>
+                            <div className="text-[11px] uppercase tracking-widest font-medium text-slate-400 mb-1">Total Spend</div>
                             <div className="text-xl font-medium text-[#1d1d1f] tracking-tight">{supplier?.spendFormatted || '—'}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Criticality</div>
+                            <div className="text-[11px] uppercase tracking-widest font-medium text-slate-400 mb-1">Criticality</div>
                             <div className="text-xl font-medium text-[#1d1d1f] tracking-tight capitalize">{supplier?.criticality || '—'}</div>
                         </div>
                         <div className="col-span-2">
-                             <div className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Risk Summary</div>
+                             <div className="text-[11px] uppercase tracking-widest font-medium text-slate-400 mb-1">Risk Summary</div>
                              <p className="text-[13px] text-slate-600 leading-relaxed">
                                 {riskFactors.length > 0 ? (
                                     <>Score calculated from {riskFactors.length} weighted factors.</>
@@ -285,7 +285,7 @@ const FactorsTab = ({ factors, onViewDashboard }: { factors: RiskFactor[]; onVie
                 <p className="text-[13px] text-violet-900">
                     Showing <strong>{factors.length}</strong> factors. Detailed scoring logic is available in the dashboard.
                 </p>
-                <button onClick={onViewDashboard} className="text-xs font-semibold text-violet-700 hover:text-violet-800 whitespace-nowrap">
+                <button onClick={onViewDashboard} className="text-xs font-medium text-violet-700 hover:text-violet-800 whitespace-nowrap">
                     View Logic
                 </button>
             </div>
@@ -293,7 +293,7 @@ const FactorsTab = ({ factors, onViewDashboard }: { factors: RiskFactor[]; onVie
             {Object.entries(groupedFactors).map(([category, categoryFactors]) => (
                 categoryFactors.length > 0 && (
                     <div key={category}>
-                        <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3 pl-1">
+                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest mb-3 pl-1">
                             {categoryLabels[category as keyof typeof categoryLabels]}
                         </h4>
                         <div className="space-y-2">
@@ -378,7 +378,7 @@ const HistoryTab = ({ history }: { history: HistoryPoint[] }) => (
                 <div key={i} className="flex items-center gap-4">
                     <div className="w-20 text-xs text-slate-500">{point.date}</div>
                     <div className="flex items-center gap-2">
-                        <span className={`font-semibold ${
+                        <span className={`font-medium ${
                             point.level === 'high' ? 'text-red-600' :
                             point.level === 'medium-high' ? 'text-orange-600' :
                             point.level === 'medium' ? 'text-yellow-600' :

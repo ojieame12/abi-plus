@@ -68,7 +68,7 @@ export const ArtifactSection = ({
           {icon && (
             <span className="text-slate-400">{icon}</span>
           )}
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             {title}
           </h3>
           {badge !== undefined && (

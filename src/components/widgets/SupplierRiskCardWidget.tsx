@@ -185,14 +185,14 @@ export const SupplierRiskCardWidget = ({ data, onViewDetails, beroeSourceCount =
             {isResearched ? (
               <>
                 <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
-                  <span className="text-[8px] font-bold text-white">W</span>
+                  <span className="text-[8px] font-medium text-white">W</span>
                 </div>
                 <span>Web Research</span>
               </>
             ) : beroeSourceCount > 0 ? (
               <>
                 <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                  <span className="text-[8px] font-bold text-white">B</span>
+                  <span className="text-[8px] font-medium text-white">B</span>
                 </div>
                 <span>{beroeSourceCount} Beroe Data Sources</span>
               </>

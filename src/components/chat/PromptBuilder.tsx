@@ -425,7 +425,7 @@ export const PromptBuilder = ({ onSubmit, isDisabled = false }: PromptBuilderPro
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
             <Sparkles size={14} className="text-white" strokeWidth={2} />
           </div>
-          <span className="text-sm font-semibold text-slate-700">Prompt Builder</span>
+          <span className="text-sm font-medium text-slate-700">Prompt Builder</span>
         </div>
         <button
           onClick={() => {
@@ -591,7 +591,7 @@ export const PromptBuilder = ({ onSubmit, isDisabled = false }: PromptBuilderPro
                   w-full flex items-center justify-center gap-2
                   px-4 py-2.5 rounded-xl
                   bg-gradient-to-r from-violet-500 to-purple-500
-                  text-white text-sm font-semibold
+                  text-white text-sm font-medium
                   hover:from-violet-600 hover:to-purple-600
                   disabled:opacity-50 disabled:cursor-not-allowed
                   transition-all duration-200

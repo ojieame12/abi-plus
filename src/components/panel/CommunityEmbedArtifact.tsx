@@ -479,7 +479,7 @@ export const CommunityEmbedArtifact = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       {thread.isHot && (
-                        <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-semibold rounded uppercase">
+                        <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-medium rounded uppercase">
                           Hot
                         </span>
                       )}

@@ -89,7 +89,7 @@ export const ExpertRequestArtifact = ({
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center mb-4">
           <Check className="w-8 h-8 text-amber-600" />
         </div>
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">
+        <h3 className="text-xl font-medium text-slate-900 mb-2">
           Request Submitted!
         </h3>
         <p className="text-slate-600 text-center max-w-sm mb-4">
@@ -112,19 +112,19 @@ export const ExpertRequestArtifact = ({
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-amber-400" />
           <span className="text-amber-400 font-medium text-sm">Expert Network</span>
-          <span className="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[10px] font-semibold rounded uppercase shadow-sm">
+          <span className="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[10px] font-medium rounded uppercase shadow-sm">
             Premium
           </span>
         </div>
 
         {/* Expert Profile */}
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-slate-900 font-bold text-lg">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-slate-900 font-medium text-lg">
             {matchedExpert.name.split(' ').map(n => n[0]).join('')}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-white">{matchedExpert.name}</h3>
+              <h3 className="font-medium text-white">{matchedExpert.name}</h3>
               {matchedExpert.isTopVoice && (
                 <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 rounded text-amber-400 text-[10px] font-medium">
                   <Star className="w-3 h-3" />
