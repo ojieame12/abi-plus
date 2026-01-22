@@ -277,7 +277,7 @@ export function ExpertDashboardView({ onBack }: ExpertDashboardViewProps) {
                   <div className="text-center">
                     <div className="text-lg font-medium text-slate-700 flex items-center justify-center gap-0.5">
                       {earnings.averageRating.toFixed(1)}
-                      <Star className="w-3.5 h-3.5 text-amber-400" fill="currentColor" />
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                     </div>
                     <div className="text-[10px] text-slate-400 uppercase tracking-wide">Rating</div>
                   </div>
