@@ -18,13 +18,14 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           // Split node_modules into vendor chunks
+          // Keep React with all React-dependent libraries to avoid forwardRef issues
           if (id.includes('node_modules')) {
-            if (id.includes('react-dom') || id.includes('/react/')) {
+            // React core + all React-dependent chart libraries together
+            if (id.includes('react-dom') || id.includes('/react/') ||
+                id.includes('recharts') || id.includes('d3-')) {
               return 'vendor-react'
             }
-            if (id.includes('recharts') || id.includes('d3-')) {
-              return 'vendor-charts'
-            }
+            // UI libraries that also need React
             if (id.includes('lucide-react') || id.includes('framer-motion')) {
               return 'vendor-ui'
             }
