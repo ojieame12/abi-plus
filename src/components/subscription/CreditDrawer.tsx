@@ -1,5 +1,5 @@
 // CreditDrawer - Detailed subscription panel that slides out from the right
-// Shows credit balance, slot usage, recent transactions, and tier info
+// Redesigned with Expert Dashboard floating card aesthetic
 
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,11 @@ import {
   Users,
   Briefcase,
   HelpCircle,
+  Zap,
 } from 'lucide-react';
+
+// Shared shadow for floating card aesthetic
+const cardShadow = '0 4px 20px -8px rgba(148, 163, 184, 0.15)';
 import {
   type CompanySubscription,
   type CreditTransaction,
@@ -57,41 +61,53 @@ interface CreditDrawerProps {
   onRetry?: () => void;
 }
 
-// Loading skeleton component
+// Loading skeleton component - Floating card style
 function CreditDrawerSkeleton() {
   return (
-    <div className="px-6 py-5 space-y-6">
+    <div className="p-4 space-y-4">
       {/* Credit balance skeleton */}
-      <div className="p-5 rounded-2xl bg-slate-50">
-        <SkeletonLoader width={100} height={14} className="mb-2" />
+      <div
+        className="p-5 rounded-[20px] bg-white border border-slate-100/60"
+        style={{ boxShadow: cardShadow }}
+      >
+        <SkeletonLoader width={100} height={12} className="mb-3" />
         <SkeletonLoader width={150} height={32} className="mb-2" />
-        <SkeletonLoader width={120} height={14} className="mb-4" />
-        <SkeletonLoader width="100%" height={10} rounded="full" />
+        <SkeletonLoader width={120} height={14} className="mb-5" />
+        <SkeletonLoader width="100%" height={8} rounded="full" />
+        <div className="mt-4 pt-4 border-t border-slate-100/60">
+          <SkeletonLoader width={160} height={14} />
+        </div>
       </div>
 
       {/* Slot summary skeleton */}
-      <div className="p-5 rounded-xl bg-slate-50">
-        <div className="flex items-center justify-between mb-3">
-          <SkeletonLoader width={140} height={16} />
-          <SkeletonLoader width={80} height={16} />
+      <div
+        className="p-5 rounded-[20px] bg-white border border-slate-100/60"
+        style={{ boxShadow: cardShadow }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <SkeletonLoader width={100} height={12} />
+          <SkeletonLoader width={80} height={14} />
         </div>
-        <SkeletonLoader width="100%" height={8} rounded="full" className="mb-3" />
+        <SkeletonLoader width="100%" height={8} rounded="full" className="mb-4" />
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3, 4].map(i => (
-            <SkeletonLoader key={i} width={80} height={24} rounded="lg" />
+            <SkeletonLoader key={i} width={80} height={28} rounded="xl" />
           ))}
         </div>
       </div>
 
       {/* Transactions skeleton */}
-      <div>
-        <SkeletonLoader width={120} height={16} className="mb-3" />
-        <div className="space-y-2">
+      <div
+        className="p-5 rounded-[20px] bg-white border border-slate-100/60"
+        style={{ boxShadow: cardShadow }}
+      >
+        <SkeletonLoader width={100} height={12} className="mb-4" />
+        <div className="space-y-3">
           {[1, 2, 3].map(i => (
             <div key={i} className="flex items-center gap-3 p-3">
-              <SkeletonLoader width={40} height={40} rounded="lg" />
+              <SkeletonLoader width={44} height={44} rounded="xl" />
               <div className="flex-1">
-                <SkeletonLoader width={160} height={14} className="mb-1" />
+                <SkeletonLoader width={160} height={14} className="mb-2" />
                 <SkeletonLoader width={80} height={12} />
               </div>
               <SkeletonLoader width={60} height={14} />
@@ -103,23 +119,30 @@ function CreditDrawerSkeleton() {
   );
 }
 
-// Error state component
+// Error state component - Floating card style
 function CreditDrawerError({ error, onRetry }: { error: string | null; onRetry?: () => void }) {
   return (
-    <div className="px-6 py-12 text-center">
-      <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center">
-        <X className="w-6 h-6 text-red-500" />
-      </div>
-      <h3 className="text-base font-medium text-primary mb-2">Failed to load</h3>
-      <p className="text-sm text-secondary mb-4">{error || 'Unable to load subscription data'}</p>
-      {onRetry && (
-        <button
-          onClick={onRetry}
-          className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-primary transition-colors"
+    <div className="p-4">
+      <div
+        className="px-6 py-10 rounded-[20px] bg-white border border-slate-100/60 text-center"
+        style={{ boxShadow: cardShadow }}
+      >
+        <div
+          className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-red-50 flex items-center justify-center"
         >
-          Try again
-        </button>
-      )}
+          <X className="w-7 h-7 text-red-500" />
+        </div>
+        <h3 className="text-base font-medium text-slate-600 mb-2">Failed to load</h3>
+        <p className="text-sm text-slate-400 mb-5">{error || 'Unable to load subscription data'}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-600 transition-colors"
+          >
+            Try again
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -186,36 +209,47 @@ export function CreditDrawer({
             aria-hidden="true"
           />
 
-          {/* Drawer */}
+          {/* Drawer - Redesigned with bg-[#fafafa] and floating card aesthetic */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-[#fafafa] shadow-2xl z-50 flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-labelledby="credit-drawer-title"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${colors.light}`}>
-                  <Coins className={`w-5 h-5 ${colors.text}`} />
-                </div>
-                <div>
-                  <h2 id="credit-drawer-title" className="text-lg font-medium text-primary">Subscription</h2>
-                  <p className="text-xs text-secondary">{subscription.tierConfig.name} Plan</p>
+            {/* Header - Gradient hero style */}
+            <div className="relative overflow-hidden">
+              <div className={`absolute inset-0 ${
+                creditStatus === 'healthy'
+                  ? 'bg-gradient-to-br from-emerald-100 via-slate-50 to-teal-50'
+                  : creditStatus === 'warning'
+                  ? 'bg-gradient-to-br from-amber-100 via-slate-50 to-orange-50'
+                  : 'bg-gradient-to-br from-red-100 via-slate-50 to-pink-50'
+              }`} />
+              <div className="relative px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl bg-white shadow-sm border border-white/60`}>
+                      <Coins className={`w-5 h-5 ${colors.text}`} />
+                    </div>
+                    <div>
+                      <h2 id="credit-drawer-title" className="text-lg font-medium text-slate-700">Subscription</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">{subscription.tierConfig.name} Plan</p>
+                    </div>
+                  </div>
+                  <button
+                    ref={closeButtonRef}
+                    onClick={onClose}
+                    aria-label="Close subscription drawer"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 bg-white/60 hover:bg-white transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              <button
-                ref={closeButtonRef}
-                onClick={onClose}
-                aria-label="Close subscription drawer"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
             {/* Content */}
@@ -228,48 +262,52 @@ export function CreditDrawer({
 
               {/* Normal content */}
               {!isLoading && !error && (
-                <>
-              {/* Credit Balance Card */}
-              <div className="px-6 py-5">
-                <div className={`p-5 rounded-2xl ${colors.light}`}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-slate-500 mb-1">Available Credits</p>
-                      <p className={`text-3xl font-light ${colors.text} tabular-nums`}>
-                        {formatCredits(subscription.remainingCredits)}
-                      </p>
-                      <p className="text-sm text-slate-500 mt-1">
-                        of {formatCredits(subscription.totalCredits)} total
-                      </p>
-                    </div>
-                    <div className={`px-3 py-1.5 rounded-full ${colors.bg} text-white text-sm font-medium`}>
-                      {creditPercentage}% left
-                    </div>
+                <div className="p-4 space-y-4">
+              {/* Credit Balance Card - Floating card style */}
+              <div
+                className="p-5 rounded-[20px] bg-white border border-slate-100/60"
+                style={{ boxShadow: cardShadow }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1.5">Available Credits</p>
+                    <p className={`text-3xl font-light ${colors.text} tabular-nums`}>
+                      {formatCredits(subscription.remainingCredits)}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      of {formatCredits(subscription.totalCredits)} total
+                    </p>
                   </div>
+                  <div className={`px-3 py-1.5 rounded-full ${colors.bg} text-white text-xs font-medium`}>
+                    {creditPercentage}%
+                  </div>
+                </div>
 
-                  {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="h-2.5 bg-white/80 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${creditPercentage}%` }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                        className={`h-full ${colors.bg} rounded-full`}
-                      />
-                    </div>
+                {/* Progress bar */}
+                <div className="mt-5">
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${creditPercentage}%` }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                      className={`h-full ${colors.bg} rounded-full`}
+                    />
                   </div>
+                </div>
 
-                  {/* Renewal info */}
-                  <div className="flex items-center gap-2 mt-4 text-sm text-slate-600">
-                    <Calendar className="w-4 h-4" />
-                    <span>{subscription.daysRemaining} days until renewal</span>
-                  </div>
+                {/* Renewal info */}
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100/60">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-500">{subscription.daysRemaining} days until renewal</span>
                 </div>
               </div>
 
               {/* Slot Usage - Using SlotAllowanceCard component */}
               {slotSummary && (
-                <div className="px-6 pb-5">
+                <div
+                  className="rounded-[20px] bg-white border border-slate-100/60 overflow-hidden"
+                  style={{ boxShadow: cardShadow }}
+                >
                   <SlotAllowanceCard
                     slotSummary={slotSummary}
                     variant="default"
@@ -280,17 +318,20 @@ export function CreditDrawer({
                 </div>
               )}
 
-              {/* Credit Costs Reference */}
-              <div className="px-6 pb-5">
-                <h3 className="text-sm font-medium text-primary mb-3">Credit Costs</h3>
-                <div className="grid grid-cols-2 gap-2">
+              {/* Credit Costs Reference - Floating card style */}
+              <div
+                className="p-5 rounded-[20px] bg-white border border-slate-100/60"
+                style={{ boxShadow: cardShadow }}
+              >
+                <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-4">Credit Costs</h3>
+                <div className="grid grid-cols-2 gap-3">
                   {Object.entries(CREDIT_COSTS).slice(0, 4).map(([key, cost]) => (
                     <div
                       key={key}
-                      className="px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-100"
+                      className="px-3.5 py-3 rounded-xl bg-slate-50/80 border border-slate-100/60"
                     >
                       <p className="text-xs text-slate-500 truncate">{cost.label}</p>
-                      <p className="text-sm font-medium text-primary tabular-nums mt-0.5">
+                      <p className="text-sm font-medium text-slate-700 tabular-nums mt-1">
                         {formatCredits(cost.typical)} credits
                       </p>
                     </div>
@@ -298,10 +339,13 @@ export function CreditDrawer({
                 </div>
               </div>
 
-              {/* Recent Transactions */}
-              <div className="px-6 pb-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-primary">Recent Activity</h3>
+              {/* Recent Transactions - Floating card style */}
+              <div
+                className="p-5 rounded-[20px] bg-white border border-slate-100/60"
+                style={{ boxShadow: cardShadow }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide">Recent Activity</h3>
                   {transactions.length > 0 && (
                     <button
                       onClick={onViewAllTransactions}
@@ -323,14 +367,14 @@ export function CreditDrawer({
                       return (
                         <div
                           key={txn.id}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors"
+                          className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50/80 transition-colors"
                         >
-                          <div className={`p-2 rounded-lg ${isCredit ? 'bg-emerald-50' : 'bg-slate-100'}`}>
+                          <div className={`p-2.5 rounded-xl ${isCredit ? 'bg-emerald-50' : 'bg-slate-100'}`}>
                             <Icon className={`w-4 h-4 ${isCredit ? 'text-emerald-500' : 'text-slate-500'}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-primary truncate">{txn.description}</p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-sm text-slate-600 truncate">{txn.description}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">
                               {new Date(txn.createdAt).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -344,7 +388,7 @@ export function CreditDrawer({
                               <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
                             )}
                             <span className={`text-sm font-medium tabular-nums ${
-                              isCredit ? 'text-emerald-600' : 'text-primary'
+                              isCredit ? 'text-emerald-600' : 'text-slate-600'
                             }`}>
                               {isCredit ? '+' : ''}{formatCredits(txn.amount)}
                             </span>
@@ -355,22 +399,27 @@ export function CreditDrawer({
                   )}
                 </div>
               </div>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-              <button
-                onClick={onContactSales}
-                className="w-full py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            {/* Footer - Floating card style */}
+            <div className="p-4">
+              <div
+                className="px-5 py-4 rounded-2xl bg-white border border-slate-100/60"
+                style={{ boxShadow: cardShadow }}
               >
-                <TrendingUp className="w-4 h-4" />
-                Add More Credits
-              </button>
-              <p className="text-xs text-slate-400 text-center mt-2">
-                Contact your account manager for top-ups
-              </p>
+                <button
+                  onClick={onContactSales}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Zap className="w-4 h-4" />
+                  Add More Credits
+                </button>
+                <p className="text-xs text-slate-400 text-center mt-3">
+                  Contact your account manager for top-ups
+                </p>
+              </div>
             </div>
           </motion.div>
         </>

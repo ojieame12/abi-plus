@@ -1,5 +1,5 @@
 // NotificationDrawer - Slide-out panel showing all notification types
-// Follows the CreditDrawer pattern
+// Redesigned with Expert Dashboard floating card aesthetic
 
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,10 +14,14 @@ import {
   TrendingUp,
   Info,
   CheckCheck,
+  Settings,
 } from 'lucide-react';
 import type { AppNotification, AlertSeverity, BadgeTier, ApprovalStatus } from '../../types/notifications';
 import { formatRelativeTime } from '../../types/notifications';
 import { groupNotificationsByTime } from '../../services/notificationService';
+
+// Shared shadow for floating card aesthetic
+const cardShadow = '0 4px 20px -8px rgba(148, 163, 184, 0.15)';
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -93,20 +97,24 @@ function NotificationItem({ notification, onMarkAsRead, onClick }: NotificationI
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`
-        flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors
-        ${notification.isRead ? 'hover:bg-slate-50' : 'bg-violet-50/50 hover:bg-violet-50'}
+        flex items-start gap-3 p-4 rounded-2xl cursor-pointer transition-all duration-200
+        bg-white border
+        ${notification.isRead
+          ? 'border-slate-100/60 hover:border-slate-200'
+          : 'border-violet-100 hover:border-violet-200 ring-1 ring-violet-50'}
       `}
+      style={{ boxShadow: cardShadow }}
       onClick={handleClick}
     >
       {/* Icon */}
-      <div className={`p-2 rounded-lg shrink-0 ${bg}`}>
+      <div className={`p-2.5 rounded-xl shrink-0 ${bg}`}>
         <Icon className={`w-4 h-4 ${color}`} />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm ${notification.isRead ? 'text-primary' : 'font-medium text-primary'}`}>
+          <p className={`text-sm leading-snug ${notification.isRead ? 'text-slate-600' : 'font-medium text-slate-700'}`}>
             {notification.title}
           </p>
           {/* Unread indicator */}
@@ -114,10 +122,10 @@ function NotificationItem({ notification, onMarkAsRead, onClick }: NotificationI
             <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0 mt-1.5" />
           )}
         </div>
-        <p className="text-xs text-secondary mt-0.5 line-clamp-2">
+        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
           {notification.description}
         </p>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-[11px] text-slate-400 mt-2">
           {formatRelativeTime(notification.timestamp)}
         </p>
       </div>
@@ -125,10 +133,10 @@ function NotificationItem({ notification, onMarkAsRead, onClick }: NotificationI
   );
 }
 
-// Section header for time groups
+// Section header for time groups - Expert Dashboard style
 function SectionHeader({ title }: { title: string }) {
   return (
-    <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider px-3 py-2">
+    <h3 className="text-[11px] font-medium text-slate-400 uppercase tracking-wide px-1 py-3">
       {title}
     </h3>
   );
@@ -185,79 +193,87 @@ export function NotificationDrawer({
             aria-hidden="true"
           />
 
-          {/* Drawer */}
+          {/* Drawer - Redesigned with bg-[#fafafa] and floating card aesthetic */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-[#fafafa] shadow-2xl z-50 flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-labelledby="notification-drawer-title"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-violet-50">
-                  <Bell className="w-5 h-5 text-violet-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 id="notification-drawer-title" className="text-lg font-medium text-primary">
-                      Notifications
-                    </h2>
-                    {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-600 text-xs font-medium">
-                        {unreadCount} new
-                      </span>
-                    )}
+            {/* Header - Gradient hero style */}
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-100 via-slate-50 to-pink-50" />
+              <div className="relative px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-white shadow-sm border border-white/60">
+                      <Bell className="w-5 h-5 text-violet-500" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h2 id="notification-drawer-title" className="text-lg font-medium text-slate-700">
+                          Notifications
+                        </h2>
+                        {unreadCount > 0 && (
+                          <span className="px-2.5 py-1 rounded-full bg-violet-500 text-white text-xs font-medium">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">Stay updated on your activity</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-secondary">Stay updated on your activity</p>
+                  <button
+                    ref={closeButtonRef}
+                    onClick={onClose}
+                    aria-label="Close notifications drawer"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 bg-white/60 hover:bg-white transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
+
+                {/* Actions bar - integrated into header */}
+                {unreadCount > 0 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <button
+                      onClick={onMarkAllAsRead}
+                      className="flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
+                    >
+                      <CheckCheck className="w-4 h-4" />
+                      Mark all as read
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                ref={closeButtonRef}
-                onClick={onClose}
-                aria-label="Close notifications drawer"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
-            {/* Actions bar */}
-            {unreadCount > 0 && (
-              <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/50">
-                <button
-                  onClick={onMarkAllAsRead}
-                  className="flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
-                >
-                  <CheckCheck className="w-4 h-4" />
-                  Mark all as read
-                </button>
-              </div>
-            )}
-
             {/* Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-4">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                    <Bell className="w-8 h-8 text-slate-300" />
+                  <div
+                    className="w-20 h-20 rounded-[20px] bg-white flex items-center justify-center mb-5 border border-slate-100/60"
+                    style={{ boxShadow: cardShadow }}
+                  >
+                    <Bell className="w-9 h-9 text-slate-300" />
                   </div>
-                  <h3 className="text-base font-medium text-primary mb-1">No notifications</h3>
-                  <p className="text-sm text-secondary">
-                    You're all caught up! New notifications will appear here.
+                  <h3 className="text-base font-medium text-slate-600 mb-1.5">All caught up!</h3>
+                  <p className="text-sm text-slate-400 max-w-[240px]">
+                    New notifications will appear here when there's activity on your account.
                   </p>
                 </div>
               ) : (
-                <div className="py-2">
+                <div className="space-y-1">
                   {/* Today */}
                   {grouped.today.length > 0 && (
-                    <div className="mb-2">
+                    <div>
                       <SectionHeader title="Today" />
-                      <div className="px-3 space-y-1">
+                      <div className="space-y-2">
                         {grouped.today.map(notification => (
                           <NotificationItem
                             key={notification.id}
@@ -272,9 +288,9 @@ export function NotificationDrawer({
 
                   {/* Yesterday */}
                   {grouped.yesterday.length > 0 && (
-                    <div className="mb-2">
+                    <div>
                       <SectionHeader title="Yesterday" />
-                      <div className="px-3 space-y-1">
+                      <div className="space-y-2">
                         {grouped.yesterday.map(notification => (
                           <NotificationItem
                             key={notification.id}
@@ -289,9 +305,9 @@ export function NotificationDrawer({
 
                   {/* Earlier */}
                   {grouped.earlier.length > 0 && (
-                    <div className="mb-2">
+                    <div>
                       <SectionHeader title="Earlier" />
-                      <div className="px-3 space-y-1">
+                      <div className="space-y-2">
                         {grouped.earlier.map(notification => (
                           <NotificationItem
                             key={notification.id}
@@ -307,17 +323,22 @@ export function NotificationDrawer({
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-              <button
-                className="w-full py-2.5 px-4 rounded-xl text-slate-600 hover:bg-slate-100 text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                onClick={() => {
-                  // Future: open notification settings
-                  console.log('Notification settings clicked');
-                }}
+            {/* Footer - Floating card style */}
+            <div className="p-4">
+              <div
+                className="px-5 py-4 rounded-2xl bg-white border border-slate-100/60"
+                style={{ boxShadow: cardShadow }}
               >
-                Notification Settings
-              </button>
+                <button
+                  className="w-full flex items-center justify-center gap-2 text-sm text-slate-600 hover:text-violet-600 font-medium transition-colors"
+                  onClick={() => {
+                    console.log('Notification settings clicked');
+                  }}
+                >
+                  <Settings className="w-4 h-4" />
+                  Notification Settings
+                </button>
+              </div>
             </div>
           </motion.div>
         </>
