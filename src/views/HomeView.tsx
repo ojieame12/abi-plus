@@ -5,7 +5,7 @@ import { ChatInput, type BuilderMetadata } from '../components/chat/ChatInput';
 
 interface HomeViewProps {
     onOpenArtifact: () => void;
-    onStartChat?: (question: string, builderMeta?: BuilderMetadata) => void;
+    onStartChat?: (question: string, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean) => void;
     isTransitioning?: boolean;
     selectedQuestion?: string;
 }
@@ -42,11 +42,11 @@ export const HomeView = ({ onStartChat, isTransitioning = false, selectedQuestio
     const isTyping = inputMessage.length > 0;
 
     type ChatInputOnSend = NonNullable<ComponentProps<typeof ChatInput>['onSend']>;
-    const handleSend: ChatInputOnSend = (message, files, inputMode, builderMeta) => {
-        console.log('Send:', message, files, 'mode:', inputMode, 'builderMeta:', builderMeta);
+    const handleSend: ChatInputOnSend = (message, files, inputMode, builderMeta, webSearchEnabled) => {
+        console.log('Send:', message, files, 'mode:', inputMode, 'builderMeta:', builderMeta, 'webSearch:', webSearchEnabled);
         if (message.trim()) {
             // TODO: Handle 'find' mode differently - show search results view
-            onStartChat?.(message, builderMeta);
+            onStartChat?.(message, builderMeta, webSearchEnabled);
         }
     };
 

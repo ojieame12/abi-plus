@@ -287,3 +287,11 @@ export function getMockActivatedCategories(_companyId: string): ActivatedCategor
 export function isCategoryActivated(categoryId: string, _companyId: string): boolean {
   return MOCK_ACTIVATED_CATEGORIES.some(ac => ac.categoryId === categoryId);
 }
+
+/**
+ * Get all managed category names for confidence calculation
+ * Returns an array of category names (e.g., "Steel (Hot Rolled Coil)", "Aluminum (Primary)")
+ */
+export function getManagedCategoryNames(): string[] {
+  return MOCK_ACTIVATED_CATEGORIES.map(ac => ac.category.name);
+}

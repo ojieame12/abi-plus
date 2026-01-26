@@ -40,7 +40,7 @@ interface SourceCount {
 export type InputMode = 'ask' | 'find';
 
 interface ChatInputProps {
-    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode, builderMeta?: BuilderMetadata) => void;
+    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean) => void;
     onFocusChange?: (focused: boolean) => void;
     onMessageChange?: (message: string) => void;
     onModeChange?: (mode: 'fast' | 'reasoning') => void;
@@ -144,7 +144,7 @@ export const ChatInput = ({
 
     const handleSend = () => {
         if (message.trim() || attachedFiles.length > 0) {
-            onSend?.(message, attachedFiles, inputMode);
+            onSend?.(message, attachedFiles, inputMode, undefined, webSearchEnabled);
             if (value === undefined) {
                 setInternalMessage('');
             }
@@ -224,7 +224,7 @@ export const ChatInput = ({
 
                 // Auto-send with builder metadata
                 setTimeout(() => {
-                    onSend?.(prompt, attachedFiles, inputMode, builderMeta);
+                    onSend?.(prompt, attachedFiles, inputMode, builderMeta, webSearchEnabled);
                     setBuilderMode(false);
                     setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
                     if (value === undefined) {
@@ -265,7 +265,7 @@ export const ChatInput = ({
 
             // Auto-send with builder metadata
             setTimeout(() => {
-                onSend?.(prompt, attachedFiles, inputMode, builderMeta);
+                onSend?.(prompt, attachedFiles, inputMode, builderMeta, webSearchEnabled);
                 // Reset builder state
                 setBuilderMode(false);
                 setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });

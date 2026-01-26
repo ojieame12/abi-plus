@@ -26,6 +26,8 @@ export interface ResponseSources {
   internal: InternalSource[];
   totalWebCount: number;
   totalInternalCount: number;
+  /** Citation map for inline references (e.g., "B1" -> source data) */
+  citations?: Record<string, unknown>;
 }
 
 // ============================================

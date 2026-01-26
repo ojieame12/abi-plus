@@ -175,6 +175,10 @@ export const callPerplexity = async (
     },
   ];
 
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for research
+
   try {
     const response = await fetch(PERPLEXITY_API_URL, {
       method: 'POST',
@@ -190,7 +194,10 @@ export const callPerplexity = async (
         return_citations: true,
         search_recency_filter: 'month', // Focus on recent information
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Perplexity API error: ${response.status}`);
@@ -221,7 +228,12 @@ export const callPerplexity = async (
       thinkingSteps,
     };
   } catch (error) {
-    console.error('Perplexity API call failed:', error);
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[Perplexity] API call timed out after 30 seconds');
+    } else {
+      console.error('[Perplexity] API call failed:', error);
+    }
     return generateFallbackResearchResponse(intent, userMessage);
   }
 };

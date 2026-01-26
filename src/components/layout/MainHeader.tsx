@@ -14,6 +14,7 @@ interface MainHeaderProps {
     subscription?: CompanySubscription;
     onCreditsClick?: () => void;
     onNotificationsClick?: () => void;
+    onLogoClick?: () => void;
 }
 
 export const MainHeader = ({
@@ -25,6 +26,7 @@ export const MainHeader = ({
     subscription,
     onCreditsClick,
     onNotificationsClick,
+    onLogoClick,
 }: MainHeaderProps) => {
     const isHome = variant === 'home';
     const showLogo = isHome && !isSidebarExpanded;
@@ -50,12 +52,17 @@ export const MainHeader = ({
                             transition={{ duration: 0.3 }}
                             className={showLogo ? '' : 'pointer-events-none'}
                         >
-                            <img
-                                src="/logo-white.svg"
-                                alt="Abi"
-                                className="h-[45px]"
-                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
-                            />
+                            <button
+                                onClick={onLogoClick}
+                                className="hover:opacity-80 transition-opacity cursor-pointer"
+                            >
+                                <img
+                                    src="/logo-white.svg"
+                                    alt="Abi"
+                                    className="h-[45px]"
+                                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
+                                />
+                            </button>
                         </motion.div>
                     ) : (
                         /* Other pages: Filled logo */
@@ -66,11 +73,16 @@ export const MainHeader = ({
                             exit={{ opacity: 0, x: -10 }}
                             transition={{ duration: 0.3 }}
                         >
-                            <img
-                                src="/logo-white.svg fill.svg"
-                                alt="Abi"
-                                className="h-[22px]"
-                            />
+                            <button
+                                onClick={onLogoClick}
+                                className="hover:opacity-80 transition-opacity cursor-pointer"
+                            >
+                                <img
+                                    src="/logo-white.svg fill.svg"
+                                    alt="Abi"
+                                    className="h-[22px]"
+                                />
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>

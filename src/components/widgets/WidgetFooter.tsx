@@ -2,18 +2,17 @@
 // Renders sources (web + Beroe), confidence badge, and View Details button
 
 import { useState } from 'react';
-import { ChevronRight, Database, X, ExternalLink, Plus } from 'lucide-react';
+import { ChevronRight, Database, X, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ResponseSources, WebSource, InternalSource, SourceConfidenceInfo } from '../../types/aiResponse';
 import { ConfidenceBadge } from '../ui/ConfidenceBadge';
 
 export interface WidgetFooterProps {
   sources?: ResponseSources;
-  confidence?: SourceConfidenceInfo;      // NEW: Decision grade intelligence indicator
+  confidence?: SourceConfidenceInfo;      // Decision grade intelligence indicator
   beroeSourceCount?: number;              // Legacy fallback - only shown if explicitly set
   hasBeroeSourceCount?: boolean;          // Whether beroeSourceCount was explicitly set (not default)
   onViewDetails?: () => void;
-  onExpandToWeb?: () => void;             // NEW: Callback to trigger web search expansion
   onSourceClick?: (source: InternalSource) => void; // Opens report viewer for Beroe sources
   className?: string;
 }
@@ -38,7 +37,6 @@ export const WidgetFooter = ({
   beroeSourceCount = 0,
   hasBeroeSourceCount = false,
   onViewDetails,
-  onExpandToWeb,
   onSourceClick,
   className = '',
 }: WidgetFooterProps) => {
@@ -80,7 +78,7 @@ export const WidgetFooter = ({
                 alt="Beroe"
                 className="w-4 h-4"
               />
-              <span className="text-sm text-slate-600">{internalCount} Beroe Sources</span>
+              <span className="text-sm text-slate-600">{internalCount} {internalCount === 1 ? 'Source' : 'Sources'}</span>
             </button>
           )}
 
@@ -126,17 +124,6 @@ export const WidgetFooter = ({
           {/* Web Only Badge - when no Beroe sources */}
           {confidence && confidence.level === 'web_only' && internalCount === 0 && (
             <ConfidenceBadge confidence={confidence} size="sm" />
-          )}
-
-          {/* Expand to Web suggestion - for partial Beroe coverage */}
-          {confidence?.showExpandToWeb && onExpandToWeb && (
-            <button
-              onClick={onExpandToWeb}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors font-medium"
-            >
-              <Plus size={12} />
-              <span>Expand to Web</span>
-            </button>
           )}
         </div>
 

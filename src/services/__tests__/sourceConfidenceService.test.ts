@@ -139,6 +139,46 @@ describe('calculateSourceConfidence', () => {
       expect(result.beroeSourceCount).toBe(3);
       expect(result.webSourceCount).toBe(2);
     });
+
+    it('only counts beroe-type sources, not D&B or Ecovadis', () => {
+      // Create sources with mixed internal types
+      const mixedSources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'Beroe Report', type: 'beroe' },
+          { name: 'D&B Report', type: 'dun_bradstreet' },
+          { name: 'Ecovadis Score', type: 'ecovadis' },
+          { name: 'Another Beroe', type: 'beroe' },
+          { name: 'Internal Data', type: 'internal_data' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 5, // Total internal is 5
+      };
+      const result = calculateSourceConfidence(mixedSources, 'Steel', ['Steel']);
+
+      // Only 2 sources have type 'beroe', so beroeSourceCount should be 2
+      expect(result.beroeSourceCount).toBe(2);
+      // With 2 Beroe sources in a managed category, should be high confidence
+      expect(result.level).toBe('high');
+    });
+
+    it('returns medium confidence when only non-Beroe internal sources present', () => {
+      const nonBeroeSources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'D&B Report', type: 'dun_bradstreet' },
+          { name: 'Ecovadis Score', type: 'ecovadis' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 2,
+      };
+      const result = calculateSourceConfidence(nonBeroeSources, 'Steel', ['Steel']);
+
+      // No Beroe sources, so beroeSourceCount should be 0
+      expect(result.beroeSourceCount).toBe(0);
+      // With 0 Beroe sources and no web, should be low confidence
+      expect(result.level).toBe('low');
+    });
   });
 });
 

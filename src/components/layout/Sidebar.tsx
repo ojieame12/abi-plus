@@ -7,6 +7,7 @@ interface SidebarProps {
     onExpand?: () => void;
     onCollapse?: () => void;
     onNewChat?: () => void;
+    onNavigateToHome?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
     onNavigateToSettings?: () => void;
@@ -22,6 +23,7 @@ export const Sidebar = (props: SidebarProps) => {
         onExpand,
         onCollapse,
         onNewChat,
+        onNavigateToHome,
         onNavigateToHistory,
         // onNavigateToCommunity - Community feature is parked/hidden
         onNavigateToSettings,
@@ -85,7 +87,12 @@ export const Sidebar = (props: SidebarProps) => {
                     {isExpanded ? (
                         /* Expanded: Logo + Drawer toggle */
                         <>
-                            <img src="/logo expanded.svg" alt="Abi" className="h-6" />
+                            <button
+                                onClick={onNavigateToHome}
+                                className="hover:opacity-80 transition-opacity cursor-pointer"
+                            >
+                                <img src="/logo expanded.svg" alt="Abi" className="h-6" />
+                            </button>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();

@@ -17,6 +17,7 @@ interface MainLayoutProps {
     isHeaderLoading?: boolean;
     hideHeader?: boolean; // When true, hides the main header (e.g., for community view)
     onNewChat?: () => void;
+    onNavigateToHome?: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToCommunity?: () => void;
     onNavigateToSettings?: () => void;
@@ -43,6 +44,7 @@ export const MainLayout = (props: MainLayoutProps) => {
         isHeaderLoading = false,
         hideHeader = false,
         onNewChat,
+        onNavigateToHome,
         onNavigateToHistory,
         onNavigateToCommunity,
         onNavigateToSettings,
@@ -67,6 +69,7 @@ export const MainLayout = (props: MainLayoutProps) => {
                 onExpand={() => setIsSidebarExpanded(true)}
                 onCollapse={() => setIsSidebarExpanded(false)}
                 onNewChat={onNewChat}
+                onNavigateToHome={onNavigateToHome}
                 onNavigateToHistory={onNavigateToHistory}
                 onNavigateToCommunity={onNavigateToCommunity}
                 onNavigateToSettings={onNavigateToSettings}
@@ -163,6 +166,7 @@ export const MainLayout = (props: MainLayoutProps) => {
                                         subscription={subscription}
                                         onCreditsClick={onCreditsClick}
                                         onNotificationsClick={onNotificationsClick}
+                                        onLogoClick={onNavigateToHome}
                                     />
                                 )}
 

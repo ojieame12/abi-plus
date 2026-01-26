@@ -183,13 +183,22 @@ export function normalizeSources(sources: unknown): ResponseSources | undefined 
     'web' in sources &&
     'internal' in sources
   ) {
-    const s = sources as ResponseSources;
-    return {
+    const s = sources as ResponseSources & { citations?: Record<string, unknown>; confidence?: unknown };
+    const result: ResponseSources = {
       web: s.web || [],
       internal: s.internal || [],
       totalWebCount: s.totalWebCount || s.web?.length || 0,
       totalInternalCount: s.totalInternalCount || s.internal?.length || 0,
     };
+    // Preserve citations map if present (used for inline [B1], [W1] badges)
+    if (s.citations && Object.keys(s.citations).length > 0) {
+      (result as ResponseSources & { citations: Record<string, unknown> }).citations = s.citations;
+    }
+    // Preserve confidence if present
+    if (s.confidence) {
+      result.confidence = s.confidence as ResponseSources['confidence'];
+    }
+    return result;
   }
 
   // Array format (legacy Source[])

@@ -129,6 +129,8 @@ interface AIResponseProps {
     onRefresh?: () => void;
     onWidgetExpand?: (artifactComponent: string) => void;
     onInsightClick?: (insightData: Record<string, unknown>) => void;
+    /** Callback to expand response with web search (when confidence suggests it) */
+    onExpandToWeb?: () => void;
 
     // Animation control
     isAnimating?: boolean; // When true, plays staggered entrance animation
@@ -187,6 +189,7 @@ export const AIResponse = ({
     onRefresh,
     onWidgetExpand,
     onInsightClick,
+    onExpandToWeb,
     isAnimating = false,
 }: AIResponseProps) => {
 
@@ -301,6 +304,7 @@ export const AIResponse = ({
                     insight={normalizedInsight}
                     onInsightClick={onInsightClick}
                     sources={sources as ResponseSources | undefined}
+                    onExpandToWeb={onExpandToWeb}
                 />
             );
         }

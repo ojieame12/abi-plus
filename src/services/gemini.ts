@@ -41,7 +41,7 @@ import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from
 import { getWidgetRouteFromRegistry, type AIContentSlots } from './widgetRouter';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-2.0-flash-exp'; // Gemini 2.0 Flash (free tier, stable)
+const GEMINI_MODEL = 'gemini-3-flash-preview'; // Gemini 3 Flash Preview (latest fast model)
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ============================================
@@ -60,8 +60,13 @@ function tryParseJSON(text: string): unknown | null {
     // Continue to repairs
   }
 
-  // Strategy 2: Extract JSON from markdown fences
-  let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  // Strategy 2: Extract JSON from markdown fences (both triple and single backticks)
+  let cleaned = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .replace(/`json\s*/gi, '')  // Single backtick variant
+    .replace(/`/g, '')          // Any remaining backticks
+    .trim();
 
   // Strategy 3: Find JSON object/array boundaries
   const jsonStart = cleaned.indexOf('{');
@@ -136,6 +141,63 @@ function tryParseJSON(text: string): unknown | null {
   try {
     return JSON.parse(repaired);
   } catch {
+    // Continue to truncation repair
+  }
+
+  // Strategy 6: Handle truncated JSON by closing open structures
+  // This handles cases where the LLM response was cut off mid-JSON
+  let truncationRepaired = repaired;
+
+  // If we're in the middle of a string, close it
+  const lastQuote = truncationRepaired.lastIndexOf('"');
+  const openQuotes = (truncationRepaired.match(/"/g) || []).length;
+  if (openQuotes % 2 !== 0) {
+    // Odd number of quotes - we're inside a string, close it
+    truncationRepaired = truncationRepaired + '"';
+  }
+
+  // Count open braces/brackets and close them
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inStr = false;
+  for (let i = 0; i < truncationRepaired.length; i++) {
+    const c = truncationRepaired[i];
+    if (c === '"' && (i === 0 || truncationRepaired[i-1] !== '\\')) {
+      inStr = !inStr;
+    }
+    if (!inStr) {
+      if (c === '{') openBraces++;
+      else if (c === '}') openBraces--;
+      else if (c === '[') openBrackets++;
+      else if (c === ']') openBrackets--;
+    }
+  }
+
+  // Close open brackets first, then braces
+  truncationRepaired = truncationRepaired + ']'.repeat(Math.max(0, openBrackets)) + '}'.repeat(Math.max(0, openBraces));
+
+  try {
+    return JSON.parse(truncationRepaired);
+  } catch {
+    // Strategy 7: Extract what we can - look for acknowledgement and narrative/content
+    const ackMatch = text.match(/"acknowledgement"\s*:\s*"([^"]+)"/);
+    // Try narrative first, then content (AI sometimes uses "content" instead)
+    let narrMatch = text.match(/"narrative"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (!narrMatch) {
+      narrMatch = text.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    }
+    if (ackMatch || narrMatch) {
+      console.log('[Gemini] Extracted partial content from truncated JSON');
+      // Unescape the extracted narrative
+      const extractedNarrative = narrMatch?.[1]
+        ?.replace(/\\n/g, '\n')
+        ?.replace(/\\"/g, '"')
+        ?.replace(/\\\\/g, '\\') || '';
+      return {
+        acknowledgement: ackMatch?.[1] || 'Here\'s what I found.',
+        narrative: extractedNarrative,
+      };
+    }
     // Final failure
     return null;
   }
@@ -451,6 +513,10 @@ export const callGemini = async (
     },
   };
 
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+
   try {
     console.log('[Gemini] Making API call to:', GEMINI_API_URL);
     console.log('[Gemini] API Key configured:', Boolean(GEMINI_API_KEY));
@@ -463,8 +529,10 @@ export const callGemini = async (
         'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
     console.log('[Gemini] Response status:', response.status);
 
     if (!response.ok) {
@@ -488,7 +556,12 @@ export const callGemini = async (
       intent,
     };
   } catch (error) {
-    console.error('[Gemini] API call failed:', error);
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[Gemini] API call timed out after 20 seconds');
+    } else {
+      console.error('[Gemini] API call failed:', error);
+    }
     // Return fallback response using local data
     console.log('[Gemini] Using fallback response');
     return await generateFallbackResponse(intent, userMessage);
@@ -958,9 +1031,13 @@ async function generateAIContent(
       temperature: 0.7,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1500,
+      maxOutputTokens: 2500, // Increased to prevent truncation
     },
   };
+
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
 
   try {
     const response = await fetch(GEMINI_API_URL, {
@@ -970,11 +1047,15 @@ async function generateAIContent(
         'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error('[GeminiV2] API error:', response.status);
-      return null;
+      // Return default content instead of null
+      return getDefaultAIContent(intentCategory, dataContext);
     }
 
     const result = await response.json();
@@ -987,11 +1068,46 @@ async function generateAIContent(
     }
 
     console.error('[GeminiV2] Failed to parse JSON after repair attempts:', textContent.slice(0, 200));
-    return null;
+    // Return default content instead of null
+    return getDefaultAIContent(intentCategory, dataContext);
   } catch (error) {
-    console.error('[GeminiV2] Request failed:', error);
-    return null;
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[GeminiV2] Request timed out after 20 seconds');
+    } else {
+      console.error('[GeminiV2] Request failed:', error);
+    }
+    // Return default content instead of null
+    return getDefaultAIContent(intentCategory, dataContext);
   }
+}
+
+/**
+ * Generate default AI content when API call fails or JSON parsing fails
+ */
+function getDefaultAIContent(intentCategory: string, dataContext: string): AIContentSlots {
+  // Extract key info from data context for more relevant defaults
+  const supplierMatch = dataContext.match(/(\d+)\s*suppliers?/i);
+  const regionMatch = dataContext.match(/region[:\s]+([^,\n]+)/i);
+  const categoryMatch = dataContext.match(/category[:\s]+([^,\n]+)/i);
+
+  const supplierCount = supplierMatch?.[1] || 'your';
+  const region = regionMatch?.[1]?.trim() || '';
+  const category = categoryMatch?.[1]?.trim() || '';
+
+  const contextParts = [region, category].filter(Boolean).join(' ');
+  const contextStr = contextParts ? ` in ${contextParts}` : '';
+
+  return {
+    acknowledgement: `Here's an overview of ${supplierCount} suppliers${contextStr}.`,
+    narrative: `Based on the available data, this analysis covers ${supplierCount} suppliers${contextStr}. Review the details below for risk distribution and key metrics.`,
+    insight: {
+      headline: 'Data Summary Available',
+      summary: 'Review the supplier data and metrics shown below.',
+      type: 'info' as const,
+      sentiment: 'neutral' as const,
+    },
+  };
 }
 
 // Step 4: Build widget data based on type and fetched data
@@ -1452,47 +1568,67 @@ function transformPortfolioToWidgetData(portfolio: RiskPortfolio): {
   };
 }
 
+// Citation type for internal sources
+interface InternalCitation {
+  id: string;
+  name: string;
+  type: 'beroe' | 'dun_bradstreet' | 'ecovadis';
+  category?: string;
+}
+
 // Build source attribution in ResponseSources format for UI rendering
+// Now also generates citations map for inline [B1], [B2] badges
 function buildDataSources(
   intent: DetectedIntent,
   data: FetchedData
-): ResponseSources {
+): ResponseSources & { citations: Record<string, InternalCitation> } {
   const internal: ResponseSources['internal'] = [];
+  const citations: Record<string, InternalCitation> = {};
+  let citationIndex = 1;
+
+  // Helper to add source and citation
+  const addSource = (type: 'beroe' | 'dun_bradstreet' | 'ecovadis', name: string, category?: string) => {
+    internal.push({ type, name });
+    const citationId = `B${citationIndex}`;
+    citations[citationId] = { id: citationId, name, type, category };
+    citationIndex++;
+  };
 
   // Risk Watch data sources
   if (data.portfolio) {
-    internal.push({ type: 'beroe', name: 'Portfolio Risk Analytics' });
+    addSource('beroe', 'Portfolio Risk Analytics');
   }
   if (data.suppliers && data.suppliers.length > 0) {
-    internal.push({ type: 'beroe', name: 'Supplier Risk Database' });
+    addSource('beroe', 'Supplier Risk Database');
   }
   if (data.riskChanges && data.riskChanges.length > 0) {
-    internal.push({ type: 'beroe', name: 'Risk Monitoring System' });
+    addSource('beroe', 'Risk Monitoring System');
   }
   if (data.targetSupplier) {
-    internal.push({ type: 'beroe', name: 'Supplier Profile Data' });
+    addSource('beroe', 'Supplier Profile Data');
   }
 
   // Inflation Watch data sources
   const isInflationIntent = intent.category.startsWith('inflation_');
   if (isInflationIntent) {
+    const commodity = intent.extractedEntities?.commodity;
     if (data.inflationSummary) {
-      internal.push({ type: 'beroe', name: 'Commodity Price Indices' });
+      addSource('beroe', 'Commodity Price Indices', commodity);
     }
     if (data.commodityDrivers) {
-      internal.push({ type: 'beroe', name: 'Market Intelligence Reports' });
+      addSource('beroe', 'Market Intelligence Reports', commodity);
     }
     if (data.spendImpact) {
-      internal.push({ type: 'beroe', name: 'Spend Analytics Platform' });
+      addSource('beroe', 'Spend Analytics Platform', commodity);
     }
     if (data.justificationData) {
-      internal.push({ type: 'beroe', name: 'Price Benchmarking Data' });
+      addSource('beroe', 'Price Benchmarking Data', commodity);
     }
   }
 
   // Ensure at least 1 data source for non-general queries
   if (internal.length === 0 && intent.category !== 'general') {
-    internal.push({ type: 'beroe', name: 'Beroe Risk Intelligence' });
+    addSource('beroe', 'Beroe Risk Intelligence');
   }
 
   return {
@@ -1500,6 +1636,7 @@ function buildDataSources(
     internal,
     totalWebCount: 0,
     totalInternalCount: internal.length,
+    citations,
   };
 }
 
@@ -1640,15 +1777,21 @@ export async function callGeminiV2(
   }));
 
   // 9. Fallback content if AI failed
-  const narrative = aiContent?.narrative || generateFallbackNarrative(intent, data);
+  let narrative = aiContent?.narrative || generateFallbackNarrative(intent, data);
 
   // 10. Determine response type
   const responseType = route.widgetType === 'none' ? 'summary' : 'widget';
 
-  // 11. Build source attribution based on data used
+  // 11. Build source attribution based on data used (includes citations map)
   const sources = buildDataSources(intent, data);
 
-  // 12. Use AI-generated acknowledgement if available, else fall back to local
+  // 12. Add citation marker to narrative if we have citations and none present
+  // This enables inline [B1] badges in the UI
+  if (Object.keys(sources.citations).length > 0 && !narrative.includes('[B1]')) {
+    narrative = `${narrative} [B1]`;
+  }
+
+  // 13. Use AI-generated acknowledgement if available, else fall back to local
   const acknowledgement = aiContent?.acknowledgement || generateAcknowledgement(intent);
 
   return {

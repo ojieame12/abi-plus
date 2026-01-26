@@ -58,6 +58,8 @@ export interface WebSource {
   domain: string;
   snippet?: string;
   date?: string;
+  /** Citation ID for inline references (e.g., "W1", "W2") */
+  citationId?: string;
 }
 
 export interface InternalSource {
@@ -70,6 +72,8 @@ export interface InternalSource {
   category?: string;
   summary?: string;
   url?: string;
+  /** Citation ID for inline references (e.g., "B1", "B2") */
+  citationId?: string;
 }
 
 // ============================================
@@ -94,6 +98,8 @@ export interface ResponseSources {
   totalWebCount: number;
   totalInternalCount: number;
   confidence?: SourceConfidenceInfo; // Decision grade intelligence indicator
+  /** Citation map for quick lookup by ID (e.g., "B1" -> source data) */
+  citations?: Record<string, WebSource | InternalSource>;
 }
 
 // ============================================

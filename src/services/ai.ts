@@ -38,7 +38,11 @@ import { getWidgetRouteFromRegistry } from './widgetRouter';
 import { transformToCanonical } from '../utils/responseTransform';
 import { validateAndRepair } from '../utils/responseValidator';
 import type { CanonicalResponse } from '../types/responseSchema';
-import type { ResponseInsight } from '../types/aiResponse';
+import type { ResponseInsight, ResponseSources } from '../types/aiResponse';
+// Hybrid response (Gemini + Perplexity combined)
+import { fetchHybridData, buildHybridSources } from './hybridDataFetcher';
+import { synthesizeHybridResponse } from './hybridSynthesizer';
+import type { HybridResponse, CitationMap } from '../types/hybridResponse';
 
 export type ThinkingMode = 'fast' | 'reasoning';
 
@@ -106,8 +110,10 @@ export interface AIResponse {
   };
   // Metadata
   intent: DetectedIntent;
-  provider: 'gemini' | 'perplexity' | 'local';
+  provider: 'gemini' | 'perplexity' | 'local' | 'hybrid';
   thinkingDuration?: string;
+  // Hybrid response citations for inline [B1][W1] badges
+  citations?: CitationMap;
   thinkingSteps?: Array<{
     title: string;
     content: string;
@@ -197,6 +203,10 @@ export interface SendMessageOptions {
   builderMeta?: BuilderMeta;
   // Callback for real-time milestone updates
   onMilestone?: MilestoneCallback;
+  // Hybrid mode: call both Gemini AND Perplexity, synthesize with inline citations
+  hybridMode?: boolean;
+  // User's managed categories for confidence calculation
+  managedCategories?: string[];
 }
 
 // Note: simulateThinkingDuration and generateThinkingSteps removed - using real timing instead
@@ -206,19 +216,21 @@ export const sendMessage = async (
   message: string,
   options: SendMessageOptions
 ): Promise<AIResponse> => {
-  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone } = options;
+  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone, hybridMode, managedCategories } = options;
 
   // Track milestones with real timestamps
   const startTime = Date.now();
   const milestones: Milestone[] = [];
+  let milestoneCounter = 0; // Counter to ensure unique IDs
 
   const emitMilestone = (
     event: Milestone['event'],
     label: string,
     value?: string | number
   ) => {
+    milestoneCounter++;
     const milestone: Milestone = {
-      id: `${event}-${Date.now()}`,
+      id: `${event}-${milestoneCounter}-${Date.now()}`,
       event,
       label,
       value,
@@ -277,13 +289,7 @@ export const sendMessage = async (
   const usePerplexity = mode === 'reasoning' || webSearchEnabled || intent.requiresResearch;
   // Note: effectiveMode removed as it was unused
 
-  // Emit provider selection milestone
-  const providerName = usePerplexity && isPerplexityConfigured()
-    ? 'Perplexity (web research)'
-    : isGeminiConfigured()
-      ? 'Gemini'
-      : 'Local data';
-  emitMilestone('provider_selected', providerName, providerName);
+  // Note: provider_selected milestone is emitted inside each branch to avoid duplicate keys
 
   try {
     // Transform functions return response without id/provider/thinkingDuration - those are added at the end
@@ -293,10 +299,52 @@ export const sendMessage = async (
     console.log('[AI] Intent classified:', intent.category, '| SubIntent:', intent.subIntent);
     console.log('[AI] Mode:', mode, '| WebSearch:', webSearchEnabled);
     console.log('[AI] Auto-research triggered:', intent.requiresResearch);
-    console.log('[AI] Using provider:', usePerplexity ? 'perplexity' : 'gemini');
+    console.log('[AI] Hybrid mode:', hybridMode);
+    console.log('[AI] Using provider:', hybridMode ? 'hybrid' : (usePerplexity ? 'perplexity' : 'gemini'));
 
-    if (usePerplexity && isPerplexityConfigured()) {
+    // HYBRID MODE: Call both Gemini (Beroe) and Perplexity (Web) in parallel
+    // ONLY trigger when user EXPLICITLY requests web search (hybridMode or webSearchEnabled toggle)
+    // Auto-research queries use Perplexity alone for faster response, not the full hybrid synthesis
+    const shouldUseHybrid = hybridMode || webSearchEnabled;
+    console.log('[AI] Should use hybrid:', shouldUseHybrid, '| Perplexity configured:', isPerplexityConfigured());
+
+    // Warn if user enabled web search but Perplexity isn't configured
+    if ((webSearchEnabled || hybridMode) && !isPerplexityConfigured()) {
+      console.warn('[AI] Web search enabled but VITE_PERPLEXITY_API_KEY not configured - falling back to Gemini only');
+    }
+
+    if (shouldUseHybrid && isPerplexityConfigured() && isGeminiConfigured()) {
+      console.log('[AI] Using HYBRID mode (Gemini + Perplexity)...');
+      emitMilestone('provider_selected', 'Hybrid (Beroe + Web)', 'hybrid');
+
+      // Fetch data from both providers in parallel
+      const hybridData = await fetchHybridData(message, {
+        webEnabled: true,
+        intent,
+        conversationHistory,
+        managedCategories,
+      });
+
+      // Emit sources milestone
+      const beroeCount = hybridData.beroe.sources.length;
+      const webCount = hybridData.web?.sources.length || 0;
+      if (beroeCount > 0 || webCount > 0) {
+        emitMilestone('sources_found', `${beroeCount} Beroe + ${webCount} Web sources`, beroeCount + webCount);
+      }
+
+      // Synthesize into unified response with inline citations
+      const hybridResponse = await synthesizeHybridResponse(
+        hybridData,
+        intent,
+        { managedCategories }
+      );
+
+      // Transform hybrid response to AIResponse format
+      response = transformHybridResponse(hybridResponse, intent);
+      provider = 'hybrid' as AIResponse['provider'];
+    } else if (usePerplexity && isPerplexityConfigured()) {
       console.log('[AI] Calling Perplexity for deep research...');
+      emitMilestone('provider_selected', 'Perplexity (web research)', 'perplexity');
       const perplexityResponse = await callPerplexity(message, conversationHistory);
       response = transformPerplexityResponse(perplexityResponse, intent);
       provider = 'perplexity';
@@ -308,6 +356,7 @@ export const sendMessage = async (
       }
     } else if (isGeminiConfigured()) {
       console.log('[AI] Calling GeminiV2...');
+      emitMilestone('provider_selected', 'Gemini (Beroe data)', 'gemini');
       const geminiResponse = await callGeminiV2(
         message,
         conversationHistory,
@@ -321,6 +370,7 @@ export const sendMessage = async (
       provider = 'gemini';
     } else {
       console.log('[AI] Using local fallback');
+      emitMilestone('provider_selected', 'Local data', 'local');
       response = generateLocalResponse(message, intent);
       provider = 'local';
     }
@@ -524,9 +574,31 @@ const generateAcknowledgement = (intent: DetectedIntent): string => {
   }
 };
 
-// Clean up markdown formatting from Perplexity content
+// Clean up markdown formatting from Perplexity/Gemini content
 const cleanMarkdownContent = (content: string): string => {
-  return content
+  let cleaned = content;
+
+  // CRITICAL: Strip JSON code fences that shouldn't be in content
+  // This catches cases where LLM wrapped response in markdown code block
+  if (cleaned.includes('```json') || cleaned.includes('`json') || cleaned.match(/^\s*\{\s*"content"/)) {
+    // Try to extract content from JSON structure
+    const contentMatch = cleaned.match(/"content"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+    if (contentMatch) {
+      cleaned = contentMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+    } else {
+      // Just strip the code fences
+      cleaned = cleaned
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .replace(/`json\s*/gi, '')
+        .replace(/`/g, '');
+    }
+  }
+
+  return cleaned
     // Remove bold markers but keep text
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     // Remove italic markers
@@ -782,6 +854,100 @@ const transformPerplexityResponse = (
     // This prevents intent drift where Perplexity might misclassify the query
     intent,
     thinkingSteps: response.thinkingSteps,
+  };
+};
+
+// Transform hybrid response (Gemini + Perplexity synthesized) to AIResponse format
+const transformHybridResponse = (
+  hybridResponse: HybridResponse,
+  intent: DetectedIntent
+): Omit<AIResponse, 'id' | 'provider' | 'thinkingDuration' | 'milestones' | 'canonical'> => {
+  // Use registry-based widget router to get proper artifact type
+  const route = getWidgetRouteFromRegistry(intent.category, intent.subIntent);
+
+  // Clean up the synthesized content
+  const cleanedContent = cleanMarkdownContent(hybridResponse.content);
+
+  // Generate acknowledgement
+  const acknowledgement = generateAcknowledgement(intent);
+
+  // Extract suggestions based on synthesis metadata
+  const suggestions: Suggestion[] = generateSuggestions(intent.category, {
+    portfolio: undefined,
+    suppliers: [],
+    supplier: undefined,
+    context: {
+      hasBeroe: hybridResponse.synthesisMetadata.beroeClaimsCount > 0,
+      hasWeb: hybridResponse.synthesisMetadata.webClaimsCount > 0,
+    },
+  });
+
+  // Build insight from hybrid response
+  const insight: ResponseInsight = hybridResponse.insight || {
+    headline: 'Combined Analysis',
+    summary: cleanedContent.slice(0, 200),
+    type: 'info',
+    sentiment: 'neutral',
+    confidence: hybridResponse.confidence.level === 'high' ? 'high' : 'medium',
+  };
+
+  // Build sources from hybrid data with confidence
+  const sources: Source[] = [];
+
+  // Add internal sources
+  for (const [citationId, citation] of Object.entries(hybridResponse.citations)) {
+    if (citationId.startsWith('B')) {
+      sources.push({
+        type: 'beroe',
+        name: citation.name,
+      });
+    } else if (citationId.startsWith('W')) {
+      const webCitation = citation as { url?: string; name: string };
+      sources.push({
+        type: 'web',
+        name: webCitation.name,
+        url: webCitation.url,
+      });
+    }
+  }
+
+  // Determine result count for escalation
+  const resultCount = Object.keys(hybridResponse.citations).length;
+
+  // Build ResponseSources with citations map for inline badge rendering
+  const responseSources = {
+    web: sources.filter(s => s.type === 'web').map(s => ({
+      name: s.name,
+      url: s.url,
+      domain: s.url ? new URL(s.url).hostname.replace('www.', '') : undefined,
+    })),
+    internal: sources.filter(s => s.type !== 'web').map(s => ({
+      name: s.name,
+      type: s.type as 'beroe' | 'dun_bradstreet' | 'ecovadis' | 'internal_data' | 'supplier_data',
+    })),
+    totalWebCount: sources.filter(s => s.type === 'web').length,
+    totalInternalCount: sources.filter(s => s.type !== 'web').length,
+    confidence: hybridResponse.confidence,
+    // CRITICAL: Include citations map for inline citation badge rendering
+    citations: hybridResponse.citations,
+  };
+
+  return {
+    content: cleanedContent,
+    acknowledgement,
+    responseType: 'summary',
+    suggestions,
+    sources: responseSources as unknown as Source[], // Cast for backward compatibility
+    artifact: {
+      type: route.artifactType,
+      title: 'Analysis Results',
+    },
+    widget: hybridResponse.widget,
+    insight,
+    escalation: determineEscalation(resultCount, intent.category),
+    intent,
+    // Include citations for inline [B1][W1] badge rendering
+    citations: hybridResponse.citations,
   };
 };
 

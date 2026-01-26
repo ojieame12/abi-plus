@@ -61,7 +61,7 @@ export interface LocalResponseInput {
 }
 
 type ProviderResponse = GeminiResponseInput | PerplexityResponseInput | LocalResponseInput;
-type Provider = 'gemini' | 'perplexity' | 'local';
+type Provider = 'gemini' | 'perplexity' | 'local' | 'hybrid';
 
 // ============================================
 // MAIN TRANSFORM FUNCTION
@@ -77,6 +77,7 @@ export function transformToCanonical(
 ): CanonicalResponse {
   switch (provider) {
     case 'gemini':
+    case 'hybrid': // Hybrid uses Gemini-like response structure
       return transformGeminiResponse(response as GeminiResponseInput, intent);
     case 'perplexity':
       return transformPerplexityResponse(response as PerplexityResponseInput, intent);
@@ -255,7 +256,8 @@ function transformSources(
 
   // Already in ResponseSources format
   if ('web' in sources && 'internal' in sources) {
-    return {
+    const extendedSources = sources as LegacySources & { citations?: Record<string, unknown>; confidence?: unknown };
+    const result: ResponseSources = {
       web: (sources.web || []).map(s => ({
         title: s.name || 'Source',
         url: s.url,
@@ -268,6 +270,15 @@ function transformSources(
       totalWebCount: sources.totalWebCount || sources.web?.length || 0,
       totalInternalCount: sources.totalInternalCount || sources.internal?.length || 0,
     };
+    // Preserve citations map if present (used for inline [B1], [W1] badges)
+    if (extendedSources.citations && Object.keys(extendedSources.citations).length > 0) {
+      (result as ResponseSources & { citations: Record<string, unknown> }).citations = extendedSources.citations;
+    }
+    // Preserve confidence if present
+    if (extendedSources.confidence) {
+      result.confidence = extendedSources.confidence as ResponseSources['confidence'];
+    }
+    return result;
   }
 
   // Array format

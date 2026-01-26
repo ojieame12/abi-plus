@@ -18,6 +18,7 @@ import { usePreloader } from './hooks/usePreloader';
 import { Preloader } from './components/Preloader';
 import { UserMessage } from './components/chat/UserMessage';
 import { AIResponse } from './components/chat/AIResponse';
+import { ThoughtProcess } from './components/chat/ThoughtProcess';
 import { ChatInput, type BuilderMetadata } from './components/chat/ChatInput';
 import type { AIResponse as AIResponseType, Milestone } from './services/ai';
 import { sendMessage } from './services/ai';
@@ -47,7 +48,7 @@ import type { CreditTransaction } from './types/subscription';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer';
 import { getMockNotifications } from './services/notificationService';
 import type { AppNotification } from './types/notifications';
-import { MOCK_SLOT_SUMMARY } from './services/mockCategories';
+import { MOCK_SLOT_SUMMARY, getManagedCategoryNames } from './services/mockCategories';
 import type { CompanySubscription } from './types/subscription';
 import { CREDIT_COSTS } from './types/subscription';
 import type { RequestContext } from './types/requests';
@@ -762,10 +763,15 @@ function App() {
   };
 
   // Handle starting a chat from home
-  const handleStartChat = async (question: string, builderMeta?: BuilderMetadata) => {
+  const handleStartChat = (question: string, builderMeta?: BuilderMetadata, webSearch?: boolean) => {
     const title = generateTitle(question);
     setConversationTitle(title);
     setIsTransitioning(true);
+
+    // Set web search state if explicitly provided from HomeView
+    if (webSearch !== undefined) {
+      setWebSearchEnabled(webSearch);
+    }
 
     // Add user message immediately (optimistic UI)
     const userMsg: Message = {
@@ -775,42 +781,45 @@ function App() {
     };
     setMessages([userMsg]);
 
-    // Create conversation and save user message in background
-    let convId: string | null = null;
-    try {
-      const conv = await createConversation(title);
-      convId = conv.id;
-      setCurrentConversationId(conv.id);
-      // Save the initial user message
-      await saveMessage(conv.id, 'user', question);
-    } catch (err) {
-      console.error('[App] Failed to persist conversation:', err);
-      // Continue anyway - chat works without persistence
-    }
+    // Fire-and-forget: persist conversation in background (don't block UI)
+    let convIdRef: string | null = null;
+    createConversation(title)
+      .then(conv => {
+        convIdRef = conv.id;
+        setCurrentConversationId(conv.id);
+        return saveMessage(conv.id, 'user', question);
+      })
+      .catch(err => {
+        console.error('[App] Failed to persist conversation:', err);
+        // Continue anyway - chat works without persistence
+      });
 
-    // Switch to chat view after fade
+    // Switch to chat view immediately after fade animation (don't wait for persistence)
     setTimeout(() => {
       setViewState('chat');
       setIsTransitioning(false);
-      // Fetch AI response - pass builder metadata for deterministic intent
-      fetchAIResponse(question, [], convId, builderMeta);
+      // Fetch AI response - pass builder metadata and web search preference
+      fetchAIResponse(question, [], convIdRef, builderMeta, webSearch);
     }, 400);
   };
 
   // Fetch AI response
-  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null, builderMeta?: BuilderMetadata) => {
-    console.log('[App] fetchAIResponse called with:', question, 'builderMeta:', builderMeta);
+  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null, builderMeta?: BuilderMetadata, forceWebSearch?: boolean) => {
+    console.log('[App] fetchAIResponse called with:', question, 'builderMeta:', builderMeta, 'forceWebSearch:', forceWebSearch);
     setIsThinking(true);
     setLiveMilestones([]); // Clear previous milestones
 
     // Use provided convId or fall back to state
     const conversationId = convId ?? currentConversationId;
 
+    // Use forceWebSearch if provided, otherwise use state
+    const useWebSearch = forceWebSearch ?? webSearchEnabled;
+
     try {
       console.log('[App] Calling sendMessage...');
       const response = await sendMessage(question, {
         mode,
-        webSearchEnabled,
+        webSearchEnabled: useWebSearch,
         conversationHistory: history.map(m => ({
           id: m.id,
           role: m.role,
@@ -1079,6 +1088,7 @@ function App() {
           artifactCount={currentArtifact ? 1 : 0}
           hideHeader={viewState === 'community' || viewState === 'ask-question'}
           onNewChat={handleNewChat}
+          onNavigateToHome={handleNewChat}
           onNavigateToHistory={handleNavigateToHistory}
           onNavigateToCommunity={handleNavigateToCommunity}
           onNavigateToSettings={() => setViewState('settings')}
@@ -1308,8 +1318,15 @@ function App() {
                   // Follow-ups and thought process only on the LATEST assistant message
                   const showInteractive = isLastAssistantMessage && !isThinking;
 
+                  // Build response sources with managed category context for confidence calculation
+                  const detectedCategory = msg.response?.intent?.extractedEntities?.category
+                    || msg.response?.intent?.extractedEntities?.commodity;
                   const responseSources = msg.response?.sources
-                    ? buildResponseSources(msg.response.sources)
+                    ? buildResponseSources(msg.response.sources, {
+                        detectedCategory,
+                        managedCategories: getManagedCategoryNames(),
+                        calculateConfidenceFlag: true, // Enable confidence calculation for "Expand to Web" button
+                      })
                     : null;
                   const hasSources = responseSources
                     ? responseSources.totalWebCount > 0 || responseSources.totalInternalCount > 0
@@ -1352,8 +1369,8 @@ function App() {
                           } : undefined}
                           // 4. Insight bar - PERSIST on all responses (pass full ResponseInsight for rich rendering)
                           insight={hasResponse ? msg.response?.insight as ResponseInsight | undefined : undefined}
-                          // 5. Sources - PERSIST on all responses
-                          sources={hasResponse && hasSources && responseSources ? responseSources : undefined}
+                          // 5. Sources - PERSIST on all responses (pass even if empty so footer can show Expand to Web)
+                          sources={hasResponse && responseSources ? responseSources : undefined}
                           // 6. Follow-ups - ONLY on latest message (avoid duplicate buttons)
                           followUps={showInteractive ? msg.response?.suggestions?.map(s => ({
                             id: s.id,
@@ -1406,12 +1423,55 @@ function App() {
                                 break;
                             }
                           }}
+                          // 11. Expand to Web - enable web search and re-fetch response
+                          onExpandToWeb={() => {
+                            setWebSearchEnabled(true);
+                            console.log('[App] Web search enabled via confidence CTA - re-fetching...');
+                            // Find the user message that triggered this response
+                            const userMessageIndex = index - 1;
+                            const userMessage = messages[userMessageIndex];
+                            if (userMessage?.role === 'user' && userMessage.content) {
+                              // Remove the current AI response and re-fetch with web enabled
+                              setMessages(prev => prev.slice(0, index));
+                              // Re-fetch with web search enabled
+                              fetchAIResponse(userMessage.content, messages.slice(0, userMessageIndex), currentConversationId, undefined, true);
+                            }
+                          }}
                         >
                           {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
                           {msg.response?.canonical ? (
                             <ResponseBody
                               canonical={msg.response.canonical}
                               hasWidget={!!msg.response?.widget || !!msg.response?.portfolio || !!msg.response?.suppliers?.length}
+                              onSourceClick={(source) => {
+                                // Handle source clicks - web sources open in new tab, internal open report viewer
+                                if ('url' in source && source.url) {
+                                  window.open(source.url, '_blank', 'noopener,noreferrer');
+                                } else {
+                                  // Internal/Beroe source - open report viewer artifact
+                                  const sourceName = 'name' in source ? source.name : ('title' in source ? source.title : 'Source');
+                                  const sourceType = 'type' in source ? source.type : 'beroe';
+                                  const reportId = 'reportId' in source ? source.reportId : `report-${Date.now()}`;
+                                  const category = 'category' in source ? source.category : 'General';
+
+                                  openArtifact('report_viewer', {
+                                    type: 'report_viewer',
+                                    report: {
+                                      id: reportId || `report-${Date.now()}`,
+                                      title: sourceName || 'Beroe Intelligence Report',
+                                      category: category || 'Market Intelligence',
+                                      publishedDate: new Date().toISOString().split('T')[0],
+                                      summary: `Intelligence data from ${sourceName}`,
+                                      sections: [
+                                        {
+                                          title: 'Overview',
+                                          content: `This report contains intelligence data from ${sourceName} (${sourceType}).`,
+                                        },
+                                      ],
+                                    },
+                                  } as ReportViewerPayload);
+                                }
+                              }}
                             />
                           ) : (
                             <div dangerouslySetInnerHTML={{
@@ -1434,19 +1494,18 @@ function App() {
                   );
                 })}
 
-                {/* Minimal loading indicator while waiting for API */}
+                {/* Live thinking indicator with milestones */}
                 {isThinking && (
                   <motion.div
-                    className="flex items-center gap-2 text-slate-500 text-sm py-2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4"
                   >
-                    <motion.div
-                      className="w-1.5 h-1.5 bg-violet-500 rounded-full"
-                      animate={{ scale: [1, 1.5, 1] }}
-                      transition={{ duration: 0.6, repeat: Infinity }}
+                    <ThoughtProcess
+                      duration="..."
+                      isThinking={true}
+                      liveMilestones={liveMilestones}
                     />
-                    <span>Thinking...</span>
                   </motion.div>
                 )}
 

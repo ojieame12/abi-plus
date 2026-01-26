@@ -185,6 +185,8 @@ interface ContextWidgetProps {
   onInsightClick?: (insightData: Record<string, unknown>) => void;
   // Sources support - unified footer shows all sources
   sources?: import('../../types/aiResponse').ResponseSources;
+  // Callback to expand Beroe-only response with web sources
+  onExpandToWeb?: () => void;
 }
 
 type WidgetRendererProps = DirectWidgetProps | ContextWidgetProps;
@@ -524,15 +526,15 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
     onInsightClick(insightData);
   };
 
-  // When we have insight, we want unified footer rendering:
-  // Widget content → Insight → Footer (all inside widget container)
-  const shouldUseUnifiedFooter = !!insight;
+  // Use unified footer rendering when we have insight OR sources to show
+  // Widget content → Insight (optional) → Footer (all inside widget container)
+  const sources = isContextProps(props) ? props.sources : undefined;
+  const hasFooterContent = !!insight || sources?.totalWebCount || sources?.totalInternalCount ||
+    (isContextProps(props) && props.onExpandToWeb);
+  const shouldUseUnifiedFooter = hasFooterContent;
 
   // Get view details handler - either from artifact handlers or expand handler
   const viewDetailsHandler = artifactHandlers.onViewDetails || handleExpand;
-
-  // Extract sources for unified footer
-  const sources = isContextProps(props) ? props.sources : undefined;
 
   // Handler for clicking internal sources (opens report viewer)
   const handleSourceClick = isContextProps(props) && props.onOpenArtifact
@@ -600,6 +602,7 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
               beroeSourceCount={(config.props as Record<string, unknown>)?.beroeSourceCount as number | undefined}
               hasBeroeSourceCount={(config.props as Record<string, unknown>)?.beroeSourceCount !== undefined}
               onViewDetails={viewDetailsHandler}
+              onExpandToWeb={isContextProps(props) ? props.onExpandToWeb : undefined}
               onSourceClick={handleSourceClick}
             />
           )}

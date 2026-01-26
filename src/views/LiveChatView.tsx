@@ -14,6 +14,7 @@ import type { ResponseInsight } from '../types/aiResponse';
 import type { WidgetData } from '../types/widgets';
 import type { Milestone } from '../services/ai';
 import { buildResponseSources } from '../utils/sources';
+import { getManagedCategoryNames } from '../services/mockCategories';
 import { ResponseBody } from '../components/response';
 
 interface LiveChatViewProps {
@@ -227,10 +228,18 @@ export const LiveChatView = ({
                       // Handle both array format (Source[]) and object format (ResponseSources)
                       const isArray = Array.isArray(sources);
                       if (isArray && sources.length === 0) return undefined;
-                      const responseSources = isArray ? buildResponseSources(sources) : sources;
-                      return responseSources.totalWebCount > 0 || responseSources.totalInternalCount > 0
-                        ? responseSources
-                        : undefined;
+                      // Get detected category from response intent for confidence calculation
+                      const detectedCategory = msg.response?.intent?.extractedEntities?.category
+                        || msg.response?.intent?.extractedEntities?.commodity;
+                      const responseSources = isArray
+                        ? buildResponseSources(sources, {
+                            detectedCategory,
+                            managedCategories: getManagedCategoryNames(),
+                            calculateConfidenceFlag: true, // Enable confidence calculation
+                          })
+                        : sources;
+                      // Return sources even if counts are 0 - footer may show "Expand to Web"
+                      return responseSources;
                     })()}
                     followUps={msg.response?.suggestions?.map(s => ({
                       id: s.id,
@@ -245,6 +254,11 @@ export const LiveChatView = ({
                     // Source Enhancement
                     sourceEnhancement={msg.response?.canonical?.sourceEnhancement}
                     onSourceEnhancement={(type) => msg.response && onSourceEnhancement?.(type, msg.response)}
+                    // Expand to Web - enable web search when confidence suggests it
+                    onExpandToWeb={() => {
+                      setWebSearchEnabled(true);
+                      console.log('[LiveChatView] Web search enabled via confidence CTA');
+                    }}
                   >
                     {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
                     {msg.response?.canonical ? (
