@@ -149,7 +149,7 @@ function mapSourceType(type: string): InternalSource['type'] {
  * Extract web sources from Perplexity response
  */
 function extractWebSources(
-  sources: Array<{ type?: string; name?: string; url?: string }> | undefined
+  sources: Array<{ type?: string; name?: string; url?: string; snippet?: string }> | undefined
 ): WebSource[] {
   if (!sources || !Array.isArray(sources)) return [];
 
@@ -159,6 +159,7 @@ function extractWebSources(
       name: s.name || extractDomainName(s.url || ''),
       url: s.url || '',
       domain: extractDomain(s.url || ''),
+      snippet: s.snippet, // Preserve snippet for citations
     }));
 }
 

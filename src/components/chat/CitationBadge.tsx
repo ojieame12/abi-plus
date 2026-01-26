@@ -153,34 +153,35 @@ const HybridCitationBadge = ({
       </button>
 
       {/* Tooltip - minimal, appears below */}
+      {/* Using span elements to avoid <div> inside <p> DOM nesting error */}
       <AnimatePresence>
         {showTooltip && (
-          <motion.div
+          <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.1 }}
-            className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50"
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 block"
           >
-            <div className="bg-slate-800 text-white text-[11px] rounded-md px-2.5 py-1.5 max-w-[200px] shadow-md whitespace-nowrap">
+            <span className="bg-slate-800 text-white text-[11px] rounded-md px-2.5 py-1.5 max-w-[200px] shadow-md whitespace-nowrap block">
               {/* Source name */}
-              <div className="font-medium truncate">
+              <span className="font-medium truncate block">
                 {displayData.name}
-              </div>
+              </span>
 
               {/* Snippet preview - one line only */}
               {displayData.snippet && (
-                <div className="text-slate-400 mt-0.5 truncate text-[10px]">
+                <span className="text-slate-400 mt-0.5 truncate text-[10px] block">
                   {displayData.snippet}
-                </div>
+                </span>
               )}
 
               {/* Tooltip arrow */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[-1px]">
-                <div className="border-4 border-transparent border-b-slate-800" />
-              </div>
-            </div>
-          </motion.div>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[-1px] block">
+                <span className="border-4 border-transparent border-b-slate-800 block" />
+              </span>
+            </span>
+          </motion.span>
         )}
       </AnimatePresence>
     </span>

@@ -101,53 +101,10 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
 
             {/* Gauge Section */}
             <div className="px-6 py-6 flex flex-col items-center">
-                <div className="relative w-48 h-28">
-                    {/* Gauge Background Arc */}
-                    <svg className="w-full h-full" viewBox="0 0 200 110">
-                        {/* Scale marks */}
-                        {[0, 8, 16, 24, 32].map((mark, i) => {
-                            const angle = -180 + (i * 180) / 4;
-                            const rad = (angle * Math.PI) / 180;
-                            const x1 = 100 + 85 * Math.cos(rad);
-                            const y1 = 100 + 85 * Math.sin(rad);
-                            const x2 = 100 + 75 * Math.cos(rad);
-                            const y2 = 100 + 75 * Math.sin(rad);
-                            const labelX = 100 + 95 * Math.cos(rad);
-                            const labelY = 100 + 95 * Math.sin(rad);
-
-                            return (
-                                <g key={mark}>
-                                    <line
-                                        x1={x1}
-                                        y1={y1}
-                                        x2={x2}
-                                        y2={y2}
-                                        stroke="#e2e8f0"
-                                        strokeWidth="2"
-                                    />
-                                    <text
-                                        x={labelX}
-                                        y={labelY}
-                                        textAnchor="middle"
-                                        dominantBaseline="middle"
-                                        className="text-[10px] fill-slate-400"
-                                    >
-                                        {mark}
-                                    </text>
-                                </g>
-                            );
-                        })}
-
-                        {/* Background arc */}
-                        <path
-                            d="M 15 100 A 85 85 0 0 1 185 100"
-                            fill="none"
-                            stroke="#e2e8f0"
-                            strokeWidth="12"
-                            strokeLinecap="round"
-                        />
-
-                        {/* Gradient fill arc */}
+                {/* Gauge SVG - properly sized with labels outside */}
+                <div className="relative w-56 h-32">
+                    <svg className="w-full h-full" viewBox="0 0 200 120">
+                        {/* Gradient definition */}
                         <defs>
                             <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" stopColor="#22c55e" />
@@ -155,47 +112,65 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
                                 <stop offset="100%" stopColor="#6366f1" />
                             </linearGradient>
                         </defs>
+
+                        {/* Background arc - centered at (100, 95) with radius 70 */}
                         <path
-                            d="M 15 100 A 85 85 0 0 1 185 100"
+                            d="M 30 95 A 70 70 0 0 1 170 95"
                             fill="none"
-                            stroke="url(#gaugeGradient)"
-                            strokeWidth="12"
+                            stroke="#e2e8f0"
+                            strokeWidth="14"
                             strokeLinecap="round"
-                            strokeDasharray={`${(gaugePercent / 100) * 267} 267`}
                         />
 
-                        {/* Needle indicator */}
+                        {/* Gradient fill arc */}
+                        <path
+                            d="M 30 95 A 70 70 0 0 1 170 95"
+                            fill="none"
+                            stroke="url(#gaugeGradient)"
+                            strokeWidth="14"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(gaugePercent / 100) * 220} 220`}
+                        />
+
+                        {/* Needle indicator dot */}
                         {(() => {
                             const needleAngle = -180 + (gaugePercent / 100) * 180;
                             const needleRad = (needleAngle * Math.PI) / 180;
-                            const needleX = 100 + 70 * Math.cos(needleRad);
-                            const needleY = 100 + 70 * Math.sin(needleRad);
+                            const needleX = 100 + 55 * Math.cos(needleRad);
+                            const needleY = 95 + 55 * Math.sin(needleRad);
                             return (
                                 <circle
                                     cx={needleX}
                                     cy={needleY}
-                                    r="6"
+                                    r="5"
                                     fill="#6366f1"
                                     stroke="white"
                                     strokeWidth="2"
                                 />
                             );
                         })()}
-                    </svg>
 
-                    {/* Center Value */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-                        <div className="text-3xl font-light text-slate-900">
-                            {price}<span className="text-lg font-normal text-slate-500">{unit}</span>
-                        </div>
-                        <div className="text-xs text-slate-400">
-                            last checked by {lastChecked}
-                        </div>
+                        {/* Scale labels - positioned outside the arc */}
+                        <text x="18" y="100" textAnchor="middle" className="text-[11px] fill-slate-400">0</text>
+                        <text x="40" y="50" textAnchor="middle" className="text-[11px] fill-slate-400">8</text>
+                        <text x="100" y="18" textAnchor="middle" className="text-[11px] fill-slate-400">16</text>
+                        <text x="160" y="50" textAnchor="middle" className="text-[11px] fill-slate-400">24</text>
+                        <text x="182" y="100" textAnchor="middle" className="text-[11px] fill-slate-400">32</text>
+                    </svg>
+                </div>
+
+                {/* Center Value - positioned below gauge */}
+                <div className="flex flex-col items-center -mt-8">
+                    <div className="text-3xl font-light text-slate-900">
+                        {price}<span className="text-lg font-normal text-slate-500">{unit}</span>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                        last checked by {lastChecked}
                     </div>
                 </div>
 
                 {/* Gauge Value Badge */}
-                <div className="mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-medium rounded-full">
+                <div className="mt-3 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-medium rounded-full">
                     {gaugeValue}/32
                 </div>
             </div>

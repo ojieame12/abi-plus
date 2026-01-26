@@ -97,14 +97,40 @@ const dedupeCitations = (citations: string[]): string[] => {
   return deduped;
 };
 
-const buildCitationSources = (citations: string[]): Source[] => {
+interface CitationWithSnippet {
+  url: string;
+  text?: string;
+  snippet?: string;
+  title?: string;
+}
+
+const buildCitationSources = (
+  citations: string[],
+  searchResults?: CitationWithSnippet[]
+): Source[] => {
   const sources: Source[] = [];
+  const snippetMap = new Map<string, string>();
+
+  // Build snippet map from search results if available
+  if (searchResults && Array.isArray(searchResults)) {
+    for (const result of searchResults) {
+      if (result.url) {
+        const key = normalizeUrl(result.url);
+        const snippet = result.text || result.snippet || '';
+        if (snippet) {
+          snippetMap.set(key, snippet.slice(0, 200));
+        }
+      }
+    }
+  }
 
   for (const url of dedupeCitations(citations)) {
+    const key = normalizeUrl(url);
     sources.push({
       name: extractDomainFromUrl(url),
       url,
       type: 'web',
+      snippet: snippetMap.get(key),
     });
   }
 
@@ -211,8 +237,11 @@ export const callPerplexity = async (
     ];
     const citations = dedupeCitations(rawCitations);
 
+    // Extract search results with snippets (if available)
+    const searchResults = data.search_results || data.choices?.[0]?.search_results || [];
+
     const parsed = parsePerplexityResponse(textContent);
-    const citationSources = buildCitationSources(citations);
+    const citationSources = buildCitationSources(citations, searchResults);
     const sources = mergeSources(parsed.sources || [], citationSources);
     const thinkingSteps = generateThinkingSteps(userMessage, intent);
 

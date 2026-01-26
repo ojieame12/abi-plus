@@ -40,6 +40,7 @@ export interface Source {
   url?: string;
   date?: string;
   type?: 'web' | 'report' | 'news' | 'data' | 'analysis' | 'beroe' | 'dnd' | 'ecovadis' | 'internal_data' | 'supplier_data';
+  snippet?: string;
 }
 
 export interface ThoughtProcessData {

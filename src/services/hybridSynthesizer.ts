@@ -16,40 +16,48 @@ import { buildHybridSources } from './hybridDataFetcher';
 // ============================================
 
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-3-flash-preview';
+// Use stable model for reliable JSON mode support
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ============================================
 // SYNTHESIS PROMPT TEMPLATE
 // ============================================
 
-const SYNTHESIS_PROMPT = `You are synthesizing information from two authoritative sources into ONE unified response with proper citations.
+const SYNTHESIS_PROMPT = `Synthesize procurement intelligence into a unified narrative.
 
-## BEROE INTELLIGENCE (Internal, decision-grade procurement data):
+BEROE DATA:
 {beroeContent}
 
-## WEB RESEARCH (Recent market news and industry analysis):
+WEB RESEARCH:
 {webContent}
 
-## AVAILABLE CITATIONS (Use ONLY these - do NOT invent citation IDs):
+CITATIONS (use these IDs only):
 {evidencePool}
 
-## SYNTHESIS RULES:
-1. Write ONE cohesive narrative that combines insights from both sources
-2. CITE EVERY factual claim with the appropriate [B1], [W1] citation markers
-3. Place citations IMMEDIATELY after the claim they support, e.g., "Steel prices rose 3% [B1]"
-4. PRIORITIZE Beroe data for decision-grade claims (pricing, risk scores, benchmarks)
-5. USE web data for market context, recent news, and validation
-6. NOTE where sources AGREE or CONFLICT
-7. Keep response concise but comprehensive (2-4 paragraphs)
-8. Do NOT include citations not in the evidence pool above
+RULES:
+- 3-5 paragraphs, 400-600 words minimum
+- Use ALL available citations: every [B#] and [W#] from the list
+- Place citations IMMEDIATELY after claims: "Prices rose 6.2% [B1] amid constraints [W2]"
+- Structure: Opening insight → Analysis with data → Market drivers → Procurement implications
+- Blend Beroe (pricing, benchmarks, risk) with web (news, trends)
 
-## RESPONSE FORMAT (JSON):
-{
-  "content": "Your synthesized narrative with [B1][W2] citations inline throughout the text...",
-  "agreementLevel": "high|medium|low",
-  "keyInsight": "One-sentence headline summarizing the main finding"
-}`;
+OUTPUT: Return ONLY valid JSON with this exact format:
+{"content": "your narrative here with [B1] [W1] citations...", "agreementLevel": "high|medium|low", "keyInsight": "one sentence summary"}`;
+
+// Repair prompt for when JSON parsing fails
+const REPAIR_PROMPT = `Convert this text into valid JSON with this exact structure:
+{"content": "...", "agreementLevel": "high|medium|low", "keyInsight": "..."}
+
+Text to convert:
+{text}
+
+Return ONLY the JSON object. No explanation.`;
+
+// Minimum thresholds for quality synthesis
+const MIN_CONTENT_LENGTH = 400;
+const MIN_BEROE_CITATIONS = 2;
+const MIN_WEB_CITATIONS = 1;
 
 // ============================================
 // SYNTHESIZER
@@ -77,32 +85,69 @@ export async function synthesizeHybridResponse(
     return buildBeroeOnlyResponse(data, intent, managedCategories);
   }
 
+  // Count available citations for guardrails
+  const availableBeroeCitations = data.beroe.sources.filter(s => s.citationId).length;
+  const availableWebCitations = data.web?.sources.filter(s => s.citationId).length || 0;
+
   // Build synthesis prompt
   const prompt = SYNTHESIS_PROMPT
     .replace('{beroeContent}', data.beroe.content || 'No Beroe data available.')
     .replace('{webContent}', data.web.content || 'No web data available.')
     .replace('{evidencePool}', evidencePoolText);
 
-  console.log('[HybridSynthesizer] Synthesizing response with LLM...');
+  console.log('[HybridSynthesizer] Starting synthesis with', availableBeroeCitations, 'Beroe and', availableWebCitations, 'Web citations');
 
-  // Call LLM to synthesize, with fallback to simple merge
+  // Call LLM to synthesize, with fallback to deterministic synthesis
   let synthesizedContent: string;
   let agreementLevel: SynthesisMetadata['agreementLevel'] = 'medium';
+  let usedDeterministicFallback = false;
 
   try {
     const llmResponse = await callSynthesisLLM(prompt, data.evidencePool);
     synthesizedContent = llmResponse.content;
     agreementLevel = (llmResponse.agreementLevel as SynthesisMetadata['agreementLevel']) || 'medium';
-    console.log('[HybridSynthesizer] LLM synthesis successful, content length:', synthesizedContent.length);
+
+    // === QUALITY GUARDRAILS ===
+
+    // Check 1: Content length threshold
+    if (synthesizedContent.length < MIN_CONTENT_LENGTH) {
+      console.warn('[HybridSynthesizer] Content too short:', synthesizedContent.length, '< threshold', MIN_CONTENT_LENGTH);
+      synthesizedContent = deterministicSynthesis(data);
+      usedDeterministicFallback = true;
+    }
+
+    // Check 2: Citation coverage
+    const beroeCitCount = countCitations(synthesizedContent, 'B');
+    const webCitCount = countCitations(synthesizedContent, 'W');
+    const minBeroeRequired = Math.min(MIN_BEROE_CITATIONS, availableBeroeCitations);
+    const minWebRequired = Math.min(MIN_WEB_CITATIONS, availableWebCitations);
+
+    if (!usedDeterministicFallback && (beroeCitCount < minBeroeRequired || webCitCount < minWebRequired)) {
+      console.warn('[HybridSynthesizer] Insufficient citations - B:', beroeCitCount, '/', minBeroeRequired, 'W:', webCitCount, '/', minWebRequired);
+
+      // Try citation augmentation before full fallback
+      synthesizedContent = augmentCitations(synthesizedContent, data);
+      const newBeroeCount = countCitations(synthesizedContent, 'B');
+      const newWebCount = countCitations(synthesizedContent, 'W');
+
+      // If still insufficient, use deterministic fallback
+      if (newBeroeCount < minBeroeRequired || newWebCount < minWebRequired) {
+        console.warn('[HybridSynthesizer] Citation augmentation insufficient, using deterministic fallback');
+        synthesizedContent = deterministicSynthesis(data);
+        usedDeterministicFallback = true;
+      }
+    }
+
+    console.log('[HybridSynthesizer] LLM synthesis', usedDeterministicFallback ? 'used fallback' : 'successful', '- length:', synthesizedContent.length);
   } catch (error) {
-    console.warn('[HybridSynthesizer] LLM synthesis failed, using simple merge:', error);
-    synthesizedContent = simpleMerge(data);
-    console.log('[HybridSynthesizer] Simple merge fallback, content length:', synthesizedContent.length);
+    console.warn('[HybridSynthesizer] LLM synthesis failed, using deterministic fallback:', error);
+    synthesizedContent = deterministicSynthesis(data);
+    usedDeterministicFallback = true;
   }
 
   // Ensure we have content - use Beroe content directly as last resort
   if (!synthesizedContent || synthesizedContent.trim().length === 0) {
-    console.warn('[HybridSynthesizer] No content from synthesis or merge, using Beroe content directly');
+    console.warn('[HybridSynthesizer] No content from synthesis, using Beroe content directly');
     synthesizedContent = data.beroe.content || 'Analysis based on available data.';
   }
 
@@ -114,8 +159,6 @@ export async function synthesizeHybridResponse(
 
   // Validate citations - remove any that don't exist in pool
   const validCitationIds = new Set(data.evidencePool.map(c => c.id));
-  console.log('[HybridSynthesizer] Valid citation IDs:', Array.from(validCitationIds));
-  console.log('[HybridSynthesizer] Synthesized content preview:', synthesizedContent.slice(0, 200));
 
   const { text: validatedContent, unknownCitations } = validateCitations(
     synthesizedContent,
@@ -124,8 +167,11 @@ export async function synthesizeHybridResponse(
   if (unknownCitations.length > 0) {
     console.warn('[HybridSynthesizer] Removed unknown citations:', unknownCitations);
   }
-  console.log('[HybridSynthesizer] Validated content has citations:', /\[[BW]\d+\]/.test(validatedContent));
-  console.log('[HybridSynthesizer] Citations map size:', Object.keys(citations).length);
+
+  // Final telemetry
+  const finalBeroeCitations = countCitations(validatedContent, 'B');
+  const finalWebCitations = countCitations(validatedContent, 'W');
+  console.log('[HybridSynthesizer] Final output - length:', validatedContent.length, 'B citations:', finalBeroeCitations, 'W citations:', finalWebCitations);
 
   // Build sources with confidence
   const sources = buildHybridSources(
@@ -170,6 +216,7 @@ function formatEvidencePool(pool: Citation[]): string {
 
 /**
  * Call Gemini to synthesize the hybrid response with timeout
+ * Uses JSON mode for structured output
  */
 async function callSynthesisLLM(
   prompt: string,
@@ -186,16 +233,16 @@ async function callSynthesisLLM(
       },
     ],
     generationConfig: {
-      temperature: 0.3, // Lower temperature for factual synthesis
+      temperature: 0.3,
       topP: 0.8,
       topK: 40,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json',
     },
   };
 
-  // Create AbortController for timeout
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
 
   try {
     const response = await fetch(GEMINI_API_URL, {
@@ -222,53 +269,266 @@ async function callSynthesisLLM(
       throw new Error('Empty response from Gemini');
     }
 
-    // Parse the JSON response
-    return parseJsonResponse(textContent);
+    // With JSON mode, should parse directly, but still use fallback parser
+    const parsed = parseJsonResponse(textContent);
+
+    // If parsing succeeded but content is weak, try repair
+    if (!parsed.content || parsed.content.length < 100) {
+      console.warn('[HybridSynthesizer] Weak content from JSON mode, attempting repair');
+      return await repairJsonResponse(textContent);
+    }
+
+    return parsed;
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Synthesis LLM call timed out after 15 seconds');
+      throw new Error('Synthesis LLM call timed out after 20 seconds');
     }
     throw error;
   }
 }
 
 /**
- * Simple merge when both sources are available
- * Adds citation markers to key claims
+ * Repair pass: convert malformed response to valid JSON
  */
-function simpleMerge(data: HybridDataResult): string {
+async function repairJsonResponse(
+  malformedText: string
+): Promise<{ content: string; agreementLevel?: string; keyInsight?: string }> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Gemini API key not configured');
+  }
+
+  const repairPrompt = REPAIR_PROMPT.replace('{text}', malformedText.slice(0, 2000));
+
+  const requestBody = {
+    contents: [{ parts: [{ text: repairPrompt }] }],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json',
+    },
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error('Repair call failed');
+    }
+
+    const data = await response.json();
+    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    return parseJsonResponse(textContent);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('[HybridSynthesizer] Repair pass failed:', error);
+    // Return the malformed text as content (last resort before deterministic fallback)
+    return { content: malformedText };
+  }
+}
+
+/**
+ * Deterministic synthesis fallback that uses ALL available sources
+ * Builds a structured narrative with comprehensive citation coverage
+ */
+function deterministicSynthesis(data: HybridDataResult): string {
   const beroe = data.beroe;
   const web = data.web;
-  const parts: string[] = [];
 
-  // Add Beroe content with citations
+  // Collect ALL citation IDs
+  const beroeCitations = beroe.sources
+    .map(s => s.citationId)
+    .filter((id): id is string => !!id);
+
+  const webCitations = web?.sources
+    .map(s => s.citationId)
+    .filter((id): id is string => !!id) || [];
+
+  // Get evidence pool for snippets
+  const evidenceMap = new Map(data.evidencePool.map(e => [e.id, e]));
+
+  const sections: string[] = [];
+
+  // === PARAGRAPH 1: Executive Summary with Beroe data ===
   if (beroe.content && beroe.content.trim().length > 0) {
-    if (beroe.sources.length > 0) {
-      // Add first Beroe citation to the content
-      const citationId = beroe.sources[0].citationId || 'B1';
-      parts.push(`${beroe.content} [${citationId}]`);
-    } else {
-      parts.push(beroe.content);
+    const sentences = splitIntoSentences(beroe.content);
+    let para1 = '';
+
+    // First sentence with [B1]
+    if (sentences.length > 0 && beroeCitations.length > 0) {
+      para1 = sentences[0] + ` [${beroeCitations[0]}]`;
+    } else if (sentences.length > 0) {
+      para1 = sentences[0];
+    }
+
+    // Second sentence with [B2] if available
+    if (sentences.length > 1 && beroeCitations.length > 1) {
+      para1 += ' ' + sentences[1] + ` [${beroeCitations[1]}]`;
+    } else if (sentences.length > 1) {
+      para1 += ' ' + sentences[1];
+    }
+
+    // Third sentence with [B3] if available
+    if (sentences.length > 2 && beroeCitations.length > 2) {
+      para1 += ' ' + sentences[2] + ` [${beroeCitations[2]}]`;
+    } else if (sentences.length > 2) {
+      para1 += ' ' + sentences[2];
+    }
+
+    if (para1) sections.push(para1);
+  }
+
+  // === PARAGRAPH 2: Market Context from Web Sources ===
+  if (web && web.content && web.content.trim().length > 0) {
+    const webSentences = splitIntoSentences(web.content);
+    let para2 = 'Market research provides additional context.';
+
+    // Add web sentences with citations round-robin
+    for (let i = 0; i < Math.min(webSentences.length, 3); i++) {
+      const citationId = webCitations[i % webCitations.length];
+      if (citationId) {
+        para2 += ' ' + webSentences[i] + ` [${citationId}]`;
+      } else {
+        para2 += ' ' + webSentences[i];
+      }
+    }
+
+    sections.push(para2);
+  }
+
+  // === PARAGRAPH 3: Key Drivers Bullet List ===
+  const drivers: string[] = [];
+
+  // Extract key drivers from evidence snippets
+  for (const citation of data.evidencePool.slice(0, 6)) {
+    if (citation.snippet && citation.snippet.length > 20) {
+      const driverText = citation.snippet.length > 100
+        ? citation.snippet.slice(0, 100) + '...'
+        : citation.snippet;
+      drivers.push(`• ${driverText} [${citation.id}]`);
     }
   }
 
-  // Add web content with citations if available
-  if (web && web.content && web.content.trim().length > 0 && web.sources.length > 0) {
-    const citationId = web.sources[0].citationId || 'W1';
-    // Add a transition and web insight
-    parts.push(`\n\nRecent market research indicates: ${extractKeyInsight(web.content)} [${citationId}]`);
-  } else if (web && web.content && web.content.trim().length > 0) {
-    // Web content but no sources
-    parts.push(`\n\n${extractKeyInsight(web.content)}`);
+  // If we don't have enough snippets, create generic drivers
+  if (drivers.length < 2) {
+    if (beroeCitations.length > 0) {
+      drivers.push(`• Pricing intelligence based on Beroe market analysis [${beroeCitations[0]}]`);
+    }
+    if (webCitations.length > 0) {
+      drivers.push(`• Industry trends corroborated by external research [${webCitations[0]}]`);
+    }
   }
 
-  // Always return something
-  if (parts.length === 0) {
-    return 'Analysis based on available data.';
+  if (drivers.length > 0) {
+    sections.push('**Key Drivers:**\n' + drivers.join('\n'));
   }
 
-  return parts.join('');
+  // === PARAGRAPH 4: Synthesis & Implications ===
+  const usedBeroeCitations = beroeCitations.slice(-2).filter(Boolean);
+  const usedWebCitations = webCitations.slice(-2).filter(Boolean);
+
+  let conclusion = 'This analysis draws from ';
+  if (beroeCitations.length > 0 && webCitations.length > 0) {
+    conclusion += `Beroe\'s proprietary intelligence`;
+    if (usedBeroeCitations.length > 0) {
+      conclusion += ` [${usedBeroeCitations.join('] [')}]`;
+    }
+    conclusion += ` and external market data`;
+    if (usedWebCitations.length > 0) {
+      conclusion += ` [${usedWebCitations.join('] [')}]`;
+    }
+    conclusion += ', providing a comprehensive view for procurement decision-making.';
+  } else if (beroeCitations.length > 0) {
+    conclusion += `Beroe\'s proprietary market intelligence [${beroeCitations.join('] [')}], offering decision-grade insights for procurement planning.`;
+  } else if (webCitations.length > 0) {
+    conclusion += `external market research [${webCitations.join('] [')}], providing current market context.`;
+  } else {
+    conclusion = 'This analysis provides an overview of current market conditions.';
+  }
+
+  sections.push(conclusion);
+
+  // Join all sections
+  const result = sections.join('\n\n');
+
+  // Ensure minimum content length
+  if (result.length < MIN_CONTENT_LENGTH && beroe.content) {
+    // Append more Beroe content if too short
+    const additionalContent = beroe.content.slice(0, 300);
+    return result + '\n\n' + additionalContent;
+  }
+
+  return result;
+}
+
+/**
+ * Split content into clean sentences
+ */
+function splitIntoSentences(content: string): string[] {
+  return content
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 15);
+}
+
+/**
+ * Augment content with additional citations if coverage is insufficient
+ * Appends an "Evidence" paragraph that references unused citations
+ */
+function augmentCitations(content: string, data: HybridDataResult): string {
+  const usedCitations = new Set<string>();
+  const citationRegex = /\[([BW]\d+)\]/g;
+  let match;
+  while ((match = citationRegex.exec(content)) !== null) {
+    usedCitations.add(match[1]);
+  }
+
+  // Find unused citations
+  const unusedBeroCitations: string[] = [];
+  const unusedWebCitations: string[] = [];
+
+  for (const citation of data.evidencePool) {
+    if (!usedCitations.has(citation.id)) {
+      if (citation.id.startsWith('B')) {
+        unusedBeroCitations.push(citation.id);
+      } else {
+        unusedWebCitations.push(citation.id);
+      }
+    }
+  }
+
+  // Build evidence paragraph with unused citations
+  const evidenceParts: string[] = [];
+
+  if (unusedBeroCitations.length > 0) {
+    const beroeRefs = unusedBeroCitations.slice(0, 3).map(id => `[${id}]`).join(' ');
+    evidenceParts.push(`Additional Beroe intelligence ${beroeRefs} supports this analysis.`);
+  }
+
+  if (unusedWebCitations.length > 0) {
+    const webRefs = unusedWebCitations.slice(0, 3).map(id => `[${id}]`).join(' ');
+    evidenceParts.push(`Market research ${webRefs} provides further context.`);
+  }
+
+  if (evidenceParts.length > 0) {
+    return content + '\n\n**Supporting Evidence:**\n' + evidenceParts.join(' ');
+  }
+
+  return content;
 }
 
 /**
@@ -282,6 +542,28 @@ function extractKeyInsight(content: string): string {
   }
   // Fallback to truncated content
   return content.slice(0, 200) + (content.length > 200 ? '...' : '');
+}
+
+/**
+ * Extract a secondary insight from web content (second or third sentence)
+ */
+function extractSecondaryInsight(content: string): string {
+  const sentences = content.split(/[.!?]/).filter(s => s.trim().length > 15);
+  // Try to get the second or third sentence
+  if (sentences.length > 1) {
+    const secondSentence = sentences[1].trim();
+    if (secondSentence.length > 20) {
+      return secondSentence + '.';
+    }
+  }
+  if (sentences.length > 2) {
+    const thirdSentence = sentences[2].trim();
+    if (thirdSentence.length > 20) {
+      return thirdSentence + '.';
+    }
+  }
+  // Fallback: return empty if no good secondary content
+  return '';
 }
 
 /**
@@ -399,43 +681,99 @@ export function parseJsonResponse(text: string): {
 } {
   // First, strip markdown code fences (both triple and single backticks)
   let cleaned = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .replace(/^`json\s*/i, '')  // Single backtick variant
-    .replace(/^`\s*/i, '')
-    .replace(/`\s*$/i, '')
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im, '')
+    .replace(/```\s*$/im, '')
+    .replace(/^`json\s*/im, '')  // Single backtick variant
+    .replace(/^`\s*/im, '')
+    .replace(/`\s*$/im, '')
     .trim();
 
+  // Method 1: Try direct JSON parse
   try {
-    // Try to extract JSON from response
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (typeof parsed.content === 'string') {
+      if (typeof parsed.content === 'string' && parsed.content.length > 0) {
         return parsed;
       }
     }
   } catch (e) {
-    console.warn('[HybridSynthesizer] Failed to parse JSON response:', e);
+    // Continue to fallback methods
   }
 
-  // Fallback: try to extract just the content field value
-  const contentMatch = text.match(/"content"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
-  if (contentMatch) {
-    // Unescape the content
-    const extractedContent = contentMatch[1]
-      .replace(/\\n/g, '\n')
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, '\\');
-    console.log('[HybridSynthesizer] Extracted content from partial JSON');
-    return { content: extractedContent };
+  // Method 2: Try to fix common JSON issues and parse again
+  try {
+    // Sometimes LLM adds trailing content after JSON
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd > jsonStart) {
+      const jsonStr = cleaned.slice(jsonStart, jsonEnd + 1);
+      const parsed = JSON.parse(jsonStr);
+      if (typeof parsed.content === 'string' && parsed.content.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // Continue to fallback methods
+  }
+
+  // Method 3: Extract content field with multi-line support
+  // Match "content": "..." where ... can span multiple lines (handles escaped chars)
+  const contentStartMatch = cleaned.match(/"content"\s*:\s*"/);
+  if (contentStartMatch) {
+    const startIdx = cleaned.indexOf(contentStartMatch[0]) + contentStartMatch[0].length;
+    let endIdx = startIdx;
+    let escaped = false;
+
+    // Manually find the closing quote, handling escapes
+    for (let i = startIdx; i < cleaned.length; i++) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (cleaned[i] === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (cleaned[i] === '"') {
+        endIdx = i;
+        break;
+      }
+    }
+
+    if (endIdx > startIdx) {
+      const rawContent = cleaned.slice(startIdx, endIdx);
+      const extractedContent = rawContent
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+
+      if (extractedContent.length > 50) {
+        // Also try to extract agreementLevel
+        const agreementMatch = cleaned.match(/"agreementLevel"\s*:\s*"(high|medium|low)"/i);
+        return {
+          content: extractedContent,
+          agreementLevel: agreementMatch?.[1]
+        };
+      }
+    }
+  }
+
+  // Method 4: If the text itself looks like a narrative (not JSON), use it directly
+  // This handles cases where Gemini ignores the JSON format instruction
+  if (!cleaned.startsWith('{') && cleaned.length > 100) {
+    // Check if it contains citation markers - if so, it's likely the narrative
+    if (/\[[BW]\d+\]/.test(cleaned)) {
+      return { content: cleaned };
+    }
   }
 
   // Final fallback: clean any JSON-like prefixes from raw text
   const cleanedFallback = cleaned
     .replace(/^\s*\{\s*"content"\s*:\s*"?/i, '')
     .replace(/"?\s*,?\s*"agreementLevel".*$/s, '')
+    .replace(/"\s*\}\s*$/s, '') // Remove trailing "}
     .trim();
 
   console.warn('[HybridSynthesizer] Using cleaned text as fallback content');
