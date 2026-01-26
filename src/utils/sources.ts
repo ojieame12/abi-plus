@@ -1,5 +1,6 @@
 import type { Source } from '../types/chat';
-import type { ResponseSources, InternalSource, WebSource } from '../types/aiResponse';
+import type { ResponseSources, InternalSource, WebSource, SourceConfidenceInfo } from '../types/aiResponse';
+import { calculateSourceConfidence } from '../services/sourceConfidenceService';
 
 // ============================================
 // MOCK BEROE REPORT DATA
@@ -96,15 +97,38 @@ const mapInternalType = (type?: Source['type']): InternalSource['type'] | null =
   }
 };
 
-export const buildResponseSources = (sources: Source[] | ResponseSources | undefined | null): ResponseSources => {
+export interface BuildResponseSourcesOptions {
+  /** Detected category from query for confidence calculation */
+  detectedCategory?: string;
+  /** User's managed categories for confidence calculation */
+  managedCategories?: string[];
+  /** Whether to calculate confidence (default: true) */
+  calculateConfidenceFlag?: boolean;
+}
+
+export const buildResponseSources = (
+  sources: Source[] | ResponseSources | undefined | null,
+  options?: BuildResponseSourcesOptions
+): ResponseSources => {
+  const { detectedCategory, managedCategories, calculateConfidenceFlag = true } = options || {};
+
   // Guard: if sources is already a ResponseSources object, return it directly
+  // But add confidence if it's missing and we have the info to calculate it
   if (sources && typeof sources === 'object' && 'web' in sources && 'internal' in sources) {
-    return sources as ResponseSources;
+    const existing = sources as ResponseSources;
+    if (!existing.confidence && calculateConfidenceFlag) {
+      existing.confidence = calculateSourceConfidence(existing, detectedCategory, managedCategories);
+    }
+    return existing;
   }
 
   // Guard: if sources is not an array, return empty
   if (!Array.isArray(sources)) {
-    return { web: [], internal: [], totalWebCount: 0, totalInternalCount: 0 };
+    const empty: ResponseSources = { web: [], internal: [], totalWebCount: 0, totalInternalCount: 0 };
+    if (calculateConfidenceFlag) {
+      empty.confidence = calculateSourceConfidence(empty, detectedCategory, managedCategories);
+    }
+    return empty;
   }
 
   const web: WebSource[] = [];
@@ -148,12 +172,19 @@ export const buildResponseSources = (sources: Source[] | ResponseSources | undef
     });
   }
 
-  return {
+  const result: ResponseSources = {
     web,
     internal,
     totalWebCount: web.length,
     totalInternalCount: internal.length,
   };
+
+  // Calculate confidence if enabled
+  if (calculateConfidenceFlag) {
+    result.confidence = calculateSourceConfidence(result, detectedCategory, managedCategories);
+  }
+
+  return result;
 };
 
 /**

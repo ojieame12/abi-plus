@@ -72,11 +72,28 @@ export interface InternalSource {
   url?: string;
 }
 
+// ============================================
+// SOURCE CONFIDENCE (Decision Grade Intelligence)
+// ============================================
+
+export type SourceConfidenceLevel = 'high' | 'medium' | 'low' | 'web_only';
+
+export interface SourceConfidenceInfo {
+  level: SourceConfidenceLevel;
+  reason: string;                    // "Comprehensive Beroe coverage for this category"
+  isManagedCategory: boolean;
+  categoryName?: string;
+  beroeSourceCount: number;
+  webSourceCount: number;
+  showExpandToWeb: boolean;          // Suggest web expansion when partial coverage
+}
+
 export interface ResponseSources {
   web: WebSource[];
   internal: InternalSource[];
   totalWebCount: number;
   totalInternalCount: number;
+  confidence?: SourceConfidenceInfo; // Decision grade intelligence indicator
 }
 
 // ============================================

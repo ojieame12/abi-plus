@@ -593,9 +593,10 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
 
           {/* Unified footer - inside the card, only if there's content to show */}
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {(sources?.totalWebCount || sources?.totalInternalCount || (config.props as any)?.beroeSourceCount || viewDetailsHandler !== undefined) && (
+          {(sources?.totalWebCount || sources?.totalInternalCount || (config.props as any)?.beroeSourceCount || viewDetailsHandler !== undefined || sources?.confidence) && (
             <WidgetFooter
               sources={sources}
+              confidence={sources?.confidence}
               beroeSourceCount={(config.props as Record<string, unknown>)?.beroeSourceCount as number | undefined}
               hasBeroeSourceCount={(config.props as Record<string, unknown>)?.beroeSourceCount !== undefined}
               onViewDetails={viewDetailsHandler}

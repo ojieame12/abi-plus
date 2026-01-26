@@ -1,16 +1,19 @@
 // Shared Widget Footer Component
-// Renders sources (web + Beroe) and View Details button
+// Renders sources (web + Beroe), confidence badge, and View Details button
 
 import { useState } from 'react';
-import { ChevronRight, Database, X, ExternalLink } from 'lucide-react';
+import { ChevronRight, Database, X, ExternalLink, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { ResponseSources, WebSource, InternalSource } from '../../types/aiResponse';
+import type { ResponseSources, WebSource, InternalSource, SourceConfidenceInfo } from '../../types/aiResponse';
+import { ConfidenceBadge } from '../ui/ConfidenceBadge';
 
 export interface WidgetFooterProps {
   sources?: ResponseSources;
-  beroeSourceCount?: number; // Legacy fallback - only shown if explicitly set
-  hasBeroeSourceCount?: boolean; // Whether beroeSourceCount was explicitly set (not default)
+  confidence?: SourceConfidenceInfo;      // NEW: Decision grade intelligence indicator
+  beroeSourceCount?: number;              // Legacy fallback - only shown if explicitly set
+  hasBeroeSourceCount?: boolean;          // Whether beroeSourceCount was explicitly set (not default)
   onViewDetails?: () => void;
+  onExpandToWeb?: () => void;             // NEW: Callback to trigger web search expansion
   onSourceClick?: (source: InternalSource) => void; // Opens report viewer for Beroe sources
   className?: string;
 }
@@ -31,9 +34,11 @@ const SOURCE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export const WidgetFooter = ({
   sources,
+  confidence,
   beroeSourceCount = 0,
   hasBeroeSourceCount = false,
   onViewDetails,
+  onExpandToWeb,
   onSourceClick,
   className = '',
 }: WidgetFooterProps) => {
@@ -58,7 +63,27 @@ export const WidgetFooter = ({
     <>
       <div className={`flex items-center justify-between px-5 py-3 border-t border-slate-100/60 bg-slate-50/30 ${className}`}>
         {/* Sources Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Confidence Badge - only for high confidence (Decision Grade) */}
+          {confidence && confidence.level === 'high' && (
+            <ConfidenceBadge confidence={confidence} size="sm" />
+          )}
+
+          {/* Internal/Beroe Sources - with logo PRESERVED */}
+          {internalCount > 0 && (
+            <button
+              onClick={() => handleSourceClick('internal')}
+              className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/60 rounded-lg transition-colors"
+            >
+              <img
+                src="/bero-logo.svg"
+                alt="Beroe"
+                className="w-4 h-4"
+              />
+              <span className="text-sm text-slate-600">{internalCount} Beroe Sources</span>
+            </button>
+          )}
+
           {/* Web Sources - Stacked favicons */}
           {webCount > 0 && (
             <button
@@ -98,23 +123,24 @@ export const WidgetFooter = ({
             </button>
           )}
 
-          {/* Internal/Beroe Sources */}
-          {internalCount > 0 && (
+          {/* Web Only Badge - when no Beroe sources */}
+          {confidence && confidence.level === 'web_only' && internalCount === 0 && (
+            <ConfidenceBadge confidence={confidence} size="sm" />
+          )}
+
+          {/* Expand to Web suggestion - for partial Beroe coverage */}
+          {confidence?.showExpandToWeb && onExpandToWeb && (
             <button
-              onClick={() => handleSourceClick('internal')}
-              className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/60 rounded-lg transition-colors"
+              onClick={onExpandToWeb}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors font-medium"
             >
-              <img
-                src="/bero-logo.svg"
-                alt="Beroe"
-                className="w-4 h-4"
-              />
-              <span className="text-sm text-slate-600">{internalCount} Beroe Data Sources</span>
+              <Plus size={12} />
+              <span>Expand to Web</span>
             </button>
           )}
         </div>
 
-        {/* View Details - no chevron */}
+        {/* View Details */}
         {onViewDetails && (
           <button
             onClick={onViewDetails}
