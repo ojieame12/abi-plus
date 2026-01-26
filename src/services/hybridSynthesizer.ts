@@ -16,8 +16,9 @@ import { buildHybridSources } from './hybridDataFetcher';
 // ============================================
 
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
-// Use stable model for reliable JSON mode support
-const GEMINI_MODEL = 'gemini-2.0-flash';
+// gemini-2.5-flash: Stable production model with full JSON mode support
+// gemini-3-flash-preview: Latest but in preview (use when stable)
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ============================================
