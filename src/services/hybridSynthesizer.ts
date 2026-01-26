@@ -60,6 +60,15 @@ const MIN_CONTENT_LENGTH = 400;
 const MIN_BEROE_CITATIONS = 2;
 const MIN_WEB_CITATIONS = 1;
 
+/**
+ * Strip Perplexity-style numeric citations [1], [2], [3] from content
+ * These interfere with our [B#], [W#] citation format
+ */
+function stripNumericCitations(content: string): string {
+  // Remove [1], [2], [3], etc. - numeric-only citations from Perplexity
+  return content.replace(/\[\d+\]/g, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 // ============================================
 // SYNTHESIZER
 // ============================================
@@ -90,10 +99,14 @@ export async function synthesizeHybridResponse(
   const availableBeroeCitations = data.beroe.sources.filter(s => s.citationId).length;
   const availableWebCitations = data.web?.sources.filter(s => s.citationId).length || 0;
 
+  // Strip Perplexity's numeric citations [1], [2] from web content
+  // This forces the LLM to use our [B#], [W#] format from the evidence pool
+  const cleanedWebContent = stripNumericCitations(data.web.content || '');
+
   // Build synthesis prompt
   const prompt = SYNTHESIS_PROMPT
     .replace('{beroeContent}', data.beroe.content || 'No Beroe data available.')
-    .replace('{webContent}', data.web.content || 'No web data available.')
+    .replace('{webContent}', cleanedWebContent || 'No web data available.')
     .replace('{evidencePool}', evidencePoolText);
 
   console.log('[HybridSynthesizer] Starting synthesis with', availableBeroeCitations, 'Beroe and', availableWebCitations, 'Web citations');
@@ -410,7 +423,9 @@ function deterministicSynthesis(data: HybridDataResult): string {
 
   // === PARAGRAPH 2: Market Context from Web Sources ===
   if (web && web.content && web.content.trim().length > 0) {
-    const webSentences = splitIntoSentences(web.content);
+    // Strip Perplexity's numeric citations before processing
+    const cleanedWebContent = stripNumericCitations(web.content);
+    const webSentences = splitIntoSentences(cleanedWebContent);
     let para2 = 'Market research provides additional context.';
 
     // Add web sentences with citations round-robin

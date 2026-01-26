@@ -96,9 +96,35 @@ const HybridCitationBadge = ({
   const [showTooltip, setShowTooltip] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Extract display data from citation (includes provider metadata)
+  const displayData = extractDisplayData(citation, citationId);
+
   // Determine source type from citationId if not provided
   const resolvedSourceType = sourceType || (citationId.startsWith('B') ? 'beroe' : 'web');
   const isBeroe = resolvedSourceType === 'beroe';
+  const isTier1 = displayData.reliabilityTier === 'tier1';
+
+  // Get dynamic border color from provider metadata, fallback to defaults
+  const getBorderColorClasses = () => {
+    // If provider color is specified, use it (converted to Tailwind-compatible)
+    if (displayData.providerColor) {
+      // Provider colors are hex values - we'll apply via style for precise matching
+      return 'border-current hover:border-current';
+    }
+    // Default colors based on source type
+    return isBeroe
+      ? 'border-violet-300 hover:border-violet-400'
+      : 'border-slate-300 hover:border-blue-400';
+  };
+
+  const getIconColorClasses = () => {
+    if (displayData.providerColor) {
+      return ''; // Will use style prop
+    }
+    return isBeroe
+      ? 'text-violet-600 hover:text-violet-700'
+      : 'text-blue-500 hover:text-blue-600';
+  };
 
   // Handle hover - fast, minimal delay
   const handleMouseEnter = useCallback(() => {
@@ -119,9 +145,6 @@ const HybridCitationBadge = ({
     }
   }, [citation, onSourceClick]);
 
-  // Extract display data from citation
-  const displayData = extractDisplayData(citation, citationId);
-
   return (
     <span className="relative inline-flex items-baseline">
       <button
@@ -131,22 +154,22 @@ const HybridCitationBadge = ({
         className={`
           inline-flex items-center
           border-b border-dotted
-          ${isBeroe
-            ? 'border-violet-300 hover:border-violet-400'
-            : 'border-slate-300 hover:border-blue-400'
-          }
+          ${getBorderColorClasses()}
           transition-colors cursor-pointer
           ml-0.5 pb-px
         `}
+        style={displayData.providerColor ? { borderColor: displayData.providerColor } : undefined}
         aria-label={`Source: ${displayData.name}`}
       >
         {isBeroe ? (
           <BeroeLogo
-            className="w-3 h-3 text-violet-600 hover:text-violet-700 transition-colors"
+            className={`w-3 h-3 transition-colors ${getIconColorClasses()}`}
+            style={displayData.providerColor ? { color: displayData.providerColor } : undefined}
           />
         ) : (
           <Globe
-            className="w-3 h-3 text-blue-500 hover:text-blue-600 transition-colors"
+            className={`w-3 h-3 transition-colors ${getIconColorClasses()}`}
+            style={displayData.providerColor ? { color: displayData.providerColor } : undefined}
             strokeWidth={2}
           />
         )}
@@ -163,11 +186,23 @@ const HybridCitationBadge = ({
             transition={{ duration: 0.1 }}
             className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 block"
           >
-            <span className="bg-slate-800 text-white text-[11px] rounded-md px-2.5 py-1.5 max-w-[200px] shadow-md whitespace-nowrap block">
-              {/* Source name */}
-              <span className="font-medium truncate block">
-                {displayData.name}
+            <span className="bg-slate-800 text-white text-[11px] rounded-md px-2.5 py-1.5 max-w-[220px] shadow-md whitespace-nowrap block">
+              {/* Source name with tier badge */}
+              <span className="font-medium truncate flex items-center gap-1.5">
+                <span className="truncate">{displayData.name}</span>
+                {isTier1 && (
+                  <span className="px-1 py-0.5 text-[9px] font-medium rounded bg-violet-500/30 text-violet-200 flex-shrink-0">
+                    Decision Grade
+                  </span>
+                )}
               </span>
+
+              {/* Provider short name if different from display name */}
+              {displayData.providerShortName && displayData.providerShortName !== displayData.name && (
+                <span className="text-slate-400 text-[10px] block">
+                  via {displayData.providerShortName}
+                </span>
+              )}
 
               {/* Snippet preview - one line only */}
               {displayData.snippet && (
@@ -198,10 +233,16 @@ interface DisplayData {
   url?: string;
   domain?: string;
   category?: string;
+  // Provider metadata
+  providerShortName?: string;
+  providerColor?: string;
+  reliabilityTier?: 'tier1' | 'tier2' | 'tier3';
+  providerId?: string;
 }
 
 /**
  * Extract display data from various citation formats
+ * Now includes provider metadata for enhanced display
  */
 function extractDisplayData(
   citation: Citation | WebSource | InternalSource,
@@ -227,12 +268,18 @@ function extractDisplayData(
     };
   }
 
-  // InternalSource type
+  // InternalSource type - extract provider metadata if available
   if ('type' in citation) {
+    const internalSource = citation as InternalSource;
     return {
-      name: citation.name || `${(citation as InternalSource).type} Source`,
-      snippet: (citation as InternalSource).summary,
-      category: (citation as InternalSource).category,
+      name: internalSource.providerShortName || internalSource.name || `${internalSource.type} Source`,
+      snippet: internalSource.summary,
+      category: internalSource.category,
+      // Provider metadata
+      providerShortName: internalSource.providerShortName,
+      providerColor: internalSource.providerColor,
+      reliabilityTier: internalSource.reliabilityTier,
+      providerId: internalSource.providerId,
     };
   }
 

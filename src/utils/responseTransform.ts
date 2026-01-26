@@ -259,13 +259,31 @@ function transformSources(
     const extendedSources = sources as LegacySources & { citations?: Record<string, unknown>; confidence?: unknown };
     const result: ResponseSources = {
       web: (sources.web || []).map(s => ({
+        // Preserve both name/title and domain for WidgetFooter compatibility
+        name: s.name || 'Source',
         title: s.name || 'Source',
         url: s.url,
+        domain: s.domain || '',
         favicon: s.domain ? `https://www.google.com/s2/favicons?domain=${s.domain}` : undefined,
+        ...(s.snippet && { snippet: s.snippet }),
+        ...(s.citationId && { citationId: s.citationId }),
       })),
       internal: (sources.internal || []).map(s => ({
+        // Preserve both name and title for component compatibility
+        name: s.name,
         title: s.name,
         type: mapInternalSourceType(s.type),
+        // Preserve provider metadata for enhanced display
+        ...(s.providerId && { providerId: s.providerId }),
+        ...(s.providerShortName && { providerShortName: s.providerShortName }),
+        ...(s.reliabilityTier && { reliabilityTier: s.reliabilityTier }),
+        ...(s.sourceCategory && { sourceCategory: s.sourceCategory }),
+        ...(s.providerColor && { providerColor: s.providerColor }),
+        // Preserve report metadata for clickable sources
+        ...(s.reportId && { reportId: s.reportId }),
+        ...(s.category && { reportCategory: s.category }),
+        ...(s.summary && { summary: s.summary }),
+        ...(s.citationId && { citationId: s.citationId }),
       })),
       totalWebCount: sources.totalWebCount || sources.web?.length || 0,
       totalInternalCount: sources.totalInternalCount || sources.internal?.length || 0,
@@ -307,8 +325,11 @@ function transformPerplexitySources(
     for (const c of citations) {
       const domain = extractDomain(c.url);
       webSources.push({
+        // Include both name/title and domain for WidgetFooter compatibility
+        name: c.title || domain,
         title: c.title || domain,
         url: c.url,
+        domain: domain,
         favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}` : undefined,
       });
     }
@@ -319,9 +340,13 @@ function transformPerplexitySources(
     for (const s of sources) {
       if (s.url && !webSources.some(w => w.url === s.url)) {
         const domain = s.domain || extractDomain(s.url);
+        const name = s.title || s.name || domain || 'Source';
         webSources.push({
-          title: s.title || s.name || domain || 'Source',
+          // Include both name/title and domain for WidgetFooter compatibility
+          name: name,
+          title: name,
           url: s.url,
+          domain: domain,
           favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}` : undefined,
         });
       }

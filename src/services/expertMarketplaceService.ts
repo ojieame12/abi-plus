@@ -9,6 +9,18 @@ import type {
   ExpertFilters,
   ExpertSpecialty,
 } from '../types/expertMarketplace';
+import { createSeededRandom, SEEDS } from '../utils/seededRandom';
+
+// Helper to create deterministic seed from string
+const hashString = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+};
 
 // Mock Expert Data
 export const MOCK_EXPERTS: ExpertProfile[] = [
@@ -898,6 +910,8 @@ export function getMockExpertMatches(query: string): ExpertMatch[] {
 
 export function getMockAvailableSlots(expertId: string, date: string): EngagementSlot[] {
   // Generate mock available slots for the given date
+  // Use seeded random for deterministic availability based on expertId and date
+  const random = createSeededRandom(SEEDS.EXPERTS + hashString(`${expertId}-${date}`));
   const slots: EngagementSlot[] = [];
   const times = ['9:00 AM', '10:00 AM', '11:00 AM', '2:00 PM', '3:00 PM', '4:00 PM'];
 
@@ -906,7 +920,7 @@ export function getMockAvailableSlots(expertId: string, date: string): Engagemen
       id: `slot-${expertId}-${date}-${index}`,
       date,
       time,
-      available: Math.random() > 0.3, // 70% chance of availability
+      available: random() > 0.3, // 70% chance of availability
     });
   });
 

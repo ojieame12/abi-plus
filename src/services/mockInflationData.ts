@@ -16,6 +16,7 @@ import type {
   CommodityGaugeData,
   ExecutiveBriefCardData,
 } from '../types/inflation';
+import { createSeededRandom, SEEDS, REFERENCE_DATE } from '../utils/seededRandom';
 
 // ============================================
 // HELPER FUNCTIONS
@@ -26,14 +27,15 @@ const generatePriceHistory = (
   months: number,
   volatility: number = 0.05
 ): Array<{ date: string; price: number }> => {
+  // Use seeded random based on base price for deterministic data
+  const random = createSeededRandom(SEEDS.INFLATION + Math.round(basePrice));
   const history: Array<{ date: string; price: number }> = [];
   let currentPrice = basePrice * (1 - volatility * months * 0.3);
-  const now = new Date();
 
   for (let i = months; i >= 0; i--) {
-    const date = new Date(now);
+    const date = new Date(REFERENCE_DATE);
     date.setMonth(date.getMonth() - i);
-    const change = (Math.random() - 0.4) * volatility * currentPrice;
+    const change = (random() - 0.4) * volatility * currentPrice;
     currentPrice = Math.max(currentPrice + change, basePrice * 0.5);
     history.push({
       date: date.toISOString().split('T')[0],

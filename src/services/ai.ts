@@ -303,12 +303,12 @@ export const sendMessage = async (
     console.log('[AI] Using provider:', hybridMode ? 'hybrid' : (usePerplexity ? 'perplexity' : 'gemini'));
 
     // HYBRID MODE: Call both Gemini (Beroe) and Perplexity (Web) in parallel
-    // Gate hybrid carefully to avoid unnecessary latency:
+    // Trigger hybrid when:
     // - hybridMode: explicitly requested by caller
-    // - webSearchEnabled + requiresResearch: user toggled web AND intent needs external data
-    // Simple price/data queries use Gemini alone (Beroe data) for speed
-    const shouldUseHybrid = hybridMode || (webSearchEnabled && intent.requiresResearch);
-    console.log('[AI] Should use hybrid:', shouldUseHybrid, '| requiresResearch:', intent.requiresResearch, '| Perplexity configured:', isPerplexityConfigured());
+    // - webSearchEnabled: user toggled web search on (always use hybrid to combine Beroe + Web)
+    // This ensures Beroe data is always included when doing web research
+    const shouldUseHybrid = hybridMode || webSearchEnabled;
+    console.log('[AI] Should use hybrid:', shouldUseHybrid, '| webSearchEnabled:', webSearchEnabled, '| Perplexity configured:', isPerplexityConfigured());
 
     // Warn if user enabled web search but Perplexity isn't configured
     if ((webSearchEnabled || hybridMode) && !isPerplexityConfigured()) {
@@ -641,6 +641,21 @@ const buildPerplexityWidget = (
                      commodityData.region === 'global' ? 'LME' :
                      commodityData.region?.toUpperCase() || 'Global';
 
+      // Use enriched gauge bounds if available, otherwise estimate from price
+      const gaugeMin = commodityData.priceFloor || currentPrice * 0.7;
+      const gaugeMax = commodityData.priceCeiling || currentPrice * 1.3;
+
+      // Calculate gauge position based on price floor/ceiling if available
+      let enrichedGaugePosition = gaugePosition;
+      if (commodityData.priceFloor && commodityData.priceCeiling) {
+        const range = commodityData.priceCeiling - commodityData.priceFloor;
+        const position = currentPrice - commodityData.priceFloor;
+        enrichedGaugePosition = Math.max(0, Math.min(100, (position / range) * 100));
+      }
+
+      // Use benchmark index if available
+      const enrichedMarket = commodityData.benchmarkIndex || market;
+
       return {
         type: 'price_gauge',
         title: `${commodityData.name} Price Trends`,
@@ -650,9 +665,9 @@ const buildPerplexityWidget = (
           unit: commodityData.unit || 'mt',
           currency,
           lastUpdated: 'Beroe today',
-          gaugeMin: currentPrice * 0.7,
-          gaugeMax: currentPrice * 1.3,
-          gaugePosition,
+          gaugeMin,
+          gaugeMax,
+          gaugePosition: enrichedGaugePosition,
           change24h: {
             value: priceChange24h,
             percent: percent24h,
@@ -661,12 +676,18 @@ const buildPerplexityWidget = (
             value: priceChange30d,
             percent: percent30d,
           },
-          market,
+          market: enrichedMarket,
           tags: commodityData.priceChange?.direction === 'up'
             ? ['Rising Trend', 'Supply Pressure']
             : commodityData.priceChange?.direction === 'down'
               ? ['Softening', 'Demand Weak']
               : ['Stable'],
+
+          // Enriched Market Insights fields (for the new insights row)
+          sentiment: commodityData.sentiment,
+          volatility30d: commodityData.volatility30d,
+          supplyRisk: commodityData.supplyRisk,
+          supplyRiskScore: commodityData.supplyRiskScore,
         },
       };
     }
@@ -1617,10 +1638,13 @@ const generateLocalResponse = (
                 unit: commodityData.unit || 'mt',
                 currency,
                 lastUpdated: 'Beroe today',
-                gaugeMin: (commodityData.currentPrice || 0) * 0.7,
-                gaugeMax: (commodityData.currentPrice || 0) * 1.3,
-                // Clamp to [0, 100] to prevent rendering outside the arc
-                gaugePosition: Math.max(0, Math.min(100, Math.round(50 + (pricePercent * 2)))),
+                // Use enriched price bounds if available
+                gaugeMin: commodityData.priceFloor || (commodityData.currentPrice || 0) * 0.7,
+                gaugeMax: commodityData.priceCeiling || (commodityData.currentPrice || 0) * 1.3,
+                // Calculate gauge position from enriched bounds if available
+                gaugePosition: commodityData.priceFloor && commodityData.priceCeiling
+                  ? Math.max(0, Math.min(100, (((commodityData.currentPrice || 0) - commodityData.priceFloor) / (commodityData.priceCeiling - commodityData.priceFloor)) * 100))
+                  : Math.max(0, Math.min(100, Math.round(50 + (pricePercent * 2)))),
                 change24h: {
                   value: Math.abs((commodityData.currentPrice || 0) * (pricePercent / 30) / 100),
                   percent: pricePercent / 30,
@@ -1629,12 +1653,19 @@ const generateLocalResponse = (
                   value: Math.abs((commodityData.currentPrice || 0) * pricePercent / 100),
                   percent: pricePercent,
                 },
-                market,
+                // Use benchmark index if available
+                market: commodityData.benchmarkIndex || market,
                 tags: priceDirection === 'up'
                   ? ['Rising Trend', 'Supply Pressure']
                   : priceDirection === 'down'
                     ? ['Softening', 'Demand Weak']
                     : ['Stable'],
+
+                // Enriched Market Insights fields (for the new insights row)
+                sentiment: commodityData.sentiment,
+                volatility30d: commodityData.volatility30d,
+                supplyRisk: commodityData.supplyRisk,
+                supplyRiskScore: commodityData.supplyRiskScore,
               },
             },
             acknowledgement: `Here's the ${commodityData.name} price forecast.`,

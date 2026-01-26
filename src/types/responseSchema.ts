@@ -3,7 +3,7 @@
 
 import type { WidgetType } from './widgets';
 import type { DetectedIntent } from './intents';
-import type { ValueLadder, SourceEnhancement } from './aiResponse';
+import type { ValueLadder, SourceEnhancement, SourceConfidenceInfo } from './aiResponse';
 
 // ============================================
 // NORMALIZED SOURCES
@@ -18,6 +18,25 @@ export interface WebSource {
 export interface InternalSource {
   title: string;
   type: 'database' | 'report' | 'analysis';
+
+  // === Provider metadata (preserved from source normalization) ===
+  /** Provider ID from PROVIDER_REGISTRY (e.g., "beroe", "lme", "moodys") */
+  providerId?: string;
+  /** Short display name for badges (e.g., "Beroe", "D&B", "LME") */
+  providerShortName?: string;
+  /** Reliability tier for confidence display (tier1=Beroe, tier2=Premium, tier3=Web) */
+  reliabilityTier?: 'tier1' | 'tier2' | 'tier3';
+  /** Source category for grouping */
+  sourceCategory?: 'intelligence' | 'financial' | 'esg' | 'market_data' | 'trade' | 'regulatory' | 'news' | 'supplier' | 'web';
+  /** Provider brand color for badge styling */
+  providerColor?: string;
+
+  // === Report metadata (for clickable sources) ===
+  reportId?: string;
+  reportCategory?: string;
+  summary?: string;
+  /** Citation ID for inline references (e.g., "B1", "B2") */
+  citationId?: string;
 }
 
 // Normalized sources - always this shape internally
@@ -28,6 +47,8 @@ export interface ResponseSources {
   totalInternalCount: number;
   /** Citation map for inline references (e.g., "B1" -> source data) */
   citations?: Record<string, unknown>;
+  /** Decision Grade confidence indicator (Beroe-only calculation) */
+  confidence?: SourceConfidenceInfo;
 }
 
 // ============================================

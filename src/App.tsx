@@ -23,7 +23,7 @@ import { ChatInput, type BuilderMetadata } from './components/chat/ChatInput';
 import type { AIResponse as AIResponseType, Milestone } from './services/ai';
 import { sendMessage } from './services/ai';
 import { submitRequest } from './services/approvalService';
-import { buildResponseSources } from './utils/sources';
+import { buildResponseSources, getSourceReportData } from './utils/sources';
 import { buildArtifactPayload, resolveArtifactType } from './services/artifactBuilder';
 // Artifact system imports
 import { ArtifactRenderer } from './components/artifacts/ArtifactRenderer';
@@ -1453,19 +1453,28 @@ function App() {
                                   const sourceType = 'type' in source ? source.type : 'beroe';
                                   const reportId = 'reportId' in source ? source.reportId : `report-${Date.now()}`;
                                   const category = 'category' in source ? source.category : 'General';
+                                  const sourceSummary = 'summary' in source ? source.summary : undefined;
+
+                                  // Get additional report data from registry if available
+                                  const registryData = getSourceReportData(sourceName || '');
+                                  const summary = sourceSummary || registryData?.summary || `Intelligence data from ${sourceName}`;
 
                                   openArtifact('report_viewer', {
                                     type: 'report_viewer',
                                     report: {
-                                      id: reportId || `report-${Date.now()}`,
+                                      id: reportId || registryData?.reportId || `report-${Date.now()}`,
                                       title: sourceName || 'Beroe Intelligence Report',
-                                      category: category || 'Market Intelligence',
+                                      category: category || registryData?.category || 'Market Intelligence',
                                       publishedDate: new Date().toISOString().split('T')[0],
-                                      summary: `Intelligence data from ${sourceName}`,
+                                      summary,
                                       sections: [
                                         {
                                           title: 'Overview',
-                                          content: `This report contains intelligence data from ${sourceName} (${sourceType}).`,
+                                          content: summary,
+                                        },
+                                        {
+                                          title: 'Data Source',
+                                          content: `This intelligence is sourced from ${sourceName} (${sourceType === 'beroe' ? 'Beroe Intelligence' : sourceType}). Data is regularly updated to ensure accuracy and relevance for procurement decisions.`,
                                         },
                                       ],
                                     },

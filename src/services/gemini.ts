@@ -39,6 +39,8 @@ import { classifyIntent } from '../types/intents';
 import type { WidgetData, WidgetType, SpendExposureData } from '../types/widgets';
 import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from './widgetTransformers';
 import { getWidgetRouteFromRegistry, type AIContentSlots } from './widgetRouter';
+import { createSeededRandom, SEEDS } from '../utils/seededRandom';
+import { getSourceReportData } from '../utils/sources';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_AI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-3-flash-preview'; // Gemini 3 Flash Preview (latest fast model)
@@ -1363,11 +1365,12 @@ function buildWidgetData(
       // Use commodity's currency, default to USD
       const currency = data.commodityData.currency || 'USD';
 
-      // Determine market based on region and currency
-      const market = data.commodityData.currency === 'CNY' ? 'Shanghai' :
+      // Determine market from enriched data or fall back to region-based logic
+      const market = data.commodityData.benchmarkIndex ||
+                     (data.commodityData.currency === 'CNY' ? 'Shanghai' :
                      data.commodityData.region === 'europe' ? 'EU Market' :
                      data.commodityData.region === 'global' ? 'LME' :
-                     data.commodityData.region?.toUpperCase() || 'Global';
+                     data.commodityData.region?.toUpperCase() || 'Global');
 
       return {
         type: 'price_gauge',
@@ -1378,8 +1381,9 @@ function buildWidgetData(
           unit: data.commodityData.unit || 'mt',
           currency,
           lastUpdated: 'Beroe today',
-          gaugeMin: currentPrice * 0.7,
-          gaugeMax: currentPrice * 1.3,
+          // Use enriched price bounds if available, otherwise calculate from current price
+          gaugeMin: data.commodityData.priceFloor || currentPrice * 0.7,
+          gaugeMax: data.commodityData.priceCeiling || currentPrice * 1.3,
           gaugePosition,
           change24h: {
             value: priceChange24h,
@@ -1395,6 +1399,11 @@ function buildWidgetData(
             : data.commodityData.priceChange?.direction === 'down'
               ? ['Softening', 'Demand Weak']
               : ['Stable'],
+          // Enriched Market Insights fields (for the new insights row)
+          sentiment: data.commodityData.sentiment,
+          volatility30d: data.commodityData.volatility30d,
+          supplyRisk: data.commodityData.supplyRisk,
+          supplyRiskScore: data.commodityData.supplyRiskScore,
         },
       };
     }
@@ -1586,11 +1595,31 @@ function buildDataSources(
   const citations: Record<string, InternalCitation> = {};
   let citationIndex = 1;
 
-  // Helper to add source and citation
+  // Helper to add source and citation with registry enrichment
   const addSource = (type: 'beroe' | 'dun_bradstreet' | 'ecovadis', name: string, category?: string) => {
-    internal.push({ type, name });
+    // Look up registry data for this source
+    const registryData = getSourceReportData(name);
+
+    internal.push({
+      type,
+      name,
+      // Enrich with registry data if available
+      ...(registryData && {
+        reportId: registryData.reportId,
+        category: registryData.category || category,
+        summary: registryData.summary,
+      }),
+      // Fallback category if not in registry
+      ...(!registryData?.category && category && { category }),
+    });
+
     const citationId = `B${citationIndex}`;
-    citations[citationId] = { id: citationId, name, type, category };
+    citations[citationId] = {
+      id: citationId,
+      name,
+      type,
+      category: registryData?.category || category,
+    };
     citationIndex++;
   };
 
@@ -1916,6 +1945,8 @@ const buildActionsForContext = (riskLevel?: string, trend?: string): RichInsight
 
 // Helper: Generate trend data from score history or fake it
 const generateTrendData = (currentScore: number, trend: string): number[] => {
+  // Use seeded random for deterministic trend data
+  const random = createSeededRandom(SEEDS.GEMINI + currentScore);
   const data: number[] = [];
   let value = currentScore;
 
@@ -1923,13 +1954,13 @@ const generateTrendData = (currentScore: number, trend: string): number[] => {
     if (i === 8) {
       data.push(currentScore);
     } else {
-      const variance = Math.floor(Math.random() * 5) + 2;
+      const variance = Math.floor(random() * 5) + 2;
       if (trend === 'worsening') {
         value = Math.max(20, value - variance);
       } else if (trend === 'improving') {
         value = Math.min(95, value + variance);
       } else {
-        value = value + (Math.random() > 0.5 ? variance : -variance);
+        value = value + (random() > 0.5 ? variance : -variance);
         value = Math.max(20, Math.min(95, value));
       }
       data.unshift(value);

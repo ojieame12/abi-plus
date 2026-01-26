@@ -233,3 +233,156 @@ describe('shouldSuggestWebExpansion', () => {
     expect(shouldSuggestWebExpansion(confidence)).toBe(false);
   });
 });
+
+// ============================================
+// PROVIDER TAXONOMY TESTS
+// These tests verify the source normalization layer
+// maintains the Beroe-only Decision Grade guarantee
+// ============================================
+
+describe('provider taxonomy - Decision Grade integrity', () => {
+  describe('Tier 1 (Beroe) sources count toward Decision Grade', () => {
+    it('beroe type counts as Beroe source', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'Beroe Category Report', type: 'beroe' },
+          { name: 'Beroe Risk Analysis', type: 'beroe' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 2,
+      };
+      const result = calculateSourceConfidence(sources, 'Steel', ['Steel']);
+
+      expect(result.beroeSourceCount).toBe(2);
+      expect(result.level).toBe('high');
+    });
+
+    // Note: In the current system, beroe_risk and beroe_pricing are
+    // providerId values that get normalized to type: 'beroe' through
+    // providerIdToLegacyType(). The actual InternalSource.type field
+    // that reaches confidence calculation should be 'beroe'.
+    it('all Beroe variants resolve to type beroe', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'Beroe Pricing Index', type: 'beroe' }, // From beroe_pricing provider
+          { name: 'Beroe Risk Intelligence', type: 'beroe' }, // From beroe_risk provider
+          { name: 'Standard Beroe Report', type: 'beroe' }, // From beroe provider
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 3,
+      };
+      const result = calculateSourceConfidence(sources);
+
+      expect(result.beroeSourceCount).toBe(3);
+      expect(result.level).toBe('high');
+    });
+  });
+
+  describe('Tier 2 (Premium Partners) do NOT count toward Decision Grade', () => {
+    it('dun_bradstreet type does not count as Beroe', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'D&B Financial Report', type: 'dun_bradstreet' },
+          { name: 'D&B Credit Rating', type: 'dun_bradstreet' },
+          { name: "Moody's Opinion", type: 'dun_bradstreet' }, // Mapped from moodys provider
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 3,
+      };
+      const result = calculateSourceConfidence(sources, 'Steel', ['Steel']);
+
+      expect(result.beroeSourceCount).toBe(0);
+      expect(result.level).toBe('low'); // No Beroe, no web = low
+    });
+
+    it('ecovadis type does not count as Beroe', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'EcoVadis Sustainability Score', type: 'ecovadis' },
+          { name: 'EcoVadis Carbon Report', type: 'ecovadis' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 2,
+      };
+      const result = calculateSourceConfidence(sources, 'Steel', ['Steel']);
+
+      expect(result.beroeSourceCount).toBe(0);
+      expect(result.level).toBe('low');
+    });
+
+    it('internal_data type (LME, COMEX, etc.) does not count as Beroe', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'LME Aluminum Prices', type: 'internal_data' }, // From lme provider
+          { name: 'COMEX Gold Futures', type: 'internal_data' }, // From comex provider
+          { name: 'ICE Brent Crude', type: 'internal_data' }, // From ice provider
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 3,
+      };
+      const result = calculateSourceConfidence(sources, 'Steel', ['Steel']);
+
+      expect(result.beroeSourceCount).toBe(0);
+      expect(result.level).toBe('low');
+    });
+
+    it('supplier_data type does not count as Beroe', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'Supplier Master Data', type: 'supplier_data' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 1,
+      };
+      const result = calculateSourceConfidence(sources);
+
+      expect(result.beroeSourceCount).toBe(0);
+      expect(result.level).toBe('low');
+    });
+  });
+
+  describe('mixed sources - only Beroe counts toward Decision Grade', () => {
+    it('Beroe + premium partners: only Beroe counts', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'Beroe Risk Intelligence', type: 'beroe' },
+          { name: 'D&B Financial Report', type: 'dun_bradstreet' },
+          { name: 'EcoVadis Score', type: 'ecovadis' },
+          { name: 'LME Prices', type: 'internal_data' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 4,
+      };
+      const result = calculateSourceConfidence(sources, 'Steel', ['Steel']);
+
+      expect(result.beroeSourceCount).toBe(1);
+      // Only 1 Beroe source = medium, not high
+      expect(result.level).toBe('medium');
+    });
+
+    it('2 Beroe + premium partners = high confidence (Decision Grade)', () => {
+      const sources: ResponseSources = {
+        web: [],
+        internal: [
+          { name: 'Beroe Risk Intelligence', type: 'beroe' },
+          { name: 'Beroe Category Report', type: 'beroe' },
+          { name: 'D&B Financial Report', type: 'dun_bradstreet' },
+          { name: 'EcoVadis Score', type: 'ecovadis' },
+        ],
+        totalWebCount: 0,
+        totalInternalCount: 4,
+      };
+      const result = calculateSourceConfidence(sources, 'Steel', ['Steel']);
+
+      expect(result.beroeSourceCount).toBe(2);
+      expect(result.level).toBe('high');
+    });
+  });
+});

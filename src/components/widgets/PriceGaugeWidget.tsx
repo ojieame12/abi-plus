@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronRight, Activity, AlertTriangle, BarChart3 } from 'lucide-react';
 import type { PriceGaugeData } from '../../types/widgets';
 
 // Props can be either the new structured data OR the legacy props
@@ -54,6 +54,11 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
     let market: string;
     let gaugeValue: number;
 
+    // Enriched fields (optional)
+    let sentiment: PriceGaugeData['sentiment'] | undefined;
+    let volatility30d: number | undefined;
+    let supplyRisk: PriceGaugeData['supplyRisk'] | undefined;
+
     if (isNewFormat(props)) {
         const { data } = props;
         title = `Current ${data.commodity} Price`;
@@ -72,6 +77,11 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
         };
         market = data.market;
         gaugeValue = Math.round(data.gaugePosition * 0.32); // Convert 0-100 to 0-32
+
+        // Extract enriched fields
+        sentiment = data.sentiment;
+        volatility30d = data.volatility30d;
+        supplyRisk = data.supplyRisk;
     } else {
         title = props.title;
         price = props.price;
@@ -82,6 +92,9 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
         market = props.market;
         gaugeValue = props.gaugeValue ?? 28;
     }
+
+    // Check if we have any enriched data to show
+    const hasEnrichedData = sentiment || volatility30d !== undefined || supplyRisk;
     // Calculate gauge position (0-32 scale, displayed as arc)
     const gaugePercent = (gaugeValue / 32) * 100;
 
@@ -204,6 +217,51 @@ export const PriceGaugeWidget = (props: PriceGaugeWidgetProps) => {
                     <div className="text-xs text-slate-500 mt-1">Market</div>
                 </div>
             </div>
+
+            {/* Enriched Market Insights Row (only shown if enriched data available) */}
+            {hasEnrichedData && (
+                <div className="flex items-center justify-center gap-4 px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+                    {sentiment && (
+                        <div className="flex items-center gap-1.5">
+                            <BarChart3 size={14} strokeWidth={1.5} className={
+                                sentiment === 'bullish' ? 'text-emerald-500' :
+                                sentiment === 'bearish' ? 'text-red-500' : 'text-slate-400'
+                            } />
+                            <span className={`text-xs font-medium capitalize ${
+                                sentiment === 'bullish' ? 'text-emerald-600' :
+                                sentiment === 'bearish' ? 'text-red-600' : 'text-slate-500'
+                            }`}>
+                                {sentiment}
+                            </span>
+                        </div>
+                    )}
+                    {volatility30d !== undefined && (
+                        <div className="flex items-center gap-1.5">
+                            <Activity size={14} strokeWidth={1.5} className={
+                                volatility30d > 15 ? 'text-amber-500' :
+                                volatility30d > 10 ? 'text-yellow-500' : 'text-slate-400'
+                            } />
+                            <span className="text-xs text-slate-600">
+                                {volatility30d.toFixed(1)}% <span className="text-slate-400">vol</span>
+                            </span>
+                        </div>
+                    )}
+                    {supplyRisk && (
+                        <div className="flex items-center gap-1.5">
+                            <AlertTriangle size={14} strokeWidth={1.5} className={
+                                supplyRisk === 'high' ? 'text-red-500' :
+                                supplyRisk === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                            } />
+                            <span className={`text-xs font-medium ${
+                                supplyRisk === 'high' ? 'text-red-600' :
+                                supplyRisk === 'medium' ? 'text-amber-600' : 'text-emerald-600'
+                            }`}>
+                                {supplyRisk === 'high' ? 'High' : supplyRisk === 'medium' ? 'Med' : 'Low'} supply risk
+                            </span>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Data Attribution Footer - hidden when WidgetRenderer handles it */}
             {!hideFooter && ((beroeSourceCount ?? 0) > 0 || onViewDetails) && (

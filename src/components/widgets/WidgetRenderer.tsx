@@ -15,6 +15,7 @@ import {
 } from '../../services/componentSelector';
 import { getWidgetByType } from '../../services/widgetRegistry';
 import { extractEventsArray } from '../../services/widgetTransformers';
+import { getSourceReportData } from '../../utils/sources';
 
 // Widget Components
 import { RiskDistributionWidget } from './RiskDistributionWidget';
@@ -539,14 +540,30 @@ export const WidgetRenderer = (props: WidgetRendererProps) => {
   // Handler for clicking internal sources (opens report viewer)
   const handleSourceClick = isContextProps(props) && props.onOpenArtifact
     ? (source: import('../../types/aiResponse').InternalSource) => {
+        // Look up registry data as fallback if source doesn't have summary
+        const registryData = getSourceReportData(source.name);
+        const summary = source.summary || registryData?.summary || `Intelligence data from ${source.name}`;
+        const reportCategory = source.category || registryData?.category || (source.type === 'beroe' ? 'Beroe Intelligence' : 'Data Source');
+
         props.onOpenArtifact!('report_viewer', {
           report: {
-            id: source.reportId || `report-${source.name.toLowerCase().replace(/\s+/g, '-')}`,
+            id: source.reportId || registryData?.reportId || `report-${source.name.toLowerCase().replace(/\s+/g, '-')}`,
             title: source.name,
-            category: source.category || (source.type === 'beroe' ? 'Beroe Intelligence' : 'Data Source'),
+            category: reportCategory,
             publishedDate: source.lastUpdated || new Date().toISOString(),
-            summary: source.summary,
+            summary: summary,
             url: source.url,
+            // Add sections for proper display
+            sections: [
+              {
+                title: 'Overview',
+                content: summary,
+              },
+              {
+                title: 'Data Source',
+                content: `This intelligence is sourced from ${source.name} (${source.type === 'beroe' ? 'Beroe Intelligence' : source.type}). Data is regularly updated to ensure accuracy and relevance for procurement decisions.`,
+              },
+            ],
           },
           queryContext: {
             highlightTerms: [],

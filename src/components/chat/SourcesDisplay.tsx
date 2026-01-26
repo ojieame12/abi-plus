@@ -22,13 +22,25 @@ const getFaviconUrl = (domain: string) => {
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 };
 
-// Source type colors
-const SOURCE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  beroe: { bg: 'bg-teal-100', text: 'text-teal-600' },
-  dun_bradstreet: { bg: 'bg-blue-100', text: 'text-blue-600' },
-  ecovadis: { bg: 'bg-green-100', text: 'text-green-600' },
-  internal_data: { bg: 'bg-slate-100', text: 'text-slate-600' },
-  supplier_data: { bg: 'bg-amber-100', text: 'text-amber-600' },
+// Source type colors (fallback when provider metadata not available)
+const SOURCE_TYPE_COLORS: Record<string, { bg: string; text: string; color: string }> = {
+  beroe: { bg: 'bg-violet-100', text: 'text-violet-600', color: '#7C3AED' },
+  dun_bradstreet: { bg: 'bg-sky-100', text: 'text-sky-600', color: '#0284C7' },
+  ecovadis: { bg: 'bg-emerald-100', text: 'text-emerald-600', color: '#059669' },
+  internal_data: { bg: 'bg-indigo-100', text: 'text-indigo-600', color: '#6366F1' },
+  supplier_data: { bg: 'bg-indigo-100', text: 'text-indigo-600', color: '#6366F1' },
+};
+
+// Get source display info - uses provider metadata when available
+const getSourceDisplayInfo = (source: InternalSource) => {
+  const fallback = SOURCE_TYPE_COLORS[source.type] || SOURCE_TYPE_COLORS.internal_data;
+  return {
+    color: source.providerColor || fallback.color,
+    bg: fallback.bg,
+    text: fallback.text,
+    label: source.providerShortName || source.type.replace('_', ' '),
+    isTier1: source.reliabilityTier === 'tier1',
+  };
 };
 
 export const SourcesDisplay = ({ sources }: SourcesDisplayProps) => {
@@ -97,7 +109,7 @@ export const SourcesDisplay = ({ sources }: SourcesDisplayProps) => {
           >
             <Database size={16} className="text-teal-500" />
             <span className="text-sm text-slate-600">
-              {totalInternalCount} {internal[0]?.type === 'beroe' ? 'Beroe ' : ''}Data Sources
+              {totalInternalCount} {internal.some(s => s.type === 'beroe' || s.reliabilityTier === 'tier1') ? 'Beroe ' : ''}Data Sources
             </span>
           </button>
         )}
@@ -218,21 +230,47 @@ export const SourcesDisplay = ({ sources }: SourcesDisplayProps) => {
                     <div className="space-y-2">
                       {internal.length > 0 ? (
                         internal.map((source, i) => {
-                          const colors = SOURCE_TYPE_COLORS[source.type] || SOURCE_TYPE_COLORS.internal_data;
+                          const displayInfo = getSourceDisplayInfo(source);
                           return (
                             <div
                               key={i}
                               className="flex items-center gap-3 p-3 rounded-xl bg-slate-50"
                             >
-                              <div className={`w-8 h-8 rounded-lg ${colors.bg} flex items-center justify-center`}>
-                                <Database size={14} className={colors.text} />
+                              <div
+                                className={`w-8 h-8 rounded-lg ${displayInfo.bg} flex items-center justify-center`}
+                                style={source.providerColor ? {
+                                  backgroundColor: `${source.providerColor}20`,
+                                } : undefined}
+                              >
+                                <Database size={14} style={{ color: displayInfo.color }} />
                               </div>
                               <div className="flex-1">
-                                <span className="text-sm font-medium text-slate-800">
-                                  {source.name}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-slate-800">
+                                    {source.name}
+                                  </span>
+                                  {displayInfo.isTier1 && (
+                                    <span
+                                      className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-violet-100 text-violet-700"
+                                      title="Decision Grade Source"
+                                    >
+                                      Decision Grade
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                                  <span className="capitalize">{source.type.replace('_', ' ')}</span>
+                                  <span
+                                    className="font-medium"
+                                    style={{ color: displayInfo.color }}
+                                  >
+                                    {displayInfo.label}
+                                  </span>
+                                  {source.category && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{source.category}</span>
+                                    </>
+                                  )}
                                   {source.dataPoints && (
                                     <>
                                       <span>•</span>
@@ -240,6 +278,11 @@ export const SourcesDisplay = ({ sources }: SourcesDisplayProps) => {
                                     </>
                                   )}
                                 </div>
+                                {source.summary && (
+                                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                    {source.summary}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           );
@@ -339,45 +382,76 @@ const WebSourceItem = ({ source }: { source: WebSource }) => (
   </a>
 );
 
-// Internal source badge component
+// Internal source badge component - uses enriched provider metadata when available
 const InternalSourceBadge = ({ source }: { source: InternalSource }) => {
-  const getSourceStyle = (type: string) => {
-    switch (type) {
+  // Use enriched provider metadata if available, fallback to legacy type-based styling
+  const getSourceStyle = () => {
+    // If we have provider color, generate styles from it
+    if (source.providerColor) {
+      return {
+        backgroundColor: `${source.providerColor}15`, // 15% opacity
+        borderColor: `${source.providerColor}40`, // 40% opacity
+        color: source.providerColor,
+      };
+    }
+    // Fallback to legacy type-based colors
+    switch (source.type) {
       case 'beroe':
-        return 'bg-teal-50 text-teal-700 border-teal-200';
-      case 'dun_bradstreet':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'ecovadis':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'internal_data':
-        return 'bg-slate-50 text-slate-700 border-slate-200';
-      case 'supplier_data':
         return 'bg-violet-50 text-violet-700 border-violet-200';
+      case 'dun_bradstreet':
+        return 'bg-sky-50 text-sky-700 border-sky-200';
+      case 'ecovadis':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'internal_data':
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'supplier_data':
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       default:
         return 'bg-slate-50 text-slate-700 border-slate-200';
     }
   };
 
-  const getSourceIcon = (type: string) => {
-    switch (type) {
+  // Use providerShortName if available, fallback to type-based abbreviation
+  const getSourceLabel = () => {
+    if (source.providerShortName) return source.providerShortName;
+    switch (source.type) {
       case 'beroe':
-        return 'B';
+        return 'Beroe';
       case 'dun_bradstreet':
         return 'D&B';
       case 'ecovadis':
-        return 'EV';
+        return 'EcoVadis';
+      case 'internal_data':
+        return 'Internal';
+      case 'supplier_data':
+        return 'Supplier';
       default:
-        return 'D';
+        return 'Data';
     }
   };
 
+  const style = getSourceStyle();
+  const isCustomStyle = typeof style === 'object';
+
+  // Show tier indicator for tier1 (Decision Grade) sources
+  const showTierBadge = source.reliabilityTier === 'tier1';
+
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getSourceStyle(source.type)}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+        isCustomStyle ? '' : style
+      }`}
+      style={isCustomStyle ? {
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderColor,
+        color: style.color,
+      } : undefined}
     >
-      <span className="w-4 h-4 flex items-center justify-center bg-white/50 rounded-full text-[10px]">
-        {getSourceIcon(source.type)}
-      </span>
+      {showTierBadge && (
+        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" title="Decision Grade Source" />
+      )}
+      <span className="font-semibold">{getSourceLabel()}</span>
+      <span className="opacity-70">•</span>
       <span>{source.name}</span>
       {source.dataPoints && (
         <span className="text-[10px] opacity-70">({source.dataPoints})</span>

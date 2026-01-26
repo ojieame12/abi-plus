@@ -17,11 +17,19 @@ import {
   RISK_FACTORS,
   formatSpend,
 } from '../types/supplier';
+import { createRandomGenerator, SEEDS } from '../utils/seededRandom';
+
+// Seeded random generators for deterministic data
+const scoresRng = createRandomGenerator(SEEDS.SCORES);
+const newsRng = createRandomGenerator(SEEDS.NEWS);
+const suppliersRng = createRandomGenerator(SEEDS.SUPPLIERS);
 
 // Generate score history for trend charts (last 9 data points)
 const generateScoreHistory = (currentScore: number, trend: 'improving' | 'worsening' | 'stable'): number[] => {
   const history: number[] = [];
   let score = currentScore;
+  // Create a local RNG seeded by current score for consistent per-supplier history
+  const localRng = createRandomGenerator(SEEDS.SCORES + currentScore);
 
   // Work backwards from current score
   for (let i = 8; i >= 0; i--) {
@@ -29,13 +37,13 @@ const generateScoreHistory = (currentScore: number, trend: 'improving' | 'worsen
       history.push(currentScore);
     } else {
       // Add variance based on trend
-      const variance = Math.floor(Math.random() * 5) + 2;
+      const variance = localRng.int(2, 6);
       if (trend === 'worsening') {
         score = Math.max(20, score - variance); // Score was lower before (worsening = increasing)
       } else if (trend === 'improving') {
         score = Math.min(95, score + variance); // Score was higher before (improving = decreasing)
       } else {
-        score = score + (Math.random() > 0.5 ? variance : -variance);
+        score = score + (localRng.bool() ? variance : -variance);
         score = Math.max(20, Math.min(95, score));
       }
       history.unshift(score);
@@ -59,9 +67,12 @@ const generateRiskFactors = (overallScore: number): RiskFactor[] => {
     { id: 'freight', weight: 0.05 },
   ];
 
+  // Create a local RNG seeded by overall score for consistent per-supplier factors
+  const localRng = createRandomGenerator(SEEDS.SCORES + overallScore * 100);
+
   factorConfigs.forEach(config => {
     const factorDef = RISK_FACTORS[config.id];
-    const variance = Math.floor(Math.random() * 30) - 15;
+    const variance = localRng.int(-15, 15);
     const score = Math.max(0, Math.min(100, overallScore + variance));
 
     factors.push({
@@ -482,13 +493,16 @@ export const generateFactorBreakdownData = (supplier: Supplier): {
     'restricted': 'tier3',
   };
 
+  // Create a local RNG seeded by supplier score for consistent trends
+  const localRng = createRandomGenerator(SEEDS.SCORES + supplier.srs.score * 10);
+
   const factors: FactorData[] = supplier.srs.factors.map(f => ({
     id: f.id,
     name: f.name,
     score: f.tier === 'restricted' ? null : (f.score ?? null),
     weight: f.weight,
     tier: tierMapping[f.tier],
-    trend: Math.random() > 0.6 ? (Math.random() > 0.5 ? 'up' : 'down') : 'stable',
+    trend: localRng.bool(0.4) ? (localRng.bool() ? 'up' : 'down') : 'stable',
   }));
 
   // Add Overall SRS as tier1
@@ -530,24 +544,29 @@ export const generateNewsEventsData = (
   count: number = 5
 ): NewsEvent[] => {
   const events: NewsEvent[] = [];
-  const now = new Date();
+  // Create a local RNG seeded by supplier name for consistent events
+  const seed = supplierName ? supplierName.charCodeAt(0) * 100 : 0;
+  const localRng = createRandomGenerator(SEEDS.NEWS + seed);
+
+  // Use reference date for consistency
+  const referenceDate = new Date('2025-01-26');
 
   for (let i = 0; i < count; i++) {
-    const template = NEWS_HEADLINES[Math.floor(Math.random() * NEWS_HEADLINES.length)];
-    const daysAgo = Math.floor(Math.random() * 30);
-    const eventDate = new Date(now);
+    const template = localRng.pick(NEWS_HEADLINES);
+    const daysAgo = localRng.int(0, 30);
+    const eventDate = new Date(referenceDate);
     eventDate.setDate(eventDate.getDate() - daysAgo);
 
     events.push({
-      id: `event_${i}_${Date.now()}`,
+      id: `event_${i}_${seed}`,
       date: eventDate.toISOString(),
       headline: supplierName ? `${supplierName} ${template.headline}` : template.headline,
-      source: NEWS_SOURCES[Math.floor(Math.random() * NEWS_SOURCES.length)],
+      source: localRng.pick(NEWS_SOURCES),
       type: template.type,
       sentiment: template.sentiment,
       impact: template.sentiment === 'negative'
-        ? (Math.random() > 0.5 ? 'high' : 'medium') as EventImpact
-        : (Math.random() > 0.7 ? 'medium' : 'low') as EventImpact,
+        ? (localRng.bool() ? 'high' : 'medium') as EventImpact
+        : (localRng.bool(0.3) ? 'medium' : 'low') as EventImpact,
     });
   }
 
@@ -563,6 +582,10 @@ export const generateAlternativesData = (
   currentScore: number;
   alternatives: AlternativeSupplier[];
 } => {
+  // Create a local RNG seeded by supplier ID for consistent alternatives
+  const seed = currentSupplier.id.charCodeAt(currentSupplier.id.length - 1) * 100;
+  const localRng = createRandomGenerator(SEEDS.SUPPLIERS + seed);
+
   // Find suppliers in the same category with lower risk
   const sameCategory = MOCK_SUPPLIERS.filter(
     s => s.id !== currentSupplier.id && s.category === currentSupplier.category
@@ -582,7 +605,7 @@ export const generateAlternativesData = (
       score: s.srs.score,
       level: s.srs.level,
       category: s.category,
-      matchScore: Math.floor(Math.random() * 30) + 70, // 70-99% match
+      matchScore: localRng.int(70, 99), // 70-99% match
     });
   });
 
@@ -735,6 +758,22 @@ export interface Commodity {
   unit?: string;
   currency?: 'USD' | 'EUR' | 'CNY' | 'GBP';  // Currency for price display
   priceChange?: { percent: number; direction: 'up' | 'down' | 'stable' };
+
+  // === Enriched fields from commodity intelligence (optional) ===
+  /** Market sentiment from fundamentals analysis */
+  sentiment?: 'bullish' | 'neutral' | 'bearish';
+  /** 30-day price volatility */
+  volatility30d?: number;
+  /** Supply disruption risk level */
+  supplyRisk?: 'high' | 'medium' | 'low';
+  /** Supply risk score 0-100 */
+  supplyRiskScore?: number;
+  /** Price floor from analysis */
+  priceFloor?: number;
+  /** Price ceiling from analysis */
+  priceCeiling?: number;
+  /** Benchmark index name (e.g., "LME Aluminum") */
+  benchmarkIndex?: string;
 }
 
 export const COMMODITIES: Commodity[] = [
@@ -766,11 +805,41 @@ export const COMMODITIES: Commodity[] = [
   { id: 'air-freight', name: 'Air Freight', category: 'logistics', region: 'global', currentPrice: 4.25, unit: 'kg', currency: 'USD', priceChange: { percent: 2.8, direction: 'up' } },
 ];
 
+// Import enriched commodity data for Market Insights
+import { getCommodityBySlug } from './enrichedCommodityData';
+
 // Get commodity by ID or name (tolerant matching - partial names work)
+// First checks enriched commodity data, then falls back to basic mock data
 export const getCommodity = (idOrName: string): Commodity | undefined => {
   const lower = idOrName.toLowerCase().trim();
 
-  // Exact match first
+  // Try enriched commodity data first (has sentiment, volatility, supply risk)
+  const enriched = getCommodityBySlug(lower);
+  if (enriched) {
+    return {
+      id: enriched.id,
+      name: enriched.name,
+      category: enriched.category as Commodity['category'],
+      region: 'global', // Enriched data covers global markets
+      currentPrice: enriched.currentPrice,
+      unit: enriched.unit.toLowerCase(),
+      currency: enriched.currency,
+      priceChange: {
+        percent: Math.abs(enriched.priceChange.monthly),
+        direction: enriched.priceChange.monthly > 0 ? 'up' : enriched.priceChange.monthly < 0 ? 'down' : 'stable',
+      },
+      // Enriched fields for Market Insights
+      sentiment: enriched.fundamentals.sentiment,
+      volatility30d: enriched.pricing.volatility30d,
+      supplyRisk: enriched.risks.supplyDisruptionRisk,
+      supplyRiskScore: enriched.risks.supplyRiskScore,
+      priceFloor: enriched.pricing.priceFloor,
+      priceCeiling: enriched.pricing.priceCeiling,
+      benchmarkIndex: enriched.pricing.benchmarkIndex,
+    };
+  }
+
+  // Fall back to basic mock data
   const exact = COMMODITIES.find(c =>
     c.id === lower || c.name.toLowerCase() === lower
   );

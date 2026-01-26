@@ -231,6 +231,20 @@ export interface PriceGaugeData {
   change30d: { value: number; percent: number };
   market: string;            // "LME Grade A", "COMEX", etc.
   tags?: string[];           // ["Increased EV", "Supply Concern"]
+
+  // === Enriched commodity fields (optional) ===
+  /** Market sentiment from fundamentals analysis */
+  sentiment?: 'bullish' | 'neutral' | 'bearish';
+  /** Sentiment score from -100 to 100 */
+  sentimentScore?: number;
+  /** 30-day price volatility (standard deviation) */
+  volatility30d?: number;
+  /** Supply disruption risk level */
+  supplyRisk?: 'high' | 'medium' | 'low';
+  /** Supply risk score 0-100 */
+  supplyRiskScore?: number;
+  /** Market concentration level */
+  supplyConcentration?: 'high' | 'medium' | 'low';
 }
 
 export interface SupplierRiskCardData {

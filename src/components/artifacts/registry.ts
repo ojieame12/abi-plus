@@ -368,7 +368,7 @@ export interface InsightDetailPayload extends BaseArtifactPayload {
 
 export interface SupplierDetailPayload extends BaseArtifactPayload {
   type: 'supplier_detail';
-  supplier: unknown; // Full supplier object
+  supplier: unknown; // SupplierDetailData from enrichedSupplierData.ts
 }
 
 export interface SupplierTablePayload extends BaseArtifactPayload {

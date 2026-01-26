@@ -74,6 +74,18 @@ export interface InternalSource {
   url?: string;
   /** Citation ID for inline references (e.g., "B1", "B2") */
   citationId?: string;
+
+  // === Normalized source metadata (optional, for enhanced display) ===
+  /** Provider ID from PROVIDER_REGISTRY (e.g., "beroe", "lme", "moodys") */
+  providerId?: string;
+  /** Short display name for badges (e.g., "Beroe", "D&B", "LME") */
+  providerShortName?: string;
+  /** Reliability tier for confidence display */
+  reliabilityTier?: 'tier1' | 'tier2' | 'tier3';
+  /** Source category for grouping */
+  sourceCategory?: 'intelligence' | 'financial' | 'esg' | 'market_data' | 'trade' | 'regulatory' | 'news' | 'supplier' | 'web';
+  /** Provider brand color for badge styling */
+  providerColor?: string;
 }
 
 // ============================================

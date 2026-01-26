@@ -8,6 +8,18 @@ import type {
   ActivatedCategory,
   CategorySlotSummary,
 } from '../types/managedCategories';
+import { createSeededRandom, SEEDS, REFERENCE_DATE } from '../utils/seededRandom';
+
+// Helper to create deterministic seed from category id
+const hashString = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+};
 
 // Category domains (top-level groupings)
 export const MOCK_CATEGORY_DOMAINS: CategoryDomain[] = [
@@ -37,33 +49,41 @@ const createCategory = (
   analystTitle: string,
   analystPhoto?: string,
   options: Partial<ManagedCategory> = {}
-): ManagedCategory => ({
-  id,
-  name,
-  slug: name.toLowerCase().replace(/\s+/g, '-'),
-  domainId,
-  domain,
-  subDomain,
-  description,
-  leadAnalyst: {
-    id: `analyst_${id}`,
-    name: analystName,
-    title: analystTitle,
-    photo: analystPhoto,
-  },
-  analystTeamSize: Math.floor(Math.random() * 4) + 2,
-  updateFrequency: ['daily', 'weekly', 'bi-weekly', 'monthly'][Math.floor(Math.random() * 4)] as ManagedCategory['updateFrequency'],
-  lastUpdated: new Date(Date.now() - Math.random() * 14 * 24 * 60 * 60 * 1000).toISOString(),
-  hasMarketReport: true,
-  hasPriceIndex: Math.random() > 0.2,
-  hasSupplierData: Math.random() > 0.1,
-  hasNewsAlerts: Math.random() > 0.3,
-  hasCostModel: Math.random() > 0.4,
-  responseTimeSla: Math.random() > 0.5 ? '24 hours' : '48 hours',
-  clientCount: Math.floor(Math.random() * 300) + 50,
-  isPopular: Math.random() > 0.7,
-  ...options,
-});
+): ManagedCategory => {
+  // Use seeded random based on category id for deterministic values
+  const random = createSeededRandom(SEEDS.CATEGORIES + hashString(id));
+  const daysAgo = Math.floor(random() * 14);
+  const lastUpdatedDate = new Date(REFERENCE_DATE);
+  lastUpdatedDate.setDate(lastUpdatedDate.getDate() - daysAgo);
+
+  return {
+    id,
+    name,
+    slug: name.toLowerCase().replace(/\s+/g, '-'),
+    domainId,
+    domain,
+    subDomain,
+    description,
+    leadAnalyst: {
+      id: `analyst_${id}`,
+      name: analystName,
+      title: analystTitle,
+      photo: analystPhoto,
+    },
+    analystTeamSize: Math.floor(random() * 4) + 2,
+    updateFrequency: ['daily', 'weekly', 'bi-weekly', 'monthly'][Math.floor(random() * 4)] as ManagedCategory['updateFrequency'],
+    lastUpdated: lastUpdatedDate.toISOString(),
+    hasMarketReport: true,
+    hasPriceIndex: random() > 0.2,
+    hasSupplierData: random() > 0.1,
+    hasNewsAlerts: random() > 0.3,
+    hasCostModel: random() > 0.4,
+    responseTimeSla: random() > 0.5 ? '24 hours' : '48 hours',
+    clientCount: Math.floor(random() * 300) + 50,
+    isPopular: random() > 0.7,
+    ...options,
+  };
+};
 
 // Expanded managed categories
 export const MOCK_MANAGED_CATEGORIES: ManagedCategory[] = [
@@ -225,18 +245,26 @@ const ACTIVATED_IDS = [
 export const MOCK_ACTIVATED_CATEGORIES: ActivatedCategory[] = ACTIVATED_IDS
   .map(id => MOCK_MANAGED_CATEGORIES.find(c => c.id === id))
   .filter((cat): cat is ManagedCategory => cat !== undefined)
-  .map((cat, index) => ({
-    id: `act_${cat.id}`,
-    categoryId: cat.id,
-    category: cat,
-    companyId: 'comp_001',
-    activatedAt: '2024-03-15T00:00:00Z',
-    activatedBy: 'user_001',
-    queriesThisMonth: Math.floor(Math.random() * 50) + 5,
-    lastAccessedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    alertsEnabled: true,
-    weeklyDigestEnabled: index < 5,
-  }));
+  .map((cat, index) => {
+    // Use seeded random for deterministic values
+    const random = createSeededRandom(SEEDS.CATEGORIES + hashString(`activated_${cat.id}`));
+    const daysAgo = Math.floor(random() * 7);
+    const lastAccessedDate = new Date(REFERENCE_DATE);
+    lastAccessedDate.setDate(lastAccessedDate.getDate() - daysAgo);
+
+    return {
+      id: `act_${cat.id}`,
+      categoryId: cat.id,
+      category: cat,
+      companyId: 'comp_001',
+      activatedAt: '2024-03-15T00:00:00Z',
+      activatedBy: 'user_001',
+      queriesThisMonth: Math.floor(random() * 50) + 5,
+      lastAccessedAt: lastAccessedDate.toISOString(),
+      alertsEnabled: true,
+      weeklyDigestEnabled: index < 5,
+    };
+  });
 
 // Mock slot summary for Acme Corp
 export const MOCK_SLOT_SUMMARY: CategorySlotSummary = {
