@@ -303,10 +303,12 @@ export const sendMessage = async (
     console.log('[AI] Using provider:', hybridMode ? 'hybrid' : (usePerplexity ? 'perplexity' : 'gemini'));
 
     // HYBRID MODE: Call both Gemini (Beroe) and Perplexity (Web) in parallel
-    // ONLY trigger when user EXPLICITLY requests web search (hybridMode or webSearchEnabled toggle)
-    // Auto-research queries use Perplexity alone for faster response, not the full hybrid synthesis
-    const shouldUseHybrid = hybridMode || webSearchEnabled;
-    console.log('[AI] Should use hybrid:', shouldUseHybrid, '| Perplexity configured:', isPerplexityConfigured());
+    // Gate hybrid carefully to avoid unnecessary latency:
+    // - hybridMode: explicitly requested by caller
+    // - webSearchEnabled + requiresResearch: user toggled web AND intent needs external data
+    // Simple price/data queries use Gemini alone (Beroe data) for speed
+    const shouldUseHybrid = hybridMode || (webSearchEnabled && intent.requiresResearch);
+    console.log('[AI] Should use hybrid:', shouldUseHybrid, '| requiresResearch:', intent.requiresResearch, '| Perplexity configured:', isPerplexityConfigured());
 
     // Warn if user enabled web search but Perplexity isn't configured
     if ((webSearchEnabled || hybridMode) && !isPerplexityConfigured()) {

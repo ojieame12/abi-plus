@@ -227,6 +227,17 @@ async function callSynthesisLLM(
     throw new Error('Gemini API key not configured');
   }
 
+  // JSON schema for structured output (Gemini 2.5+ supports this)
+  const responseSchema = {
+    type: 'object',
+    properties: {
+      content: { type: 'string' },
+      agreementLevel: { type: 'string', enum: ['high', 'medium', 'low'] },
+      keyInsight: { type: 'string' }
+    },
+    required: ['content', 'agreementLevel', 'keyInsight']
+  };
+
   const requestBody = {
     contents: [
       {
@@ -239,6 +250,7 @@ async function callSynthesisLLM(
       topK: 40,
       maxOutputTokens: 2048,
       responseMimeType: 'application/json',
+      responseSchema, // Enforce JSON structure
     },
   };
 
@@ -266,11 +278,14 @@ async function callSynthesisLLM(
     const data = await response.json();
     const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
+    // Log raw response to verify JSON mode is working
+    console.log('[HybridSynthesizer] Raw Gemini response (first 300 chars):', textContent.slice(0, 300));
+
     if (!textContent) {
       throw new Error('Empty response from Gemini');
     }
 
-    // With JSON mode, should parse directly, but still use fallback parser
+    // With JSON mode + schema, should parse directly
     const parsed = parseJsonResponse(textContent);
 
     // If parsing succeeded but content is weak, try repair
