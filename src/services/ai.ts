@@ -1,10 +1,16 @@
 // AI Orchestration Layer - Routes between Gemini and Perplexity
 import type { GeminiResponse } from './gemini';
-import { callGeminiV2, isGeminiConfigured } from './gemini';
+import { callGeminiV2, isGeminiConfigured, decomposeResearchQuery, fetchBeroeIntelligence } from './gemini';
+import { generateDynamicIntake } from './deepResearchIntake';
 import type { PerplexityResponse } from './perplexity';
 import { callPerplexity, isPerplexityConfigured } from './perplexity';
+import { synthesizeResearchReport, isDeepSeekConfigured, synthesizeTemplatedReport } from './deepseek';
+import { getReportTemplate } from './reportTemplates';
 import type { ChatMessage, Suggestion, Source } from '../types/chat';
 import { generateId } from '../types/chat';
+// Deep Research types
+import type { DeepResearchResponse, StudyType, CommandCenterProgress, ResearchInsight, ResearchAgent, CommandCenterStage, PhaseStatus } from '../types/deepResearch';
+import { createDeepResearchResponse, getDefaultProcessingSteps, createInitialProgress, normalizeStage, initPhases } from '../types/deepResearch';
 import type { DetectedIntent, IntentCategory } from '../types/intents';
 import { classifyIntent } from '../types/intents';
 import type { Supplier, RiskChange } from '../types/supplier';
@@ -207,6 +213,12 @@ export interface SendMessageOptions {
   hybridMode?: boolean;
   // User's managed categories for confidence calculation
   managedCategories?: string[];
+  // Deep Research mode: multi-stage research with clarifying questions and report generation
+  deepResearchMode?: boolean;
+  // Study type for deep research
+  deepResearchStudyType?: StudyType;
+  // Credits available for deep research
+  creditsAvailable?: number;
 }
 
 // Note: simulateThinkingDuration and generateThinkingSteps removed - using real timing instead
@@ -216,7 +228,52 @@ export const sendMessage = async (
   message: string,
   options: SendMessageOptions
 ): Promise<AIResponse> => {
-  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone, hybridMode, managedCategories } = options;
+  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone, hybridMode, managedCategories, deepResearchMode, deepResearchStudyType, creditsAvailable } = options;
+
+  // ============================================
+  // DEEP RESEARCH BYPASS - Must come BEFORE hybrid/standard routing
+  // ============================================
+  if (deepResearchMode) {
+    console.log('[AI] Deep Research mode - bypassing standard/hybrid routing');
+    const deepResearchResponse = await startDeepResearchFlow(message, {
+      studyType: deepResearchStudyType,
+      creditsAvailable: creditsAvailable || 0,
+      conversationHistory,
+    });
+
+    // Return a minimal AIResponse that contains the deep research data
+    // The actual rendering will be handled by DeepResearchMessage component
+    return {
+      id: generateId(),
+      content: `Starting deep research: "${message}"`,
+      responseType: 'summary',
+      suggestions: [],
+      escalation: {
+        showInline: true,
+        expandToArtifact: true,
+        resultCount: 0,
+        threshold: 0,
+      },
+      intent: {
+        category: 'market_context',
+        subIntent: 'briefing',
+        confidence: 1.0,
+        responseType: 'widget',
+        artifactType: 'deep_research_progress',
+        extractedEntities: {},
+        requiresHandoff: false,
+        requiresResearch: true,
+        requiresDiscovery: false,
+      },
+      provider: 'hybrid',
+      artifact: {
+        type: 'deep_research_progress',
+        title: 'Deep Research in Progress',
+      },
+      // Attach deep research response for component rendering
+      deepResearch: deepResearchResponse,
+    } as AIResponse & { deepResearch: DeepResearchResponse };
+  }
 
   // Track milestones with real timestamps
   const startTime = Date.now();
@@ -1723,6 +1780,730 @@ const generateLocalResponse = (
   };
 };
 
+// ============================================
+// DEEP RESEARCH FLOW
+// ============================================
+
+interface DeepResearchFlowOptions {
+  studyType?: StudyType;
+  creditsAvailable: number;
+  conversationHistory: ChatMessage[];
+}
+
+/**
+ * Start the deep research flow - returns intake questions or starts processing
+ * This is the entry point for deep research mode
+ */
+export const startDeepResearchFlow = async (
+  query: string,
+  options: DeepResearchFlowOptions
+): Promise<DeepResearchResponse> => {
+  const { studyType = 'market_analysis', creditsAvailable, conversationHistory } = options;
+
+  // Detect if query is a meta-request (e.g., "do a deep research on this topic")
+  // and extract the actual topic from conversation history
+  let resolvedQuery = query;
+  const metaPatterns = /\b(deep research|research this|analyze this|study this|look into this|research on this|do.*research|investigate this)\b/i;
+
+  if (metaPatterns.test(query) && conversationHistory.length > 0) {
+    // Find the last substantive user message that isn't a meta-request
+    const userMessages = conversationHistory
+      .filter(m => m.role === 'user')
+      .filter(m => !metaPatterns.test(m.content))
+      .filter(m => m.content.length > 10); // Filter out very short messages
+
+    if (userMessages.length > 0) {
+      const lastUserMessage = userMessages[userMessages.length - 1];
+      resolvedQuery = lastUserMessage.content;
+      console.log('[DeepResearch] Resolved meta-request to actual topic:', { original: query, resolved: resolvedQuery });
+    } else {
+      // Try to extract topic from the current query itself
+      const topicMatch = query.match(/(?:research|analyze|study|investigate|look into)\s+(?:on\s+)?(?:the\s+)?(?:topic\s+(?:of\s+)?)?["']?([^"']+?)["']?\s*$/i);
+      if (topicMatch && topicMatch[1] && topicMatch[1].length > 5) {
+        resolvedQuery = topicMatch[1].trim();
+        console.log('[DeepResearch] Extracted topic from query:', { original: query, extracted: resolvedQuery });
+      }
+    }
+  }
+
+  // Generate a unique job ID for this research session
+  const jobId = `dr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  // Determine credits required based on study type
+  const creditsRequired = getCreditsRequiredForStudy(studyType);
+
+  console.log('[DeepResearch] Starting flow:', { jobId, query: resolvedQuery, studyType, creditsAvailable, creditsRequired });
+
+  // Check if user has enough credits
+  if (creditsAvailable < creditsRequired) {
+    return {
+      type: 'deep_research',
+      jobId,
+      query: resolvedQuery,
+      studyType,
+      phase: 'error',
+      creditsAvailable,
+      creditsRequired,
+      error: {
+        message: `Insufficient credits. This research requires ${creditsRequired} credits, but you have ${creditsAvailable}.`,
+        code: 'INSUFFICIENT_CREDITS',
+        canRetry: false,
+      },
+    };
+  }
+
+  // Generate dynamic intake questions from context
+  // Uses two-layer engine: deterministic slots + optional LLM enhancement
+  const intake = await generateDynamicIntake(
+    resolvedQuery,
+    studyType,
+    conversationHistory,
+    { useLLM: isGeminiConfigured() }
+  );
+
+  console.log('[DeepResearch] Dynamic intake generated:', {
+    questions: intake.questions.length,
+    prefilled: Object.keys(intake.prefilledAnswers || {}).length,
+    canSkip: intake.canSkip,
+    skipReason: intake.skipReason,
+  });
+
+  return {
+    type: 'deep_research',
+    jobId,
+    query: resolvedQuery,
+    studyType,
+    phase: 'intake',
+    creditsAvailable,
+    creditsRequired,
+    intake,
+  };
+};
+
+/**
+ * Get credits required for a study type
+ */
+const getCreditsRequiredForStudy = (studyType: StudyType): number => {
+  const creditMap: Record<StudyType, number> = {
+    sourcing_study: 750,
+    cost_model: 600,
+    market_analysis: 500,
+    supplier_assessment: 400,
+    risk_assessment: 450,
+    custom: 500,
+  };
+  return creditMap[studyType] || 500;
+};
+
+/**
+ * Confirm intake and start processing
+ * Called after user answers clarifying questions
+ */
+export const confirmDeepResearchIntake = async (
+  jobId: string,
+  query: string,
+  answers: Record<string, string | string[]>,
+  studyType: StudyType = 'market_analysis',
+  creditsAvailable: number = 0
+): Promise<DeepResearchResponse> => {
+  console.log('[DeepResearch] Confirming intake:', { jobId, answers });
+
+  // Transition to processing phase
+  return {
+    type: 'deep_research',
+    jobId,
+    query,
+    studyType,
+    phase: 'processing',
+    creditsAvailable,
+    creditsRequired: getCreditsRequiredForStudy(studyType),
+    processing: {
+      steps: getDefaultProcessingSteps(),
+      currentStepIndex: 0,
+      elapsedTime: 0,
+      sourcesCollected: 0,
+    },
+  };
+};
+
+/**
+ * Execute deep research processing
+ * Uses Perplexity for web research and DeepSeek R1 for synthesis
+ * Returns updates via callback with structured CommandCenterProgress
+ */
+export const executeDeepResearch = async (
+  jobId: string,
+  query: string,
+  answers: Record<string, string | string[]>,
+  studyType: StudyType = 'market_analysis',
+  onProgress?: (update: DeepResearchResponse) => void
+): Promise<DeepResearchResponse> => {
+  console.log('[DeepResearch] Executing research:', { jobId, query, studyType });
+  console.log('[DeepResearch] API Status - Perplexity:', isPerplexityConfigured(), 'DeepSeek:', isDeepSeekConfigured());
+
+  const startTime = Date.now();
+  const allSources: Source[] = [];
+  const INSIGHT_STREAM_MAX = 50;
+
+  // Global source registry for URL deduplication
+  const sourceKeySet = new Set<string>();
+
+  const normalizeUrl = (url?: string): string | null => {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      return `${u.host}${u.pathname}`.toLowerCase().replace(/\/+$/, '');
+    } catch { return url.toLowerCase(); }
+  };
+
+  const getSourceKey = (source: Source): string | null => {
+    const urlKey = normalizeUrl(source.url);
+    if (urlKey) return `url:${urlKey}`;
+    const name = source.name?.trim().toLowerCase();
+    const snippet = source.snippet?.trim().toLowerCase();
+    if (name || snippet) {
+      return `meta:${name || ''}|${snippet ? snippet.slice(0, 80) : ''}`;
+    }
+    return null;
+  };
+
+  const addSourceIfUnique = (source: Source): boolean => {
+    const key = getSourceKey(source);
+    if (key && sourceKeySet.has(key)) return false;
+    if (key) sourceKeySet.add(key);
+    allSources.push(source);
+    return true;
+  };
+
+  // Initialize Command Center Progress
+  const ccProgress: CommandCenterProgress = createInitialProgress();
+  ccProgress.startedAt = startTime;
+
+  // Helper to add insight to stream
+  const addInsight = (text: string, source: 'beroe' | 'web' | 'internal' | 'synthesis', sourceLabel?: string) => {
+    const insight: ResearchInsight = {
+      id: `insight-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      text: text.slice(0, 200),
+      source,
+      sourceLabel: sourceLabel || (source === 'web' ? 'Web Research' : source === 'synthesis' ? 'Report Synthesis' : 'Internal Data'),
+      timestamp: Date.now(),
+    };
+    ccProgress.insightStream.push(insight);
+    if (ccProgress.insightStream.length > INSIGHT_STREAM_MAX) {
+      ccProgress.insightStream.splice(0, ccProgress.insightStream.length - INSIGHT_STREAM_MAX);
+    }
+  };
+
+  // Helper to emit progress updates (throttled to avoid excessive re-renders)
+  let _progressTimer: ReturnType<typeof setTimeout> | null = null;
+  const PROGRESS_THROTTLE_MS = 300;
+
+  const _doEmit = () => {
+    ccProgress.elapsedMs = Date.now() - startTime;
+
+    const response: DeepResearchResponse = {
+      type: 'deep_research',
+      jobId,
+      query,
+      studyType,
+      phase: 'processing',
+      creditsAvailable: 0,
+      creditsRequired: getCreditsRequiredForStudy(studyType),
+      commandCenterProgress: {
+        ...ccProgress,
+        agents: ccProgress.agents.map(a => ({ ...a, sources: [...a.sources], insights: [...a.insights] })),
+        insightStream: [...ccProgress.insightStream],
+        tags: [...ccProgress.tags],
+        phases: ccProgress.phases.map(p => ({ ...p })),
+        completedStages: [...ccProgress.completedStages],
+      },
+    };
+    onProgress?.(response);
+  };
+
+  /**
+   * Throttled progress emitter.
+   * Pass `force: true` for stage transitions (plan → research → synthesis → delivery → complete)
+   * that must appear instantly. Otherwise updates are batched at 300ms intervals.
+   */
+  const emitProgress = (force = false) => {
+    if (force) {
+      if (_progressTimer) { clearTimeout(_progressTimer); _progressTimer = null; }
+      _doEmit();
+      return;
+    }
+    // Coalesce rapid-fire updates
+    if (_progressTimer) return; // already scheduled
+    _progressTimer = setTimeout(() => {
+      _progressTimer = null;
+      _doEmit();
+    }, PROGRESS_THROTTLE_MS);
+  };
+
+  // Flush any pending throttled update (call at stage boundaries)
+  const flushProgress = () => {
+    if (_progressTimer) { clearTimeout(_progressTimer); _progressTimer = null; }
+    _doEmit();
+  };
+
+  // Pipeline stage transition helper — closes out current phases, records completed stage, opens new stage
+  const transitionStage = (newStage: CommandCenterStage) => {
+    const prev = normalizeStage(ccProgress.stage);
+    if (prev !== 'complete' && prev !== newStage) {
+      // Complete any remaining phases from the outgoing stage
+      ccProgress.phases.forEach(p => {
+        if (p.status !== 'complete') { p.status = 'complete'; p.completedAt = Date.now(); }
+      });
+      if (!ccProgress.completedStages.includes(prev)) {
+        ccProgress.completedStages.push(prev);
+      }
+    }
+    ccProgress.stage = newStage;
+    ccProgress.phases = initPhases(newStage);
+  };
+
+  // Update a specific phase within the current stage
+  const updatePhase = (phaseId: string, status: PhaseStatus, detail?: string) => {
+    const phase = ccProgress.phases.find(p => p.id === phaseId);
+    if (!phase) return;
+    if (status === 'active' && !phase.startedAt) phase.startedAt = Date.now();
+    if (status === 'complete' && !phase.completedAt) phase.completedAt = Date.now();
+    phase.status = status;
+    if (detail) phase.detail = detail;
+  };
+
+  try {
+    // ============================
+    // STAGE 1: DECOMPOSE (Gemini Flash)
+    // ============================
+    transitionStage('plan');
+    updatePhase('plan.decomposition', 'active');
+    emitProgress(true);
+
+    // Build context from intake answers
+    const answerContext = Object.entries(answers)
+      .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+      .join('\n');
+
+    const decomposed = await decomposeResearchQuery(query, studyType, answerContext);
+    updatePhase('plan.decomposition', 'complete');
+    updatePhase('plan.deduplication', 'active');
+    emitProgress();
+
+    // Deduplicate agent queries — drop agents whose query is >85% similar to an existing one.
+    // Gemini says "non-overlapping" but often produces near-duplicate queries.
+    const dedupeAgents = (agents: typeof decomposed.agents) => {
+      const kept: typeof agents = [];
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).sort().join(' ');
+      const jaccard = (a: string, b: string): number => {
+        const setA = new Set(normalize(a).split(' '));
+        const setB = new Set(normalize(b).split(' '));
+        const intersection = [...setA].filter(w => setB.has(w)).length;
+        const union = new Set([...setA, ...setB]).size;
+        return union === 0 ? 0 : intersection / union;
+      };
+      for (const agent of agents) {
+        if (kept.some(k => jaccard(k.query, agent.query) > 0.85)) {
+          console.log('[DeepResearch] Dropping near-duplicate agent:', agent.name, '–', agent.query.slice(0, 60));
+          continue;
+        }
+        kept.push(agent);
+      }
+      return kept;
+    };
+    decomposed.agents = dedupeAgents(decomposed.agents);
+    updatePhase('plan.deduplication', 'complete', `${decomposed.agents.length} agents after dedup`);
+    updatePhase('plan.assignment', 'active');
+
+    ccProgress.agents = decomposed.agents.map((a, i) => ({
+      id: `agent-${i}`,
+      name: a.name,
+      query: a.query,
+      category: a.category,
+      status: 'queued' as const,
+      sourcesFound: 0,
+      uniqueSourcesFound: 0,
+      insights: [],
+      sources: [],
+      findings: '',
+    }));
+    ccProgress.tags = decomposed.tags;
+    updatePhase('plan.assignment', 'complete', `${ccProgress.agents.length} agents queued`);
+    emitProgress(true); // force: agents list just set
+
+    console.log('[DeepResearch] Decomposed into', ccProgress.agents.length, 'agents');
+
+    // ============================
+    // STAGE 2: PARALLEL RESEARCH (Beroe + N × Perplexity, concurrency=3)
+    // ============================
+    transitionStage('research');
+    updatePhase('research.internal', 'active', 'parallel');
+    updatePhase('research.web', 'active', 'parallel');
+    emitProgress(true);
+
+    const CONCURRENCY = 3;
+
+    const runAgent = async (agent: ResearchAgent) => {
+      agent.status = 'researching';
+      agent.startedAt = Date.now();
+      ccProgress.activeAgentId = agent.id;
+      emitProgress(true); // force: agent status change is a key UI moment
+
+      if (!isPerplexityConfigured()) {
+        agent.status = 'error';
+        agent.error = 'Perplexity API not configured';
+        agent.completedAt = Date.now();
+        ccProgress.totalSources = allSources.length;
+        emitProgress(true);
+        return;
+      }
+
+      try {
+        const response = await callPerplexity(agent.query, []);
+        agent.findings = response.content;
+        agent.sourcesFound = response.sources?.length || 0;
+
+        let uniqueCount = 0;
+        for (const src of (response.sources || [])) {
+          const source: Source = { name: src.name, url: src.url, type: 'web', snippet: src.snippet };
+          agent.sources.push(source);
+          if (addSourceIfUnique(source)) uniqueCount++;
+          if (src.snippet && src.snippet.length > 20) {
+            agent.insights.push(src.snippet.slice(0, 200));
+            addInsight(src.snippet.slice(0, 200), 'web', src.name);
+          }
+        }
+        agent.uniqueSourcesFound = uniqueCount;
+        agent.status = 'complete';
+        agent.completedAt = Date.now();
+      } catch (err) {
+        agent.status = 'error';
+        agent.error = err instanceof Error ? err.message : 'Research failed';
+        agent.completedAt = Date.now();
+      }
+
+      ccProgress.totalSources = allSources.length;
+      ccProgress.totalSourcesRaw += agent.sourcesFound;
+      emitProgress(true); // force: agent finished — update counters immediately
+    };
+
+    // Run Beroe intelligence fetch in parallel with Perplexity agents
+    const beroePromise = isGeminiConfigured()
+      ? fetchBeroeIntelligence(query, studyType, answerContext).then(beroe => {
+          if (beroe.content) {
+            addInsight('Beroe market intelligence received', 'beroe', 'Beroe Intelligence');
+            // Add Beroe sources with 'beroe' type for [B#] citations
+            for (const src of beroe.sources) {
+              const source: Source = { name: src.name, type: src.type, snippet: src.snippet, url: src.url };
+              addSourceIfUnique(source);
+            }
+            ccProgress.totalSources = allSources.length;
+            emitProgress();
+          }
+          return beroe;
+        }).catch(err => {
+          console.error('[DeepResearch] Beroe intelligence fetch failed:', err);
+          return { content: '', sources: [] };
+        })
+      : Promise.resolve({ content: '', sources: [] });
+
+    // Execute Perplexity agents with concurrency limit
+    const runAllAgents = async () => {
+      const agentQueue = [...ccProgress.agents];
+      const executing: Promise<void>[] = [];
+      for (const agent of agentQueue) {
+        const p = runAgent(agent).then(() => {
+          executing.splice(executing.indexOf(p), 1);
+        });
+        executing.push(p);
+        if (executing.length >= CONCURRENCY) {
+          await Promise.race(executing);
+        }
+      }
+      await Promise.all(executing);
+    };
+
+    // Run Beroe and Perplexity agents in parallel
+    const [beroeResult] = await Promise.all([beroePromise, runAllAgents()]);
+
+    console.log('[DeepResearch] All agents complete. Unique sources:', allSources.length, 'Raw total:', ccProgress.totalSourcesRaw, 'Beroe content:', beroeResult.content.length > 0 ? 'yes' : 'no');
+
+    // ============================
+    // STAGE 3: SYNTHESIZE (DeepSeek R1)
+    // ============================
+    flushProgress(); // flush any pending research-phase updates
+    // Close out research phases before transitioning
+    updatePhase('research.internal', 'complete');
+    updatePhase('research.web', 'complete');
+    updatePhase('research.consolidation', 'complete', `${allSources.length} unique sources`);
+    transitionStage('synthesis');
+    updatePhase('synthesis.template', 'active');
+    ccProgress.activeAgentId = null;
+    emitProgress(true);
+
+    // Combine findings from all successful web agents (no Beroe here)
+    const webFindings = ccProgress.agents
+      .filter(a => a.status === 'complete' && a.findings)
+      .map(a => `## ${a.name}\n${a.findings}`)
+      .join('\n\n---\n\n');
+
+    // Keep Beroe intelligence separate so DeepSeek can distinguish data sources
+    const beroeFindings = beroeResult.content || '';
+    const combinedFindings = [beroeFindings ? `## Beroe Market Intelligence\n${beroeFindings}` : '', webFindings].filter(Boolean).join('\n\n---\n\n');
+
+    let report: import('../types/deepResearch').DeepResearchReport;
+
+    // Get the report template for this study type
+    const reportTemplate = getReportTemplate(studyType);
+    console.log('[DeepResearch] Using template:', reportTemplate.name);
+    updatePhase('synthesis.template', 'complete', reportTemplate.name);
+    updatePhase('synthesis.writing', 'active');
+    emitProgress();
+
+    // Extract regions and timeframe from answers
+    const regions = Array.isArray(answers.region) ? answers.region : answers.region ? [answers.region] : undefined;
+    const timeframe = typeof answers.timeframe === 'string' ? answers.timeframe : undefined;
+
+    // Track section progress
+    const totalSections = reportTemplate.sections.length;
+    let sectionsComplete = 0;
+
+    if (isDeepSeekConfigured() && combinedFindings) {
+      try {
+        console.log('[DeepResearch] Calling DeepSeek R1 for template-driven synthesis...');
+        console.log('[DeepResearch] Sources breakdown:', {
+          total: allSources.length,
+          beroe: allSources.filter(s => s.type === 'beroe' || s.type === 'internal_data').length,
+          web: allSources.filter(s => s.type === 'web').length,
+        });
+
+        // Note: synthesizeTemplatedReport reassigns citationIds based on source.type
+        // Beroe/internal → [B1], [B2], Web → [W1], [W2], etc.
+        report = await synthesizeTemplatedReport(
+          reportTemplate,
+          {
+            query,
+            studyType,
+            regions: regions as string[] | undefined,
+            timeframe,
+            webFindings,
+            beroeFindings: beroeFindings || undefined,
+            sources: allSources.map(s => ({
+              ...s,
+              citationId: '', // Will be assigned by synthesizeTemplatedReport based on type
+              snippet: s.snippet || '',
+            })),
+            intakeAnswers: answers,
+          },
+          (status) => {
+            // Update synthesis progress
+            if (status.startsWith('Writing section:')) {
+              const sectionTitle = status.replace('Writing section:', '').replace('...', '').trim();
+              ccProgress.synthesis = {
+                currentSection: sectionTitle.toLowerCase().replace(/\s+/g, '_'),
+                currentSectionTitle: sectionTitle,
+                sectionsComplete,
+                totalSections,
+              };
+              addInsight(`Synthesizing: ${sectionTitle}`, 'synthesis', 'Report Generation');
+            }
+            if (status.includes('complete') || status.includes('Finalizing')) {
+              sectionsComplete++;
+              if (ccProgress.synthesis) {
+                ccProgress.synthesis.sectionsComplete = sectionsComplete;
+              }
+            }
+
+            // Synthesis updates are infrequent (per section), so force-emit
+            emitProgress(true);
+          }
+        );
+
+        // Override some fields with job-specific data
+        report.id = `dr-report-${jobId}`;
+        report.queryOriginal = query;
+
+        console.log('[DeepResearch] Template synthesis complete:', {
+          sections: report.sections.length,
+          citations: Object.keys(report.citations || {}).length,
+          qualityScore: report.qualityMetrics?.completenessScore,
+        });
+      } catch (error) {
+        console.error('[DeepResearch] DeepSeek template synthesis error:', error);
+        const fallbackData = createFallbackReport(query, combinedFindings, studyType);
+        report = convertFallbackToReport(fallbackData, jobId, query, studyType, answers, allSources, startTime);
+      }
+    } else {
+      console.log('[DeepResearch] Using fallback synthesis (DeepSeek not configured or no findings)');
+      const fallbackData = createFallbackReport(query, combinedFindings || 'Research data collected from available sources.', studyType);
+      report = convertFallbackToReport(fallbackData, jobId, query, studyType, answers, allSources, startTime);
+    }
+
+    // Flush any pending throttled progress before signaling completion
+    updatePhase('synthesis.writing', 'complete');
+    updatePhase('synthesis.quality', 'complete');
+    flushProgress();
+
+    // Delivery stage: report assembly + finalization
+    transitionStage('delivery');
+    updatePhase('delivery.assembly', 'active');
+    emitProgress(true);
+
+    updatePhase('delivery.assembly', 'complete');
+    updatePhase('delivery.presentation', 'active');
+    emitProgress();
+
+    updatePhase('delivery.presentation', 'complete');
+    updatePhase('delivery.export', 'complete');
+    emitProgress(true);
+
+    // Finalize
+    transitionStage('complete');
+    emitProgress(true);
+    const totalProcessingTime = report.totalProcessingTime ?? (Date.now() - startTime);
+    const creditsUsed = report.creditsUsed ?? getCreditsRequiredForStudy(studyType);
+    if (!report.totalProcessingTime) {
+      report.totalProcessingTime = totalProcessingTime;
+    }
+    if (!report.creditsUsed) {
+      report.creditsUsed = creditsUsed;
+    }
+
+    ccProgress.elapsedMs = totalProcessingTime;
+
+    console.log('[DeepResearch] Research complete:', {
+      jobId,
+      uniqueSources: allSources.length,
+      rawSources: ccProgress.totalSourcesRaw,
+      agents: ccProgress.agents.length,
+      processingTime: totalProcessingTime,
+      sectionsGenerated: report.sections.length,
+      insightsCollected: ccProgress.insightStream.length,
+      tagsFound: ccProgress.tags.length,
+    });
+
+    return {
+      type: 'deep_research',
+      jobId,
+      query,
+      studyType,
+      phase: 'complete',
+      creditsAvailable: 0,
+      creditsRequired: creditsUsed,
+      report,
+      commandCenterProgress: ccProgress,
+    };
+
+  } catch (error) {
+    console.error('[DeepResearch] Fatal error:', error);
+    flushProgress();
+
+    return {
+      type: 'deep_research',
+      jobId,
+      query,
+      studyType,
+      phase: 'error',
+      creditsAvailable: 0,
+      creditsRequired: getCreditsRequiredForStudy(studyType),
+      commandCenterProgress: ccProgress,
+      error: {
+        message: error instanceof Error ? error.message : 'Research failed unexpectedly',
+        canRetry: true,
+      },
+    };
+  }
+};
+
+// Fallback report when DeepSeek is unavailable
+const createFallbackReport = (
+  query: string,
+  findings: string,
+  studyType: StudyType
+): {
+  title: string;
+  summary: string;
+  sections: { id: string; title: string; content: string }[];
+  keyFindings: string[];
+} => {
+  return {
+    title: `${query} - ${studyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}`,
+    summary: `This report provides analysis based on your query: "${query}". Information has been gathered from multiple sources and synthesized below.`,
+    sections: [
+      {
+        id: 'findings',
+        title: 'Research Findings',
+        content: findings,
+      },
+      {
+        id: 'recommendations',
+        title: 'Recommendations',
+        content: `Based on the research findings, consider:\n\n- **Monitor market developments** closely for changes in pricing or supply dynamics\n- **Evaluate supplier relationships** against the market context\n- **Develop contingency plans** for potential disruptions`,
+      },
+    ],
+    keyFindings: [
+      'Research completed successfully',
+      'Multiple sources consulted',
+      'See detailed findings above',
+    ],
+  };
+};
+
+// Convert fallback data to full report structure
+const convertFallbackToReport = (
+  fallbackData: ReturnType<typeof createFallbackReport>,
+  jobId: string,
+  query: string,
+  studyType: StudyType,
+  answers: Record<string, string | string[]>,
+  allSources: Source[],
+  startTime: number
+): import('../types/deepResearch').DeepResearchReport => {
+  const totalProcessingTime = Date.now() - startTime;
+  const creditsUsed = getCreditsRequiredForStudy(studyType);
+
+  return {
+    id: `dr-report-${jobId}`,
+    title: fallbackData.title,
+    summary: fallbackData.summary,
+    studyType,
+    metadata: {
+      title: fallbackData.title,
+      date: new Date().toISOString().split('T')[0],
+      templateId: studyType,
+      version: '1.0',
+    },
+    tableOfContents: fallbackData.sections.map((s, idx) => ({
+      id: s.id,
+      title: s.title,
+      level: 0,
+    })),
+    sections: fallbackData.sections.map((section, idx) => ({
+      id: section.id || `section-${idx}`,
+      title: section.title,
+      content: section.content,
+      level: 0,
+      citationIds: [],
+      sources: allSources.slice(idx * 2, idx * 2 + 3),
+    })),
+    citations: {},
+    references: [],
+    allSources,
+    generatedAt: new Date().toISOString(),
+    queryOriginal: query,
+    intakeAnswers: answers,
+    totalProcessingTime,
+    creditsUsed,
+    canExport: true,
+    qualityMetrics: {
+      totalCitations: 0,
+      sectionsWithCitations: 0,
+      totalSections: fallbackData.sections.length,
+      completenessScore: 50, // Lower score for fallback
+    },
+  };
+};
+
 // Quick access functions
 export const getQuickPortfolioSummary = (): ReturnType<typeof getPortfolioSummary> => {
   return getPortfolioSummary();
@@ -1736,5 +2517,7 @@ export const getQuickHighRiskSuppliers = (): Supplier[] => {
 export const getAIStatus = () => ({
   gemini: isGeminiConfigured(),
   perplexity: isPerplexityConfigured(),
+  deepseek: isDeepSeekConfigured(),
   canOperate: isGeminiConfigured() || isPerplexityConfigured() || true, // Always true due to local fallback
+  canDeepResearch: isPerplexityConfigured() || isDeepSeekConfigured(), // Need at least one for deep research
 });

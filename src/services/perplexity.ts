@@ -206,27 +206,31 @@ export const callPerplexity = async (
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for research
 
   try {
+    const requestBody = {
+      model: 'sonar', // Perplexity lightweight search model
+      messages,
+      temperature: 0.2,
+      max_tokens: 2000,
+    };
+
+    console.log('[Perplexity] Sending request with model:', requestBody.model);
+
     const response = await fetch(PERPLEXITY_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'sonar-pro', // Latest 2025 Perplexity model with enhanced reasoning
-        messages,
-        temperature: 0.2,
-        max_tokens: 2000,
-        return_citations: true,
-        search_recency_filter: 'month', // Focus on recent information
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('[Perplexity] API error response:', response.status, errorText);
+      throw new Error(`Perplexity API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();

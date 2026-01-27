@@ -60,7 +60,10 @@ export type ArtifactType =
   | 'report_viewer'
   // Expert Marketplace
   | 'expert_profile'
-  | 'expert_booking';
+  | 'expert_booking'
+  // Deep Research
+  | 'deep_research_progress'
+  | 'deep_research_report';
 
 // ============================================
 // ARTIFACT METADATA
@@ -346,6 +349,24 @@ export const ARTIFACT_META: Record<ArtifactType, ArtifactMeta> = {
     defaultWidth: '40%',
     allowExpand: false,
   },
+
+  // Deep Research
+  deep_research_progress: {
+    id: 'deep_research_progress',
+    title: 'Deep Research',
+    category: 'insight',
+    description: 'Real-time progress for multi-source deep research',
+    defaultWidth: '45%',
+    allowExpand: true,
+  },
+  deep_research_report: {
+    id: 'deep_research_report',
+    title: 'Research Report',
+    category: 'insight',
+    description: 'Comprehensive research report with sources and insights',
+    defaultWidth: '50%',
+    allowExpand: true,
+  },
 };
 
 // ============================================
@@ -592,6 +613,23 @@ export interface ReportViewerPayload extends BaseArtifactPayload {
   };
 }
 
+// Deep Research Payloads
+export interface DeepResearchProgressPayload extends BaseArtifactPayload {
+  type: 'deep_research_progress';
+  jobId: string;
+  query: string;
+  studyType: import('../../types/deepResearch').StudyType;
+  phase: import('../../types/deepResearch').DeepResearchPhase;
+  processing?: import('../../types/deepResearch').ProcessingState;
+  commandCenterProgress?: import('../../types/deepResearch').CommandCenterProgress;
+}
+
+export interface DeepResearchReportPayload extends BaseArtifactPayload {
+  type: 'deep_research_report';
+  jobId: string;
+  report: import('../../types/deepResearch').DeepResearchReport;
+}
+
 // Union of all payload types
 export type ArtifactPayload =
   | InsightDetailPayload
@@ -610,6 +648,8 @@ export type ArtifactPayload =
   | AnalystMessagePayload
   | ExpertBriefingPayload
   | ReportViewerPayload
+  | DeepResearchProgressPayload
+  | DeepResearchReportPayload
   | (BaseArtifactPayload & { [key: string]: unknown });
 
 // ============================================

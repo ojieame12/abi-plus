@@ -1,3 +1,5 @@
+import type { DeepResearchResponse } from './deepResearch';
+
 // Message types
 export interface ChatMessage {
   id: string;
@@ -10,6 +12,8 @@ export interface ChatMessage {
   sources?: Source[];
   insight?: ChatInsight;
   thoughtProcess?: ThoughtProcessData;
+  // Deep Research response (when deepResearchMode is enabled)
+  deepResearch?: DeepResearchResponse;
 }
 
 export type ChatInsight =

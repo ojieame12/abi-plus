@@ -36,6 +36,7 @@ import {
 } from './mockData';
 import type { DetectedIntent } from '../types/intents';
 import { classifyIntent } from '../types/intents';
+import type { DecomposedQuery, AgentCategory, StudyType } from '../types/deepResearch';
 import type { WidgetData, WidgetType, SpendExposureData } from '../types/widgets';
 import { transformSupplierToRiskCardData, transformRiskChangesToAlertData } from './widgetTransformers';
 import { getWidgetRouteFromRegistry, type AIContentSlots } from './widgetRouter';
@@ -2691,6 +2692,386 @@ const generateFallbackResponse = async (intent: DetectedIntent, query: string): 
         ],
         intent,
       };
+  }
+};
+
+// ============================================
+// QUERY DECOMPOSITION FOR DEEP RESEARCH
+// ============================================
+
+/**
+ * Decomposes a research query into 3-5 non-overlapping sub-queries using Gemini Flash.
+ * Each sub-query becomes a parallel research agent.
+ * Falls back to a deterministic multi-agent heuristic on any failure.
+ */
+/**
+ * Generate deterministic multi-agent fallback based on study type
+ * Used when Gemini decomposition fails — always returns 3-4 agents
+ */
+const getHeuristicAgents = (query: string, studyType: StudyType): DecomposedQuery => {
+  const heuristics: Record<string, Array<{ name: string; querySuffix: string; category: AgentCategory }>> = {
+    market_analysis: [
+      { name: 'Market Dynamics', querySuffix: 'market size trends growth outlook', category: 'market_dynamics' },
+      { name: 'Pricing Analysis', querySuffix: 'pricing trends cost drivers forecasts', category: 'pricing_trends' },
+      { name: 'Supplier Landscape', querySuffix: 'major suppliers market share competitive landscape', category: 'supplier_landscape' },
+      { name: 'Risk & Regulation', querySuffix: 'regulatory changes supply chain risks disruptions', category: 'risk_factors' },
+    ],
+    sourcing_study: [
+      { name: 'Supply Market', querySuffix: 'supply market structure availability capacity', category: 'market_dynamics' },
+      { name: 'Supplier Analysis', querySuffix: 'top suppliers capabilities financial stability', category: 'supplier_landscape' },
+      { name: 'Cost Analysis', querySuffix: 'cost breakdown pricing benchmarks should-cost', category: 'pricing_trends' },
+      { name: 'Sourcing Risks', querySuffix: 'sourcing risks supply disruption mitigation', category: 'risk_factors' },
+    ],
+    cost_model: [
+      { name: 'Cost Drivers', querySuffix: 'cost drivers raw materials labor energy breakdown', category: 'pricing_trends' },
+      { name: 'Market Benchmarks', querySuffix: 'market benchmarks pricing comparison industry average', category: 'market_dynamics' },
+      { name: 'Supplier Pricing', querySuffix: 'supplier pricing strategies contract models', category: 'supplier_landscape' },
+    ],
+    supplier_assessment: [
+      { name: 'Company Profile', querySuffix: 'company profile revenue operations capabilities', category: 'supplier_landscape' },
+      { name: 'Financial Health', querySuffix: 'financial performance stability credit rating', category: 'risk_factors' },
+      { name: 'Market Position', querySuffix: 'market position competitors strengths weaknesses', category: 'competitive_intelligence' },
+    ],
+    risk_assessment: [
+      { name: 'Supply Chain Risk', querySuffix: 'supply chain disruptions vulnerabilities resilience', category: 'risk_factors' },
+      { name: 'Market Risk', querySuffix: 'price volatility market instability economic risks', category: 'market_dynamics' },
+      { name: 'Regulatory Risk', querySuffix: 'regulatory compliance changes environmental requirements', category: 'regulatory' },
+      { name: 'Geopolitical Risk', querySuffix: 'geopolitical trade tariff sanctions political risk', category: 'risk_factors' },
+    ],
+  };
+
+  const templates = heuristics[studyType] || heuristics.market_analysis;
+  const agents = templates.map(t => ({
+    name: t.name,
+    query: `${query} ${t.querySuffix}`,
+    category: t.category,
+  }));
+
+  return { agents, tags: [] };
+};
+
+export const decomposeResearchQuery = async (
+  query: string,
+  studyType: StudyType,
+  answerContext: string
+): Promise<DecomposedQuery> => {
+  const fallback = getHeuristicAgents(query, studyType);
+  const useFallback = (reason: string) => {
+    console.warn('[DecomposeQuery] Using heuristic fallback:', { reason, studyType });
+    return fallback;
+  };
+
+  if (!GEMINI_API_KEY) {
+    return useFallback('Gemini not configured');
+  }
+
+  const prompt = `You are a research strategist. Decompose the following procurement/sourcing research query into 3-5 non-overlapping research angles. Each angle should cover a distinct aspect that can be researched independently.
+
+QUERY: ${query}
+STUDY TYPE: ${studyType}
+CONTEXT: ${answerContext}
+
+Return a JSON object with this exact structure:
+{
+  "agents": [
+    { "name": "Short descriptive name", "query": "Specific search query for this angle", "category": "one of: market_dynamics, supplier_landscape, pricing_trends, risk_factors, regulatory, competitive_intelligence, technology_trends, general" }
+  ],
+  "tags": ["relevant", "topic", "tags"]
+}
+
+Rules:
+- Return 3-5 agents, each with a DIFFERENT category when possible
+- Each query should be specific and searchable
+- Names should be concise (2-4 words)
+- Tags should be 3-8 relevant topic keywords
+- Do NOT overlap between agent queries`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(GEMINI_API_URL + `?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1000,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              agents: {
+                type: 'ARRAY',
+                items: {
+                  type: 'OBJECT',
+                  properties: {
+                    name: { type: 'STRING' },
+                    query: { type: 'STRING' },
+                    category: { type: 'STRING' },
+                  },
+                  required: ['name', 'query', 'category'],
+                },
+              },
+              tags: {
+                type: 'ARRAY',
+                items: { type: 'STRING' },
+              },
+            },
+            required: ['agents'],
+          },
+        },
+      }),
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('[DecomposeQuery] Gemini API error:', response.status, errText.slice(0, 200));
+      return useFallback(`Gemini API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textContent) {
+      console.error('[DecomposeQuery] No text content in response. Raw:', JSON.stringify(data).slice(0, 300));
+      return useFallback('Empty Gemini response');
+    }
+
+    console.log('[DecomposeQuery] Raw Gemini response:', textContent.slice(0, 500));
+
+    const parsed = tryParseJSON(textContent) as Record<string, unknown> | unknown[] | null;
+    if (!parsed) {
+      console.error('[DecomposeQuery] Failed to parse JSON. Raw text:', textContent.slice(0, 500));
+      return useFallback('JSON parse failure');
+    }
+
+    // Handle different response shapes:
+    // 1. { agents: [...], tags: [...] } — expected
+    // 2. [...] — array returned directly (treat as agents)
+    // 3. { research_angles: [...] } or similar variant keys
+    let rawAgents: unknown[] = [];
+    let rawTags: string[] = [];
+
+    if (Array.isArray(parsed)) {
+      rawAgents = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      const obj = parsed as Record<string, unknown>;
+      // Try common key variants
+      rawAgents = (
+        Array.isArray(obj.agents) ? obj.agents :
+        Array.isArray(obj.research_angles) ? obj.research_angles :
+        Array.isArray(obj.queries) ? obj.queries :
+        Array.isArray(obj.sub_queries) ? obj.sub_queries :
+        []
+      ) as unknown[];
+      rawTags = Array.isArray(obj.tags) ? (obj.tags as string[]).filter(t => typeof t === 'string') : [];
+    }
+
+    if (rawAgents.length === 0) {
+      console.error('[DecomposeQuery] No agents found in response:', JSON.stringify(parsed).slice(0, 300));
+      return useFallback('No agents in response');
+    }
+
+    // Validate categories
+    const validCategories: AgentCategory[] = [
+      'market_dynamics', 'supplier_landscape', 'pricing_trends',
+      'risk_factors', 'regulatory', 'competitive_intelligence',
+      'technology_trends', 'general',
+    ];
+
+    const validatedAgents = (rawAgents as Array<Record<string, unknown>>)
+      .filter(a => a && typeof a === 'object' && (a.name || a.title) && (a.query || a.search_query))
+      .map(a => ({
+        name: String(a.name || a.title || 'Research'),
+        query: String(a.query || a.search_query || ''),
+        category: validCategories.includes(a.category as AgentCategory) ? a.category as AgentCategory : 'general' as AgentCategory,
+      }));
+
+    // Enforce bounds: at least 2, at most 5
+    if (validatedAgents.length < 2) {
+      console.warn('[DecomposeQuery] Too few agents, using fallback');
+      return useFallback('Too few agents');
+    }
+
+    const cappedAgents = validatedAgents.slice(0, 5);
+    const tags = rawTags.slice(0, 8);
+
+    console.log('[DecomposeQuery] Decomposed into', cappedAgents.length, 'agents:', cappedAgents.map(a => a.name));
+    return { agents: cappedAgents, tags };
+  } catch (err) {
+    console.error('[DecomposeQuery] Error:', err);
+    return useFallback('Unhandled error');
+  }
+};
+
+// ============================================
+// BEROE INTELLIGENCE FOR DEEP RESEARCH
+// ============================================
+
+export interface BeroeIntelligenceResult {
+  content: string;
+  sources: Array<{ name: string; type: 'beroe' | 'internal_data'; snippet?: string; url?: string }>;
+}
+
+/**
+ * Fetch Beroe-style procurement intelligence via Gemini for deep research.
+ * This is a lighter alternative to callGeminiV2 — no widget pipeline, no intent classification.
+ * Returns structured procurement intelligence content + attributed sources.
+ */
+export const fetchBeroeIntelligence = async (
+  query: string,
+  studyType: string,
+  context: string
+): Promise<BeroeIntelligenceResult> => {
+  const empty: BeroeIntelligenceResult = { content: '', sources: [] };
+
+  const toReportId = (name: string) => {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    return slug || 'beroe-intel';
+  };
+
+  const toReportUrl = (name: string) => `?report=${encodeURIComponent(toReportId(name))}`;
+
+  if (!GEMINI_API_KEY) {
+    console.warn('[BeroeIntel] Gemini not configured');
+    return empty;
+  }
+
+  const prompt = `You are a Beroe procurement intelligence analyst. Provide expert market intelligence for the following research query.
+
+QUERY: ${query}
+STUDY TYPE: ${studyType}
+CONTEXT: ${context}
+
+Provide a comprehensive market intelligence briefing covering:
+- Industry benchmarks and market data
+- Supplier landscape insights
+- Pricing trends and cost drivers
+- Supply chain risk factors
+- Regulatory and compliance considerations
+
+Return ONLY valid JSON in this exact shape:
+{
+  "content": "clear paragraphs with specific data points and named entities",
+  "sources": [
+    { "name": "Source name", "description": "What this source covers", "url": "optional URL if known" }
+  ]
+}
+
+Be specific and factual. This will be used alongside web research in a comprehensive report.`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(GEMINI_API_URL + `?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 3000,
+        },
+      }),
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.error('[BeroeIntel] Gemini API error:', response.status);
+      return empty;
+    }
+
+    const data = await response.json();
+    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textContent) {
+      console.error('[BeroeIntel] No text content in response');
+      return empty;
+    }
+
+    console.log('[BeroeIntel] Received', textContent.length, 'chars of intelligence');
+
+    // Prefer JSON output if available
+    const parsed = tryParseJSON(textContent);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const obj = parsed as Record<string, unknown>;
+      const content = typeof obj.content === 'string' ? obj.content.trim() : '';
+      const rawSources = Array.isArray(obj.sources) ? (obj.sources as Array<Record<string, unknown>>) : [];
+      const sources: BeroeIntelligenceResult['sources'] = rawSources
+        .filter(s => s && typeof s === 'object' && typeof s.name === 'string')
+        .map(s => {
+          const name = String(s.name).trim();
+          const description = typeof s.description === 'string' ? s.description.trim() : '';
+          const url = typeof s.url === 'string' ? s.url.trim() : '';
+          return {
+            name,
+            type: 'beroe',
+            snippet: description || `Procurement intelligence analysis for ${query}`,
+            url: url || toReportUrl(name),
+          };
+        });
+
+      if (content) {
+        if (sources.length === 0) {
+          sources.push({
+            name: 'Beroe Market Intelligence',
+            type: 'beroe',
+            snippet: `Procurement intelligence analysis for ${query}`,
+            url: toReportUrl('Beroe Market Intelligence'),
+          });
+        }
+        return { content, sources };
+      }
+    }
+
+    // Extract sources from the SOURCES: section at the end
+    const sources: BeroeIntelligenceResult['sources'] = [];
+    const sourcesMatch = textContent.match(/SOURCES:\s*\n([\s\S]*?)$/i);
+    if (sourcesMatch) {
+      const sourceLines = sourcesMatch[1].split('\n').filter((l: string) => l.trim().startsWith('-'));
+      for (const line of sourceLines) {
+        const urlMatch = line.match(/https?:\/\/[^\s)]+/i);
+        const extractedUrl = urlMatch?.[0]?.replace(/[)\],.]+$/, '');
+        const match = line.match(/^-\s*\[?([^\]:\n]+?)\]?\s*:\s*(.+)/);
+        if (match) {
+          sources.push({
+            name: match[1].trim(),
+            type: 'beroe',
+            snippet: match[2].trim(),
+            url: extractedUrl || toReportUrl(match[1].trim()),
+          });
+        }
+      }
+    }
+
+    // If no structured sources found, create generic Beroe attribution
+    if (sources.length === 0) {
+      sources.push({
+        name: 'Beroe Market Intelligence',
+        type: 'beroe',
+        snippet: `Procurement intelligence analysis for ${query}`,
+        url: toReportUrl('Beroe Market Intelligence'),
+      });
+    }
+
+    // Get content without the SOURCES section
+    const content = sourcesMatch
+      ? textContent.slice(0, sourcesMatch.index).trim()
+      : textContent.trim();
+
+    return { content, sources };
+  } catch (err) {
+    console.error('[BeroeIntel] Error:', err);
+    return empty;
   }
 };
 

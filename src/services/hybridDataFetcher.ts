@@ -246,8 +246,10 @@ export function buildHybridSources(
   const internalSources = beroe.sources;
 
   // Build citation map for quick lookup
+  // Support BOTH [B1]/[W1] format AND numeric [1]/[2] format
   const citations: Record<string, WebSource | InternalSource> = {};
 
+  // Add with B/W prefix keys (e.g., "B1", "W1")
   for (const source of internalSources) {
     if (source.citationId) {
       citations[source.citationId] = source;
@@ -258,6 +260,18 @@ export function buildHybridSources(
     if (source.citationId) {
       citations[source.citationId] = source;
     }
+  }
+
+  // ALSO add with numeric-only keys for AI-generated content that uses [1], [2], etc.
+  // This handles cases where the AI outputs numeric citations instead of B/W format
+  // Map numeric index to web sources (most common case from Perplexity)
+  let numericIndex = 1;
+  for (const source of webSources) {
+    citations[String(numericIndex++)] = source;
+  }
+  // Continue numbering with internal sources
+  for (const source of internalSources) {
+    citations[String(numericIndex++)] = source;
   }
 
   // Use buildResponseSources to get confidence calculation

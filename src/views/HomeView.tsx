@@ -5,7 +5,7 @@ import { ChatInput, type BuilderMetadata } from '../components/chat/ChatInput';
 
 interface HomeViewProps {
     onOpenArtifact: () => void;
-    onStartChat?: (question: string, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean) => void;
+    onStartChat?: (question: string, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean, deepResearchEnabled?: boolean) => void;
     isTransitioning?: boolean;
     selectedQuestion?: string;
 }
@@ -42,11 +42,11 @@ export const HomeView = ({ onStartChat, isTransitioning = false, selectedQuestio
     const isTyping = inputMessage.length > 0;
 
     type ChatInputOnSend = NonNullable<ComponentProps<typeof ChatInput>['onSend']>;
-    const handleSend: ChatInputOnSend = (message, files, inputMode, builderMeta, webSearchEnabled) => {
-        console.log('Send:', message, files, 'mode:', inputMode, 'builderMeta:', builderMeta, 'webSearch:', webSearchEnabled);
+    const handleSend: ChatInputOnSend = (message, files, inputMode, builderMeta, webSearchEnabled, deepResearchEnabled) => {
+        console.log('Send:', message, files, 'mode:', inputMode, 'builderMeta:', builderMeta, 'webSearch:', webSearchEnabled, 'deepResearch:', deepResearchEnabled);
         if (message.trim()) {
             // TODO: Handle 'find' mode differently - show search results view
-            onStartChat?.(message, builderMeta, webSearchEnabled);
+            onStartChat?.(message, builderMeta, webSearchEnabled, deepResearchEnabled);
         }
     };
 

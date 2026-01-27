@@ -1,5 +1,5 @@
 // Citation Parser
-// Parses content with [B1], [W1] citation markers into renderable segments
+// Parses content with [B1], [W1] or [1], [2] citation markers into renderable segments
 
 import type { CitationMap } from '../types/hybridResponse';
 import type { WebSource, InternalSource } from '../types/aiResponse';
@@ -26,21 +26,19 @@ export interface ParsedContentSegment {
 // ============================================
 
 /**
- * Parse content with [B1], [W1] markers into renderable segments
+ * Parse content with [B1], [W1] or [1], [2] markers into renderable segments
+ * Supports both prefixed (B/W) and numeric-only citation formats
  *
  * @example
  * const segments = parseContentWithCitations(
  *   "Steel prices up 3% [B1] due to demand [W1].",
  *   { B1: {...}, W1: {...} }
  * );
- * // Returns:
- * // [
- * //   { type: 'text', content: 'Steel prices up 3% ' },
- * //   { type: 'citation', content: 'B1', citationId: 'B1', sourceType: 'beroe' },
- * //   { type: 'text', content: ' due to demand ' },
- * //   { type: 'citation', content: 'W1', citationId: 'W1', sourceType: 'web' },
- * //   { type: 'text', content: '.' },
- * // ]
+ * // OR with numeric citations:
+ * const segments = parseContentWithCitations(
+ *   "Steel prices up 3% [1] due to demand [2].",
+ *   { "1": {...}, "2": {...} }
+ * );
  */
 export function parseContentWithCitations(
   content: string,
@@ -49,7 +47,8 @@ export function parseContentWithCitations(
   if (!content) return [];
 
   const segments: ParsedContentSegment[] = [];
-  const regex = /\[([BW]\d+)\]/g;
+  // Match both [B1], [W1] format AND [1], [2] numeric format
+  const regex = /\[([BW]?\d+)\]/g;
 
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -80,7 +79,7 @@ export function parseContentWithCitations(
       // Unknown citation - treat as plain text
       segments.push({
         type: 'text',
-        content: match[0], // Keep the [B1] as text
+        content: match[0], // Keep the [B1] or [1] as text
       });
     }
 
@@ -109,18 +108,29 @@ function getCitationSourceType(
   if (citationId.startsWith('B')) return 'beroe';
   if (citationId.startsWith('W')) return 'web';
 
-  // Check by citation data if available
+  // For numeric-only citations, check by citation data
   if (citation && typeof citation === 'object') {
     if ('type' in citation) {
       const type = (citation as { type?: string }).type;
-      if (type === 'beroe' || type === 'web') return type;
-      if (type === 'dun_bradstreet' || type === 'ecovadis' || type === 'internal_data') {
+      if (type === 'beroe') return 'beroe';
+      if (type === 'web') return 'web';
+      if (type === 'dun_bradstreet' || type === 'ecovadis' || type === 'internal_data' || type === 'supplier_data') {
         return 'beroe'; // Internal sources use beroe styling
       }
     }
+    // Check for web source by URL/domain presence
     if ('url' in citation && 'domain' in citation) {
       return 'web';
     }
+    // Check for url without domain (still a web source)
+    if ('url' in citation && typeof (citation as { url?: string }).url === 'string') {
+      return 'web';
+    }
+  }
+
+  // Default to web for numeric citations (most common case from Perplexity)
+  if (/^\d+$/.test(citationId)) {
+    return 'web';
   }
 
   return 'unknown';
@@ -132,15 +142,18 @@ function getCitationSourceType(
 
 /**
  * Extract all unique citation IDs from content
+ * Supports both [B1], [W1] and [1], [2] formats
  *
  * @example
  * extractCitationIds("Prices [B1] and demand [W1][W2] with [B1] repeated.")
  * // Returns: ['B1', 'W1', 'W2']
+ * extractCitationIds("Prices [1] and demand [2][3].")
+ * // Returns: ['1', '2', '3']
  */
 export function extractCitationIds(content: string): string[] {
   if (!content) return [];
 
-  const regex = /\[([BW]\d+)\]/g;
+  const regex = /\[([BW]?\d+)\]/g;
   const ids = new Set<string>();
   let match: RegExpExecArray | null;
 
@@ -153,6 +166,7 @@ export function extractCitationIds(content: string): string[] {
 
 /**
  * Extract citation IDs by type (Beroe or Web)
+ * Numeric-only citations are classified as 'web' by default
  */
 export function extractCitationIdsByType(content: string): {
   beroe: string[];
@@ -161,15 +175,16 @@ export function extractCitationIdsByType(content: string): {
   const ids = extractCitationIds(content);
   return {
     beroe: ids.filter(id => id.startsWith('B')),
-    web: ids.filter(id => id.startsWith('W')),
+    web: ids.filter(id => id.startsWith('W') || /^\d+$/.test(id)),
   };
 }
 
 /**
  * Check if content has any citations
+ * Supports both [B1], [W1] and [1], [2] formats
  */
 export function hasCitations(content: string): boolean {
-  return /\[[BW]\d+\]/.test(content);
+  return /\[[BW]?\d+\]/.test(content);
 }
 
 /**
@@ -188,7 +203,7 @@ export function countTotalCitations(content: string): number {
  * Useful for plain text rendering
  */
 export function stripCitations(content: string): string {
-  return content.replace(/\[[BW]\d+\]/g, '');
+  return content.replace(/\[[BW]?\d+\]/g, '');
 }
 
 /**
@@ -201,7 +216,7 @@ export function humanizeCitations(
   content: string,
   citations: CitationMap | Record<string, { name?: string }>
 ): string {
-  return content.replace(/\[([BW]\d+)\]/g, (match, citationId) => {
+  return content.replace(/\[([BW]?\d+)\]/g, (match, citationId) => {
     const citation = citations[citationId];
     if (citation && 'name' in citation && citation.name) {
       return `(${citation.name})`;

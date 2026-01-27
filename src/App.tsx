@@ -21,9 +21,14 @@ import { AIResponse } from './components/chat/AIResponse';
 import { ThoughtProcess } from './components/chat/ThoughtProcess';
 import { ChatInput, type BuilderMetadata } from './components/chat/ChatInput';
 import type { AIResponse as AIResponseType, Milestone } from './services/ai';
-import { sendMessage } from './services/ai';
+import { sendMessage, confirmDeepResearchIntake, executeDeepResearch } from './services/ai';
 import { submitRequest } from './services/approvalService';
+import { DeepResearchMessage } from './components/chat/DeepResearchMessage';
+import { ResearchCommandCenter } from './components/chat/ResearchCommandCenter';
+import type { IntakeAnswers, DeepResearchResponse, CommandCenterProgress } from './types/deepResearch';
+import { createInitialProgress } from './types/deepResearch';
 import { buildResponseSources, getSourceReportData } from './utils/sources';
+import { generateReportPdf } from './utils/generateReportPdf';
 import { buildArtifactPayload, resolveArtifactType } from './services/artifactBuilder';
 // Artifact system imports
 import { ArtifactRenderer } from './components/artifacts/ArtifactRenderer';
@@ -261,6 +266,8 @@ function App() {
   const [liveMilestones, setLiveMilestones] = useState<Milestone[]>([]);
   const [mode, setMode] = useState<'fast' | 'reasoning'>('fast');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [deepResearchEnabled, setDeepResearchEnabled] = useState(false);
+  const [previousWebSearchEnabled, setPreviousWebSearchEnabled] = useState(false);
   const [currentArtifact, setCurrentArtifact] = useState<AIResponseType['artifact'] | null>(null);
   const [artifactData, setArtifactData] = useState<{ suppliers?: Supplier[]; portfolio?: Portfolio | RiskPortfolio; insight?: InsightDetailData } | null>(null);
 
@@ -305,10 +312,31 @@ function App() {
     }
   }, [isAuthenticated, refreshCredits]);
 
+  // Helper to update a specific message by ID
+  const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
+    setMessages(prev => prev.map(m =>
+      m.id === id ? { ...m, ...updates } : m
+    ));
+  }, []);
+
   // Load notifications on mount
   useEffect(() => {
     setNotifications(getMockNotifications());
   }, []);
+
+  // Deep Research toggle handler - manages web search state
+  const handleToggleDeepResearch = useCallback((enabled: boolean) => {
+    if (enabled) {
+      // Turning on: save current web search state and force it on
+      setPreviousWebSearchEnabled(webSearchEnabled);
+      setWebSearchEnabled(true);
+      setDeepResearchEnabled(true);
+    } else {
+      // Turning off: restore previous web search state
+      setWebSearchEnabled(previousWebSearchEnabled);
+      setDeepResearchEnabled(false);
+    }
+  }, [webSearchEnabled, previousWebSearchEnabled]);
 
   // Handle URL deep-linking for reports
   // Example: ?report=steel-market-2025
@@ -628,6 +656,14 @@ function App() {
         showSuccess('Expert deep-dive request submitted');
         break;
 
+      case 'download_report_pdf': {
+        const reportPayload = artifactPayload as import('./components/artifacts/registry').DeepResearchReportPayload;
+        if (reportPayload?.report) {
+          generateReportPdf(reportPayload.report);
+        }
+        break;
+      }
+
       default:
         console.log('Unhandled action:', action);
     }
@@ -748,6 +784,125 @@ function App() {
     }
   };
 
+  // Deep Research Handlers
+  const handleConfirmDeepResearch = async (
+    messageId: string,
+    currentResponse: AIResponseType,
+    answers: IntakeAnswers
+  ) => {
+    const deepResearch = (currentResponse as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+    if (!deepResearch) return;
+
+    const studyType = deepResearch.studyType || deepResearch.intake?.studyType || 'market_analysis';
+
+    try {
+      // 1. Transition to processing phase
+      const processingResponse = await confirmDeepResearchIntake(
+        deepResearch.jobId,
+        deepResearch.query,
+        answers,
+        studyType,
+        deepResearch.creditsAvailable
+      );
+
+      // 2. Update message with processing state
+      updateMessage(messageId, {
+        response: {
+          ...currentResponse,
+          deepResearch: processingResponse,
+        } as AIResponseType & { deepResearch: DeepResearchResponse },
+      });
+
+      // 3. Execute research — progress shows inline via ResearchCommandCenter (no artifact panel)
+      const finalResponse = await executeDeepResearch(
+        deepResearch.jobId,
+        deepResearch.query,
+        answers,
+        studyType,
+        (update) => {
+          // Real-time progress updates — rendered inline by ResearchCommandCenter
+          updateMessage(messageId, {
+            response: {
+              ...currentResponse,
+              deepResearch: update,
+            } as AIResponseType & { deepResearch: DeepResearchResponse },
+          });
+        }
+      );
+
+      // 5. Final update with report
+      updateMessage(messageId, {
+        response: {
+          ...currentResponse,
+          deepResearch: finalResponse,
+        } as AIResponseType & { deepResearch: DeepResearchResponse },
+      });
+
+      // 4. Open report artifact in full view if complete
+      if (finalResponse.phase === 'complete' && finalResponse.report) {
+        openArtifact('deep_research_report', {
+          type: 'deep_research_report',
+          jobId: finalResponse.jobId,
+          report: finalResponse.report,
+        });
+        setIsArtifactExpanded(true); // Full view for deep research reports
+      }
+    } catch (error) {
+      console.error('[App] Deep research error:', error);
+    }
+  };
+
+  const handleViewDeepResearchReport = (response: AIResponseType) => {
+    const deepResearch = (response as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+    if (deepResearch?.report) {
+      openArtifact('deep_research_report', {
+        type: 'deep_research_report',
+        jobId: deepResearch.jobId,
+        report: deepResearch.report,
+      });
+      setIsArtifactExpanded(true); // Full view for deep research reports
+    }
+  };
+
+  const handleDownloadDeepResearchReport = (response: AIResponseType) => {
+    const report = (response as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch?.report;
+    if (report?.pdfUrl) {
+      window.open(report.pdfUrl, '_blank');
+    }
+  };
+
+  const handleRetryDeepResearch = (messageId: string, originalQuery: string) => {
+    // Remove failed message and retry
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+    handleSendMessage(originalQuery, true);
+  };
+
+  const handleCancelDeepResearch = (messageId: string) => {
+    // Update the message to show cancelled state
+    setMessages(prev => prev.map(m => {
+      if (m.id === messageId && m.response) {
+        const deepResearch = (m.response as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+        if (deepResearch) {
+          return {
+            ...m,
+            response: {
+              ...m.response,
+              deepResearch: {
+                ...deepResearch,
+                phase: 'error' as const,
+                error: {
+                  message: 'Research cancelled by user',
+                  canRetry: true,
+                },
+              },
+            },
+          };
+        }
+      }
+      return m;
+    }));
+  };
+
   // Handle upgrade request (L2b decision-grade upgrade)
   const handleUpgrade = (response: AIResponseType) => {
     // Build context from the response
@@ -763,7 +918,7 @@ function App() {
   };
 
   // Handle starting a chat from home
-  const handleStartChat = (question: string, builderMeta?: BuilderMetadata, webSearch?: boolean) => {
+  const handleStartChat = (question: string, builderMeta?: BuilderMetadata, webSearch?: boolean, deepResearch?: boolean) => {
     const title = generateTitle(question);
     setConversationTitle(title);
     setIsTransitioning(true);
@@ -771,6 +926,10 @@ function App() {
     // Set web search state if explicitly provided from HomeView
     if (webSearch !== undefined) {
       setWebSearchEnabled(webSearch);
+    }
+    // Sync deep research toggle state from HomeView
+    if (deepResearch !== undefined) {
+      handleToggleDeepResearch(deepResearch);
     }
 
     // Add user message immediately (optimistic UI)
@@ -799,13 +958,13 @@ function App() {
       setViewState('chat');
       setIsTransitioning(false);
       // Fetch AI response - pass builder metadata and web search preference
-      fetchAIResponse(question, [], convIdRef, builderMeta, webSearch);
+      fetchAIResponse(question, [], convIdRef, builderMeta, webSearch, deepResearch);
     }, 400);
   };
 
   // Fetch AI response
-  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null, builderMeta?: BuilderMetadata, forceWebSearch?: boolean) => {
-    console.log('[App] fetchAIResponse called with:', question, 'builderMeta:', builderMeta, 'forceWebSearch:', forceWebSearch);
+  const fetchAIResponse = async (question: string, history: Message[], convId?: string | null, builderMeta?: BuilderMetadata, forceWebSearch?: boolean, deepResearch?: boolean) => {
+    console.log('[App] fetchAIResponse called with:', question, 'builderMeta:', builderMeta, 'forceWebSearch:', forceWebSearch, 'deepResearch:', deepResearch);
     setIsThinking(true);
     setLiveMilestones([]); // Clear previous milestones
 
@@ -832,6 +991,9 @@ function App() {
         onMilestone: (milestone) => {
           setLiveMilestones(prev => [...prev, milestone]);
         },
+        // Deep research options
+        deepResearchMode: deepResearch,
+        creditsAvailable: subscription.remainingCredits,
       });
 
       console.log('[App] Got response:', response.id, response.content.slice(0, 100));
@@ -911,7 +1073,7 @@ function App() {
   };
 
   // Handle follow-up messages
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (content: string, deepResearch?: boolean) => {
     if (!content.trim() || isThinking) return;
 
     const userMsg: Message = {
@@ -927,7 +1089,7 @@ function App() {
         .catch(err => console.error('[App] Failed to save user message:', err));
     }
 
-    fetchAIResponse(content, [...messages, userMsg]);
+    fetchAIResponse(content, [...messages, userMsg], currentConversationId, undefined, undefined, deepResearch);
   };
 
   // Handle suggestion clicks (follow-ups)
@@ -1332,6 +1494,10 @@ function App() {
                     ? responseSources.totalWebCount > 0 || responseSources.totalInternalCount > 0
                     : false;
 
+                  const deepResearchPayload = (msg.response as AIResponseType & { deepResearch?: DeepResearchResponse })?.deepResearch;
+                  const deepResearchQuery =
+                    deepResearchPayload?.query || getUserMessageForResponse(msg.id) || '';
+
                   return (
                     <motion.div
                       key={msg.id}
@@ -1342,6 +1508,34 @@ function App() {
                     >
                       {msg.role === 'user' ? (
                         <UserMessage message={msg.content} initial="S" />
+                      ) : deepResearchPayload ? (
+                        // Deep Research flow - use ResearchCommandCenter for processing/complete phases
+                        deepResearchPayload.phase === 'intake' || deepResearchPayload.phase === 'intake_confirmed' ? (
+                          <DeepResearchMessage
+                            response={deepResearchPayload}
+                            onConfirmIntake={(answers) => handleConfirmDeepResearch(msg.id, msg.response!, answers)}
+                            onViewReport={() => handleViewDeepResearchReport(msg.response!)}
+                            onDownloadReport={() => handleDownloadDeepResearchReport(msg.response!)}
+                            onRetry={() => handleRetryDeepResearch(msg.id, deepResearchQuery)}
+                          />
+                        ) : (
+                          <ResearchCommandCenter
+                            jobId={deepResearchPayload.jobId}
+                            query={deepResearchQuery}
+                            studyType={deepResearchPayload.studyType}
+                            status={
+                              deepResearchPayload.phase === 'complete' ? 'complete' :
+                              deepResearchPayload.phase === 'error' ? 'error' :
+                              'researching'
+                            }
+                            progress={deepResearchPayload.commandCenterProgress || createInitialProgress()}
+                            report={deepResearchPayload.report}
+                            error={deepResearchPayload.error?.message}
+                            onCancel={() => handleCancelDeepResearch(msg.id)}
+                            onViewReport={() => handleViewDeepResearchReport(msg.response!)}
+                            onRetry={() => handleRetryDeepResearch(msg.id, deepResearchQuery)}
+                          />
+                        )
                       ) : (
                         <AIResponse
                           // 1. Thought Process - only on NEW messages (first render)
@@ -1527,14 +1721,18 @@ function App() {
             <div className="sticky bottom-0 left-0 right-0 z-20">
               <div className="max-w-3xl mx-auto px-6 pb-4">
                 <ChatInput
-                  onSend={(msg) => handleSendMessage(msg)}
+                  onSend={(msg, _files, _inputMode, _builderMeta, _webSearch, deepResearch) =>
+                    handleSendMessage(msg, deepResearch)}
                   mode={mode}
                   webSearchEnabled={webSearchEnabled}
+                  deepResearchEnabled={deepResearchEnabled}
                   onModeChange={setMode}
                   onWebSearchChange={setWebSearchEnabled}
+                  onDeepResearchChange={handleToggleDeepResearch}
                   disabled={isThinking}
                   variant="compact"
                   sources={{ web: 12, internal: 4 }}
+                  creditsAvailable={subscription.remainingCredits}
                 />
               </div>
             </div>

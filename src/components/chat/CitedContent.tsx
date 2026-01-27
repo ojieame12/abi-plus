@@ -85,7 +85,7 @@ function renderInlineMarkdown(text: string, keyPrefix: string = ''): React.React
 
     if (boldText) {
       elements.push(
-        <strong key={`${keyPrefix}-${partIndex++}`} className="font-semibold text-slate-800">
+        <strong key={`${keyPrefix}-${partIndex++}`} className="font-medium text-slate-800">
           {boldText}
         </strong>
       );

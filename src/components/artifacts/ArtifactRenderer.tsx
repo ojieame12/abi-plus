@@ -44,6 +44,10 @@ import { ExpertBriefingArtifact } from './views/ExpertBriefingArtifact';
 // Import content viewer artifacts
 import { ReportViewerArtifact } from '../panel/ReportViewerArtifact';
 
+// Import deep research artifacts
+import { DeepResearchProgressArtifact } from './views/DeepResearchProgressArtifact';
+import { DeepResearchReportArtifact } from './views/DeepResearchReportArtifact';
+
 // ============================================
 // TYPES
 // ============================================
@@ -686,6 +690,37 @@ export const ArtifactRenderer = ({
           <ReportViewerArtifact
             report={reportPayload.report as import('./registry').ReportViewerPayload['report']}
             queryContext={reportPayload.queryContext as { queryText?: string; highlightTerms?: string[] } | undefined}
+          />
+        );
+      }
+
+    // Deep Research
+    case 'deep_research_progress':
+      {
+        const progressPayload = payload as unknown as import('./registry').DeepResearchProgressPayload;
+        return (
+          <DeepResearchProgressArtifact
+            jobId={progressPayload.jobId}
+            query={progressPayload.query}
+            studyType={progressPayload.studyType}
+            phase={progressPayload.phase}
+            processing={progressPayload.processing}
+            commandCenterProgress={progressPayload.commandCenterProgress}
+            onCancel={() => onAction?.('cancel_deep_research', { jobId: progressPayload.jobId })}
+          />
+        );
+      }
+
+    case 'deep_research_report':
+      {
+        const reportPayload = payload as unknown as import('./registry').DeepResearchReportPayload;
+        return (
+          <DeepResearchReportArtifact
+            jobId={reportPayload.jobId}
+            report={reportPayload.report}
+            onDownloadPdf={() => onAction?.('download_report_pdf', { jobId: reportPayload.jobId })}
+            onShare={() => onAction?.('share_report', { jobId: reportPayload.jobId })}
+            onClose={onClose}
           />
         );
       }

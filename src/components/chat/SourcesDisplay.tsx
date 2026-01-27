@@ -450,7 +450,7 @@ const InternalSourceBadge = ({ source }: { source: InternalSource }) => {
       {showTierBadge && (
         <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" title="Decision Grade Source" />
       )}
-      <span className="font-semibold">{getSourceLabel()}</span>
+      <span className="font-medium">{getSourceLabel()}</span>
       <span className="opacity-70">•</span>
       <span>{source.name}</span>
       {source.dataPoints && (

@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserMessage } from '../components/chat/UserMessage';
 import { AIResponse } from '../components/chat/AIResponse';
 import { ChatInput } from '../components/chat/ChatInput';
+import { DeepResearchMessage } from '../components/chat/DeepResearchMessage';
+import { ResearchCommandCenter } from '../components/chat/ResearchCommandCenter';
 import type { AIResponse as AIResponseType, ThinkingMode } from '../services/ai';
-import { sendMessage } from '../services/ai';
+import { sendMessage, confirmDeepResearchIntake, executeDeepResearch } from '../services/ai';
 import type { ChatMessage } from '../types/chat';
 import { generateId } from '../types/chat';
 import type { Supplier } from '../types/supplier';
@@ -16,6 +18,8 @@ import type { Milestone } from '../services/ai';
 import { buildResponseSources } from '../utils/sources';
 import { getManagedCategoryNames } from '../services/mockCategories';
 import { ResponseBody } from '../components/response';
+import type { IntakeAnswers, DeepResearchResponse } from '../types/deepResearch';
+import { createInitialProgress } from '../types/deepResearch';
 
 interface LiveChatViewProps {
   initialQuestion?: string;
@@ -44,6 +48,8 @@ export const LiveChatView = ({
   const [isThinking, setIsThinking] = useState(false);
   const [mode, setMode] = useState<ThinkingMode>('fast');
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [deepResearchEnabled, setDeepResearchEnabled] = useState(false);
+  const deepResearchCredits = 1000;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
 
@@ -75,6 +81,8 @@ export const LiveChatView = ({
             mode,
             webSearchEnabled,
             conversationHistory: [],
+            deepResearchMode: deepResearchEnabled,
+            creditsAvailable: deepResearchCredits,
           });
 
           const aiMessage: Message = {
@@ -104,7 +112,7 @@ export const LiveChatView = ({
     }
   }, [initialQuestion, mode, webSearchEnabled, onArtifactChange]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, deepResearch?: boolean) => {
     if (!content.trim()) return;
 
     // Add user message
@@ -130,6 +138,8 @@ export const LiveChatView = ({
         mode,
         webSearchEnabled,
         conversationHistory: history,
+        deepResearchMode: deepResearch,
+        creditsAvailable: deepResearchCredits,
       });
 
       // Add AI response
@@ -164,6 +174,115 @@ export const LiveChatView = ({
     handleSendMessage(item.text);
   };
 
+  const handleDeepResearchChange = (enabled: boolean) => {
+    setDeepResearchEnabled(enabled);
+    if (enabled) {
+      setWebSearchEnabled(true);
+    }
+  };
+
+  const updateMessage = (id: string, updates: Partial<Message>) => {
+    setMessages(prev => prev.map(m => (m.id === id ? { ...m, ...updates } : m)));
+  };
+
+  const handleConfirmDeepResearch = async (
+    messageId: string,
+    currentResponse: AIResponseType,
+    answers: IntakeAnswers
+  ) => {
+    const deepResearch = (currentResponse as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+    if (!deepResearch) return;
+
+    const studyType = deepResearch.studyType || deepResearch.intake?.studyType || 'market_analysis';
+
+    const processingResponse = await confirmDeepResearchIntake(
+      deepResearch.jobId,
+      deepResearch.query,
+      answers,
+      studyType,
+      deepResearch.creditsAvailable
+    );
+
+    updateMessage(messageId, {
+      response: {
+        ...currentResponse,
+        deepResearch: processingResponse,
+      } as AIResponseType & { deepResearch: DeepResearchResponse },
+    });
+
+    const finalResponse = await executeDeepResearch(
+      deepResearch.jobId,
+      deepResearch.query,
+      answers,
+      studyType,
+      (update) => {
+        updateMessage(messageId, {
+          response: {
+            ...currentResponse,
+            deepResearch: update,
+          } as AIResponseType & { deepResearch: DeepResearchResponse },
+        });
+      }
+    );
+
+    updateMessage(messageId, {
+      response: {
+        ...currentResponse,
+        deepResearch: finalResponse,
+      } as AIResponseType & { deepResearch: DeepResearchResponse },
+    });
+  };
+
+  const handleRetryDeepResearch = (messageId: string, query: string) => {
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+    handleSendMessage(query, true);
+  };
+
+  const handleCancelDeepResearch = (messageId: string) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id === messageId && m.response) {
+        const deepResearch = (m.response as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+        if (deepResearch) {
+          return {
+            ...m,
+            response: {
+              ...m.response,
+              deepResearch: {
+                ...deepResearch,
+                phase: 'error' as const,
+                error: {
+                  message: 'Research cancelled by user',
+                  canRetry: true,
+                },
+              },
+            },
+          };
+        }
+      }
+      return m;
+    }));
+  };
+
+  const handleViewDeepResearchReport = (response: AIResponseType) => {
+    const deepResearch = (response as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+    if (!deepResearch?.report) return;
+
+    // Open in artifact panel via parent callback
+    onArtifactChange?.({
+      type: 'deep_research_report' as AIResponseType['artifact']['type'],
+      title: deepResearch.report.title || 'Deep Research Report',
+    });
+  };
+
+  const getUserMessageForResponse = (messageId: string): string => {
+    const idx = messages.findIndex(m => m.id === messageId);
+    if (idx <= 0) return '';
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') return messages[i].content;
+    }
+    return '';
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages Area */}
@@ -180,7 +299,37 @@ export const LiveChatView = ({
               >
                 {msg.role === 'user' ? (
                   <UserMessage message={msg.content} initial="S" />
-                ) : (
+                ) : (msg.response as AIResponseType & { deepResearch?: DeepResearchResponse })?.deepResearch ? (() => {
+                  const deepResearchPayload = (msg.response as AIResponseType & { deepResearch?: DeepResearchResponse }).deepResearch;
+                  const deepResearchQuery = deepResearchPayload?.query || getUserMessageForResponse(msg.id) || '';
+
+                  if (!deepResearchPayload) return null;
+
+                  return deepResearchPayload.phase === 'intake' || deepResearchPayload.phase === 'intake_confirmed' ? (
+                    <DeepResearchMessage
+                      response={deepResearchPayload}
+                      onConfirmIntake={(answers) => handleConfirmDeepResearch(msg.id, msg.response!, answers)}
+                      onRetry={() => handleRetryDeepResearch(msg.id, deepResearchQuery)}
+                    />
+                  ) : (
+                    <ResearchCommandCenter
+                      jobId={deepResearchPayload.jobId}
+                      query={deepResearchQuery}
+                      studyType={deepResearchPayload.studyType}
+                      status={
+                        deepResearchPayload.phase === 'complete' ? 'complete' :
+                        deepResearchPayload.phase === 'error' ? 'error' :
+                        'researching'
+                      }
+                      progress={deepResearchPayload.commandCenterProgress || createInitialProgress()}
+                      report={deepResearchPayload.report}
+                      error={deepResearchPayload.error?.message}
+                      onCancel={() => handleCancelDeepResearch(msg.id)}
+                      onViewReport={() => handleViewDeepResearchReport(msg.response!)}
+                      onRetry={() => handleRetryDeepResearch(msg.id, deepResearchQuery)}
+                    />
+                  );
+                })() : (
                   <AIResponse
                     thoughtProcess={(() => {
                       const response = msg.response;
@@ -321,13 +470,17 @@ export const LiveChatView = ({
       <div className="sticky bottom-0 left-0 right-0 z-20">
         <div className="max-w-3xl mx-auto px-4 pb-4">
           <ChatInput
-            onSend={(msg) => handleSendMessage(msg)}
+            onSend={(msg, _files, _inputMode, _builderMeta, _webSearch, deepResearch) =>
+              handleSendMessage(msg, deepResearch)}
             mode={mode}
             webSearchEnabled={webSearchEnabled}
+            deepResearchEnabled={deepResearchEnabled}
             onModeChange={setMode}
             onWebSearchChange={setWebSearchEnabled}
+            onDeepResearchChange={handleDeepResearchChange}
             disabled={isThinking}
             variant="compact"
+            creditsAvailable={deepResearchCredits}
           />
         </div>
       </div>

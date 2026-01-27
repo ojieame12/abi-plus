@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Globe, X, Paperclip, Brain, Zap, Search, Sparkles, Puzzle, ChevronRight } from 'lucide-react';
+import { Plus, Globe, X, Paperclip, Brain, Zap, Search, Sparkles, Puzzle, ChevronRight, FlaskConical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -40,21 +40,24 @@ interface SourceCount {
 export type InputMode = 'ask' | 'find';
 
 interface ChatInputProps {
-    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean) => void;
+    onSend?: (message: string, files: AttachedFile[], inputMode: InputMode, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean, deepResearchEnabled?: boolean) => void;
     onFocusChange?: (focused: boolean) => void;
     onMessageChange?: (message: string) => void;
     onModeChange?: (mode: 'fast' | 'reasoning') => void;
     onWebSearchChange?: (enabled: boolean) => void;
     onInputModeChange?: (mode: InputMode) => void;
+    onDeepResearchChange?: (enabled: boolean) => void;
     placeholder?: string;
     value?: string;
     mode?: 'fast' | 'reasoning';
     webSearchEnabled?: boolean;
+    deepResearchEnabled?: boolean;
     inputMode?: InputMode;
     disabled?: boolean;
     variant?: 'default' | 'compact';
     sources?: SourceCount;
     showModeToggle?: boolean; // Show Ask/Find toggle (only on home/new chat)
+    creditsAvailable?: number; // For deep research credits display
 }
 
 export const ChatInput = ({
@@ -64,10 +67,12 @@ export const ChatInput = ({
     onModeChange,
     onWebSearchChange,
     onInputModeChange,
+    onDeepResearchChange,
     placeholder,
     value,
     mode: externalMode,
     webSearchEnabled: externalWebSearch,
+    deepResearchEnabled: externalDeepResearch,
     inputMode: externalInputMode,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     disabled = false,
@@ -75,11 +80,13 @@ export const ChatInput = ({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     sources,
     showModeToggle = false,
+    creditsAvailable = 0,
 }: ChatInputProps) => {
     const [internalMessage, setInternalMessage] = useState('');
     const message = value !== undefined ? value : internalMessage;
     const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
     const [internalWebSearch, setInternalWebSearch] = useState(false);
+    const [internalDeepResearch, setInternalDeepResearch] = useState(false);
     const [internalMode, setInternalMode] = useState<'fast' | 'reasoning'>('fast');
     const [internalInputMode, setInternalInputMode] = useState<InputMode>('ask');
     const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -95,13 +102,18 @@ export const ChatInput = ({
 
     // Use external state if provided, otherwise use internal
     const webSearchEnabled = externalWebSearch !== undefined ? externalWebSearch : internalWebSearch;
+    const deepResearchEnabled = externalDeepResearch !== undefined ? externalDeepResearch : internalDeepResearch;
     const mode = externalMode !== undefined ? externalMode : internalMode;
     const inputMode = externalInputMode !== undefined ? externalInputMode : internalInputMode;
 
-    // Dynamic placeholder based on input mode
-    const dynamicPlaceholder = placeholder ?? (inputMode === 'ask'
-        ? "Ask anything about your suppliers..."
-        : "Search for reports, charts, documents...");
+    // Dynamic placeholder based on input mode and deep research
+    const dynamicPlaceholder = placeholder ?? (
+        deepResearchEnabled
+            ? "Describe your research topic for deep analysis..."
+            : inputMode === 'ask'
+                ? "Ask anything about your suppliers..."
+                : "Search for reports, charts, documents..."
+    );
 
     const handleWebSearchToggle = () => {
         const newValue = !webSearchEnabled;
@@ -109,6 +121,14 @@ export const ChatInput = ({
             setInternalWebSearch(newValue);
         }
         onWebSearchChange?.(newValue);
+    };
+
+    const handleDeepResearchToggle = () => {
+        const newValue = !deepResearchEnabled;
+        if (externalDeepResearch === undefined) {
+            setInternalDeepResearch(newValue);
+        }
+        onDeepResearchChange?.(newValue);
     };
 
     const handleModeChange = (newMode: 'fast' | 'reasoning') => {
@@ -144,7 +164,7 @@ export const ChatInput = ({
 
     const handleSend = () => {
         if (message.trim() || attachedFiles.length > 0) {
-            onSend?.(message, attachedFiles, inputMode, undefined, webSearchEnabled);
+            onSend?.(message, attachedFiles, inputMode, undefined, webSearchEnabled, deepResearchEnabled);
             if (value === undefined) {
                 setInternalMessage('');
             }
@@ -224,7 +244,7 @@ export const ChatInput = ({
 
                 // Auto-send with builder metadata
                 setTimeout(() => {
-                    onSend?.(prompt, attachedFiles, inputMode, builderMeta, webSearchEnabled);
+                    onSend?.(prompt, attachedFiles, inputMode, builderMeta, webSearchEnabled, deepResearchEnabled);
                     setBuilderMode(false);
                     setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
                     if (value === undefined) {
@@ -265,7 +285,7 @@ export const ChatInput = ({
 
             // Auto-send with builder metadata
             setTimeout(() => {
-                onSend?.(prompt, attachedFiles, inputMode, builderMeta, webSearchEnabled);
+                onSend?.(prompt, attachedFiles, inputMode, builderMeta, webSearchEnabled, deepResearchEnabled);
                 // Reset builder state
                 setBuilderMode(false);
                 setBuilderSelection({ domain: null, subject: null, action: null, modifiers: {} });
@@ -391,9 +411,17 @@ export const ChatInput = ({
                                     icon={Globe}
                                     onClick={handleWebSearchToggle}
                                     isActive={webSearchEnabled}
+                                    disabled={deepResearchEnabled}
                                 />
                                 <Tooltip>Include Internet Sources</Tooltip>
                             </div>
+
+                            {/* Deep Research Toggle */}
+                            <DeepResearchToggle
+                                enabled={deepResearchEnabled}
+                                onToggle={handleDeepResearchToggle}
+                                creditsAvailable={creditsAvailable}
+                            />
 
                             {/* Thinking Mode Toggle - same component as default */}
                             <ThinkingModeToggle mode={mode} onModeChange={handleModeChange} />
@@ -633,9 +661,17 @@ export const ChatInput = ({
                                 icon={Globe}
                                 onClick={handleWebSearchToggle}
                                 isActive={webSearchEnabled}
+                                disabled={deepResearchEnabled}
                             />
                             <Tooltip>Include Internet Sources</Tooltip>
                         </div>
+
+                        {/* Deep Research Toggle */}
+                        <DeepResearchToggle
+                            enabled={deepResearchEnabled}
+                            onToggle={handleDeepResearchToggle}
+                            creditsAvailable={creditsAvailable}
+                        />
 
                         {/* Builder Mode Toggle */}
                         <div className="relative group">
@@ -681,13 +717,16 @@ export const ChatInput = ({
 };
 
 // Toolbar Button Component
-const ToolbarButton = ({ icon: Icon, onClick, isActive }: { icon: LucideIcon; onClick: () => void; isActive?: boolean }) => (
+const ToolbarButton = ({ icon: Icon, onClick, isActive, disabled }: { icon: LucideIcon; onClick: () => void; isActive?: boolean; disabled?: boolean }) => (
     <button
         onClick={onClick}
+        disabled={disabled}
         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border ${
-            isActive
-                ? 'bg-violet-50 text-violet-600 border-violet-600'
-                : 'text-secondary hover:text-primary hover:bg-slate-50 border-slate-200 hover:border-slate-300'
+            disabled
+                ? 'text-slate-300 border-slate-100 cursor-not-allowed'
+                : isActive
+                    ? 'bg-violet-50 text-violet-600 border-violet-600'
+                    : 'text-secondary hover:text-primary hover:bg-slate-50 border-slate-200 hover:border-slate-300'
         }`}
     >
         <Icon size={18} strokeWidth={1.5} />
@@ -901,3 +940,61 @@ const BuilderChip = ({ label, onClick, isSelected }: { label: string; onClick: (
         {label}
     </motion.button>
 );
+
+// Deep Research Toggle Component
+interface DeepResearchToggleProps {
+    enabled: boolean;
+    onToggle: () => void;
+    creditsAvailable?: number;
+}
+
+const DeepResearchToggle = ({ enabled, onToggle, creditsAvailable = 0 }: DeepResearchToggleProps) => {
+    const [hovered, setHovered] = useState(false);
+    const hasEnoughCredits = creditsAvailable >= 500; // Minimum for deep research
+
+    return (
+        <div
+            className="relative"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            <button
+                onClick={onToggle}
+                className={`
+                    h-9 rounded-xl flex items-center gap-1.5 transition-all border px-2.5
+                    ${enabled
+                        ? 'bg-gradient-to-r from-violet-50 to-blue-50 text-violet-600 border-violet-500'
+                        : 'text-secondary hover:text-primary hover:bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }
+                `}
+            >
+                <FlaskConical size={16} strokeWidth={1.5} />
+                <span className="text-xs font-medium">Deep</span>
+            </button>
+
+            {/* Hover tooltip */}
+            {hovered && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[100] p-3 bg-slate-900 text-white text-xs rounded-xl whitespace-nowrap pointer-events-none min-w-[180px]">
+                    <div className="font-medium mb-1">
+                        {enabled ? 'Deep Research Active' : 'Enable Deep Research'}
+                    </div>
+                    <div className="text-slate-300 text-[11px]">
+                        {enabled
+                            ? 'Multi-source analysis with AI synthesis'
+                            : 'Comprehensive analysis from multiple sources'
+                        }
+                    </div>
+                    {!enabled && (
+                        <div className={`mt-1.5 pt-1.5 border-t border-slate-700 text-[11px] ${hasEnoughCredits ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {hasEnoughCredits
+                                ? `${creditsAvailable} credits available`
+                                : `Requires 500+ credits (${creditsAvailable} available)`
+                            }
+                        </div>
+                    )}
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-900 rotate-45" />
+                </div>
+            )}
+        </div>
+    );
+};
