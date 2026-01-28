@@ -299,47 +299,97 @@ interface ParsedTable {
   rows: string[][];
 }
 
+/** Valid separator cell: optional colons around 3+ dashes */
+const SEPARATOR_CELL = /^\s*:?-{3,}:?\s*$/;
+
+/** Full separator row: pipe-separated cells that each match SEPARATOR_CELL */
+const SEPARATOR_ROW = /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
+
+/**
+ * Split a pipe-delimited row into cells, respecting escaped pipes (\|).
+ * Strips outer pipes and trims each cell.
+ */
+function parseRow(line: string): string[] {
+  // Replace escaped pipes with a placeholder, split, then restore
+  const PLACEHOLDER = '\x00PIPE\x00';
+  const escaped = line.replace(/\\\|/g, PLACEHOLDER);
+  const cells = escaped
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map(c => c.replace(new RegExp(PLACEHOLDER, 'g'), '|').trim());
+  return cells;
+}
+
 /**
  * Parse a markdown pipe-delimited table block into structured data.
- * Handles optional caption line (italic text before header row).
+ * Returns null for invalid / ambiguous input.
+ *
+ * Guards:
+ * - Requires a valid separator row with 3+ dashes per cell
+ * - Requires ≥ 2 columns
+ * - Requires ≥ 1 data row
+ * - Handles :---, ---:, :---: alignment markers
+ * - Handles escaped pipes (\|) inside cell content
+ * - Caption only accepted if the line starts with "Table:" or is italic (*...*  / _..._)
  */
-function parseMarkdownTable(block: string): ParsedTable | null {
+export function parseMarkdownTable(block: string): ParsedTable | null {
   const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length < 2) return null;
+  if (lines.length < 3) return null; // header + separator + ≥1 row
 
-  // Find the separator row (|---|---|)
-  const sepIndex = lines.findIndex(l => /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(l));
+  // Find the separator row
+  const sepIndex = lines.findIndex(l => SEPARATOR_ROW.test(l));
   if (sepIndex < 1) return null;
 
-  // Caption is anything before the header row (italic text like "Table: ...")
-  let caption: string | undefined;
+  // Header is always the line directly before the separator
   const headerIndex = sepIndex - 1;
-  if (headerIndex > 0) {
-    // Lines before the header row are the caption
-    caption = lines.slice(0, headerIndex).join(' ').replace(/^\*(.+)\*$/, '$1').replace(/^_(.+)_$/, '$1').trim();
-  }
 
-  // Parse header
-  const parseRow = (line: string): string[] =>
-    line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+  // Header row must contain pipes
+  if (!lines[headerIndex].includes('|')) return null;
 
   const headers = parseRow(lines[headerIndex]);
 
-  // Parse alignments from separator
+  // Must have ≥ 2 columns
+  if (headers.length < 2) return null;
+
+  // Parse & validate alignments from separator
   const sepCells = parseRow(lines[sepIndex]);
+  if (sepCells.length < 2) return null;
+
   const alignments = sepCells.map(cell => {
-    const left = cell.startsWith(':');
-    const right = cell.endsWith(':');
+    const trimmed = cell.trim();
+    const left = trimmed.startsWith(':');
+    const right = trimmed.endsWith(':');
     if (left && right) return 'center' as const;
     if (right) return 'right' as const;
     return 'left' as const;
   });
 
+  // Validate every separator cell individually
+  for (const cell of sepCells) {
+    if (!SEPARATOR_CELL.test(cell)) return null;
+  }
+
+  // Caption: only accept lines before header if they look like a caption
+  // Must start with "Table:" or be wrapped in italic markers
+  let caption: string | undefined;
+  if (headerIndex > 0) {
+    const candidateCaption = lines.slice(0, headerIndex).join(' ').trim();
+    const isExplicitCaption = /^table\s*:/i.test(candidateCaption);
+    const isItalicCaption = /^(\*[^*]+\*|_[^_]+_)$/.test(candidateCaption);
+    if (isExplicitCaption || isItalicCaption) {
+      caption = candidateCaption
+        .replace(/^\*(.+)\*$/, '$1')
+        .replace(/^_(.+)_$/, '$1')
+        .trim();
+    }
+  }
+
   // Parse data rows
   const rows: string[][] = [];
   for (let i = sepIndex + 1; i < lines.length; i++) {
     const line = lines[i];
-    // Skip non-table lines
+    // Stop at non-table lines
     if (!line.includes('|')) break;
     rows.push(parseRow(line));
   }
@@ -350,43 +400,148 @@ function parseMarkdownTable(block: string): ParsedTable | null {
 }
 
 /**
- * Detect if a text block is a markdown table
+ * Detect if a text block contains a markdown table.
+ *
+ * Guards against false positives:
+ * - Ignores content inside fenced code blocks (```...```)
+ * - Requires a valid separator row (3+ dashes per cell)
+ * - Requires ≥ 3 pipe-containing lines (header + separator + ≥1 row)
+ * - Requires ≥ 2 columns in the separator
  */
-function isMarkdownTableBlock(text: string): boolean {
-  return /\|[-:]+\|/.test(text) && text.split('\n').filter(l => l.trim().includes('|')).length >= 3;
+export function isMarkdownTableBlock(text: string): boolean {
+  // Strip fenced code blocks to avoid false positives on pipes in code
+  const withoutCode = text.replace(/```[\s\S]*?```/g, '');
+
+  // Test individual lines for a separator row (^/$ anchors need per-line checks)
+  const lines = withoutCode.split('\n');
+  const sepLine = lines.find(l => SEPARATOR_ROW.test(l.trim()));
+  if (!sepLine) return false;
+
+  // Must have ≥ 3 lines with pipes (header + sep + data)
+  const pipeLines = lines.filter(l => l.trim().includes('|'));
+  if (pipeLines.length < 3) return false;
+
+  // Check separator has ≥ 2 columns
+  const cols = parseRow(sepLine);
+  if (cols.length < 2) return false;
+
+  return true;
 }
 
 /**
- * Split content into alternating prose and table segments
+ * Split content into alternating prose and table segments.
+ *
+ * Strategy: line-by-line scan rather than regex to correctly handle
+ * code blocks and avoid stealing prose into table segments.
  */
-function splitContentByTables(content: string): { type: 'prose' | 'table'; content: string }[] {
+export function splitContentByTables(content: string): { type: 'prose' | 'table'; content: string }[] {
   const segments: { type: 'prose' | 'table'; content: string }[] = [];
+  const lines = content.split('\n');
 
-  // Match table blocks: optional caption line + header + separator + data rows
-  // A table block is a sequence of lines containing pipes, with a separator row
-  const tablePattern = /(?:^[^\n|]*\n)?(?:^\|.+\|$\n?){1}(?:^\|[\s:|-]+\|$\n?)(?:^\|.+\|$\n?)+/gm;
+  let proseLines: string[] = [];
+  let inCodeBlock = false;
 
-  let lastIndex = 0;
-  let match;
+  const flushProse = () => {
+    const text = proseLines.join('\n').trim();
+    if (text) segments.push({ type: 'prose', content: text });
+    proseLines = [];
+  };
 
-  while ((match = tablePattern.exec(content)) !== null) {
-    // Add prose before the table
-    if (match.index > lastIndex) {
-      const prose = content.slice(lastIndex, match.index).trim();
-      if (prose) segments.push({ type: 'prose', content: prose });
+  // Pre-compute which lines are inside fenced code blocks
+  const codeBlockLines = new Set<number>();
+  let inCode = false;
+  for (let j = 0; j < lines.length; j++) {
+    if (lines[j].trim().startsWith('```')) {
+      inCode = !inCode;
+      codeBlockLines.add(j); // The fence line itself is "code"
+    } else if (inCode) {
+      codeBlockLines.add(j);
+    }
+  }
+
+  let i = 0;
+  while (i < lines.length) {
+    // Lines inside code blocks are always prose
+    if (codeBlockLines.has(i)) {
+      proseLines.push(lines[i]);
+      i++;
+      continue;
     }
 
-    segments.push({ type: 'table', content: match[0].trim() });
-    lastIndex = match.index + match[0].length;
+    // Only attempt table matching if the current line or the next
+    // non-code-block line contains a pipe (avoids looking ahead into
+    // unrelated territory).
+    const lineHasPipe = lines[i].includes('|');
+    const nextHasPipe = i + 1 < lines.length && !codeBlockLines.has(i + 1) && lines[i + 1].includes('|');
+
+    if (lineHasPipe || nextHasPipe) {
+      const tableStart = tryMatchTable(lines, i, codeBlockLines);
+      if (tableStart) {
+        flushProse();
+        segments.push({ type: 'table', content: tableStart.block });
+        i = tableStart.endIndex;
+        continue;
+      }
+    }
+
+    proseLines.push(lines[i]);
+    i++;
   }
 
-  // Add remaining prose
-  if (lastIndex < content.length) {
-    const remaining = content.slice(lastIndex).trim();
-    if (remaining) segments.push({ type: 'prose', content: remaining });
-  }
+  flushProse();
 
   return segments.length > 0 ? segments : [{ type: 'prose', content }];
+}
+
+/**
+ * Try to match a markdown table starting at line index `start`.
+ * Returns the matched block and the index of the line AFTER the table, or null.
+ * Skips lines inside code blocks.
+ */
+function tryMatchTable(
+  lines: string[],
+  start: number,
+  codeBlockLines: Set<number> = new Set()
+): { block: string; endIndex: number } | null {
+  // Scan forward from `start` looking for a separator row within the next few lines
+  const searchLimit = Math.min(start + 4, lines.length);
+
+  for (let sepIdx = start; sepIdx < searchLimit; sepIdx++) {
+    // Never match inside code blocks
+    if (codeBlockLines.has(sepIdx)) continue;
+    if (!SEPARATOR_ROW.test(lines[sepIdx].trim())) continue;
+
+    // Found a separator — header must be the line before it
+    const headerIdx = sepIdx - 1;
+    if (headerIdx < start) continue;
+    if (codeBlockLines.has(headerIdx)) continue;
+    if (!lines[headerIdx].includes('|')) continue;
+
+    const headers = parseRow(lines[headerIdx]);
+    if (headers.length < 2) continue;
+
+    // Gather data rows after separator (stop at code-block or non-pipe lines)
+    let endIdx = sepIdx + 1;
+    while (endIdx < lines.length && !codeBlockLines.has(endIdx) && lines[endIdx].includes('|')) {
+      endIdx++;
+    }
+    // Need ≥ 1 data row
+    if (endIdx <= sepIdx + 1) continue;
+
+    // Check for caption line before header (optional, max 1 line back)
+    // Only accept explicit caption markers to avoid stealing prose
+    let blockStart = headerIdx;
+    if (headerIdx > start && !codeBlockLines.has(headerIdx - 1)) {
+      const candidate = lines[headerIdx - 1].trim();
+      const isCaption = /^table\s*:/i.test(candidate) || /^(\*[^*]+\*|_[^_]+_)$/.test(candidate);
+      if (isCaption) blockStart = headerIdx - 1;
+    }
+
+    const block = lines.slice(blockStart, endIdx).join('\n');
+    return { block, endIndex: endIdx };
+  }
+
+  return null;
 }
 
 /**
