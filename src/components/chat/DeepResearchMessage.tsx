@@ -10,6 +10,7 @@ import {
   Brain,
   Download,
   Sparkles,
+  Coins,
 } from 'lucide-react';
 import type {
   DeepResearchResponse,
@@ -189,24 +190,22 @@ const IntakeForm = ({
 
   return (
     <div
-      className="rounded-2xl border border-[#E8ECF1] bg-white overflow-hidden"
-      style={{ boxShadow: '0 2px 12px -4px rgba(0, 0, 0, 0.06)' }}
+      className="rounded-2xl bg-white overflow-hidden"
+      style={{ boxShadow: '0 4px 24px -6px rgba(0, 0, 0, 0.08), 0 1px 4px -1px rgba(0, 0, 0, 0.03)' }}
     >
       {/* ── Header ── */}
-      <div className="px-5 pt-3.5 pb-3">
+      <div className="px-6 pt-3.5 pb-3">
         <div className="flex items-center">
           <div className="flex items-center flex-1 min-w-0 mr-4">
-            {/* Bare brain icon */}
+            {/* Brain icon */}
             <div className="flex-shrink-0 mr-2.5">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11 2C8.5 2 6.5 4 6.5 6.5C6.5 7.5 5.5 8.5 4.5 9C3 9.7 2 11 2 12.5C2 14.5 3.5 16 5.5 16H6.5M11 2C13.5 2 15.5 4 15.5 6.5C15.5 7.5 16.5 8.5 17.5 9C19 9.7 20 11 20 12.5C20 14.5 18.5 16 16.5 16H15.5M11 2V20M8 18L11 20L14 18" stroke="#5D6A89" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <Brain className="w-[22px] h-[22px] text-[#5D6A89]" strokeWidth={1.4} />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-[15px] font-normal text-[#1A1F36] leading-5">
+              <h3 className="text-[17px] font-medium text-[#1A1F36] leading-5">
                 Deep Research
               </h3>
-              <p className="text-[13px] text-[#7C83A1] leading-[18px] mt-px">
+              <p className="text-[13px] text-[#7C83A1] leading-[18px] mt-0.5">
                 Tailor your analysis
               </p>
             </div>
@@ -228,20 +227,21 @@ const IntakeForm = ({
       </div>
 
       {/* ── Separator ── */}
-      <div className="mx-5 h-px bg-[#E8ECF1]" />
+      <div className="mx-6 h-px bg-[#E8ECF1]" />
 
       {/* ── Questions — flat, all visible ── */}
-      <div className="px-5 pt-4 pb-2 space-y-5">
+      <div className="px-6 pt-4 pb-2 space-y-4">
         {questions.map((question, index) => (
           <motion.div
             key={question.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.06, duration: 0.25 }}
+            className={index < questions.length - 1 ? 'pb-4 border-b border-[#E8ECF1]/60' : ''}
           >
             {/* Label row */}
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-[13px] font-normal text-[#1A1F36]">
+              <span className="text-[14px] font-medium text-[#1A1F36]">
                 {question.question}
               </span>
               {!question.required && (
@@ -353,8 +353,8 @@ const IntakeForm = ({
       </AnimatePresence>
 
       {/* ── Footer ── */}
-      <div className="mx-5 h-px bg-[#E8ECF1]" />
-      <div className="px-5 py-3.5">
+      <div className="mx-6 h-px bg-[#E8ECF1]" />
+      <div className="px-6 py-3.5">
         {!hasEnoughCredits && (
           <p className="text-[12px] text-[#EF4444] mb-2.5">
             Insufficient credits ({creditsAvailable} available)
@@ -363,29 +363,27 @@ const IntakeForm = ({
         {canSkip && skipReason && (
           <p className="text-[12px] text-[#7C83A1] mb-2.5">{skipReason}</p>
         )}
-        <div className="flex items-center gap-3">
-          {canSkip && (
-            <button
-              onClick={onSkip}
-              className="px-4 py-2 text-[13px] text-[#7C83A1] hover:text-[#5D6A89] transition-colors"
-            >
-              Use defaults
-            </button>
-          )}
-          <button
-            onClick={handleSubmit}
-            disabled={!isComplete || !hasEnoughCredits}
-            className={`
-              flex-1 px-4 py-2 rounded-lg text-[13px] font-normal transition-all
-              ${isComplete && hasEnoughCredits
-                ? 'bg-[#682AF9] text-white hover:bg-[#5a23d6] active:scale-[0.98]'
-                : 'bg-[#F7F8FB] text-[#A0A8BE] cursor-not-allowed'
-              }
-            `}
-          >
-            Begin Research
-          </button>
-        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={!isComplete || !hasEnoughCredits}
+          className={`
+            w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium transition-all
+            ${isComplete && hasEnoughCredits
+              ? 'bg-[#682AF9] text-white hover:bg-[#5a23d6] active:scale-[0.98]'
+              : 'bg-[#F7F8FB] text-[#A0A8BE] cursor-not-allowed'
+            }
+          `}
+        >
+          Begin Research
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+            isComplete && hasEnoughCredits
+              ? 'bg-white/20 text-white/90'
+              : 'bg-slate-200/60 text-[#A0A8BE]'
+          }`}>
+            <Coins className="w-3 h-3" />
+            {estimatedCredits}
+          </span>
+        </button>
       </div>
     </div>
   );
