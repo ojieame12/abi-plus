@@ -2029,10 +2029,20 @@ export const executeDeepResearch = async (
   console.log('[DeepResearch] API Status - Perplexity:', isPerplexityConfigured(), 'DeepSeek:', isDeepSeekConfigured());
 
   const startTime = Date.now();
+  let isTimedOut = false;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  // Wrapped progress callback that stops emitting after timeout
+  const safeOnProgress = onProgress ? (update: DeepResearchResponse) => {
+    if (!isTimedOut) {
+      onProgress(update);
+    }
+  } : undefined;
 
   // Create timeout promise that returns a timeout error after GLOBAL_RESEARCH_TIMEOUT_MS
   const timeoutPromise = new Promise<DeepResearchResponse>((resolve) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
+      isTimedOut = true;
       console.warn('[DeepResearch] Global timeout reached after', GLOBAL_RESEARCH_TIMEOUT_MS / 1000, 'seconds');
       resolve({
         type: 'deep_research',
@@ -2052,7 +2062,14 @@ export const executeDeepResearch = async (
   });
 
   // Race the actual execution against the timeout
-  return Promise.race([timeoutPromise, executeDeepResearchCore(jobId, query, answers, studyType, onProgress, startTime)]);
+  const result = await Promise.race([timeoutPromise, executeDeepResearchCore(jobId, query, answers, studyType, safeOnProgress, startTime)]);
+
+  // Clear timeout if research completed before timeout
+  if (timeoutId && !isTimedOut) {
+    clearTimeout(timeoutId);
+  }
+
+  return result;
 };
 
 // Core implementation (separated for timeout wrapping)
