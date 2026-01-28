@@ -2446,7 +2446,7 @@ const executeDeepResearchCore = async (
       }, HEARTBEAT_INTERVAL_MS);
 
       try {
-        console.log('[DeepResearch] Calling DeepSeek R1 for template-driven synthesis...');
+        console.log('[DeepResearch] Calling DeepSeek V3 for template-driven synthesis...');
         console.log('[DeepResearch] Sources breakdown:', {
           total: allSources.length,
           beroe: allSources.filter(s => s.type === 'beroe' || s.type === 'internal_data').length,
