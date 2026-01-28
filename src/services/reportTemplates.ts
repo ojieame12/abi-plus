@@ -2,6 +2,36 @@
 // Each template defines the exact structure, required sections, and citation rules
 // OPTIMIZED: Flat structure with ~8 sections to minimize API calls
 
+// ── Visualization Slot Types ──
+
+export type VisualizationSlotType = 'line_chart' | 'bar_chart' | 'pie_chart' | 'table' | 'metric';
+
+export interface VisualizationSlot {
+  slotId: string;               // e.g., "market_size_trend"
+  type: VisualizationSlotType;
+  title: string;                // chart title
+  description: string;          // tells LLM what data to extract
+  minDataPoints: number;        // hide chart if fewer points
+  placement: 'before_prose' | 'after_prose';
+
+  /** Data source hints for three-tier resolution */
+  dataSources?: {
+    /** Structured adapter function name (e.g. 'commodityToMarketSizeTrend') */
+    structuredAdapter?: string;
+    /** Fields to validate exist in structured data (e.g. ['pricing.historicalPrices']) */
+    structuredFields?: string[];
+    /** Keywords to help LLM extraction from prose */
+    proseHints?: string[];
+  };
+  /** When true, delegate rendering to an existing widget component */
+  preferWidget?: boolean;
+  /** For line charts: controls trend color semantics */
+  trendSemantics?: 'up-good' | 'up-bad';
+  /** Query intent tags — slot is only included if query matches at least one tag.
+   *  When omitted, the slot is always included. */
+  tags?: string[];
+}
+
 export interface ReportSectionTemplate {
   id: string;
   title: string;
@@ -9,6 +39,7 @@ export interface ReportSectionTemplate {
   minCitations: number;
   description: string;
   promptHints: string[];
+  visualizationSlots?: VisualizationSlot[];
   children?: ReportSectionTemplate[]; // Keep for backwards compatibility but don't use
 }
 
@@ -73,7 +104,39 @@ export const MARKET_ANALYSIS_TEMPLATE: ReportTemplate = {
         'Compare regional differences where applicable',
         'Use tables for comparative data',
         'This is a comprehensive section - cover all market fundamentals'
-      ]
+      ],
+      visualizationSlots: [
+        {
+          slotId: 'market_size_trend',
+          type: 'line_chart',
+          title: 'Market / Price Trend',
+          description: 'Extract market size or benchmark price figures over time (years or quarters). Each data point should have a year/quarter label and a numeric value. Look for phrases like "the market was valued at $X in YYYY", "projected to reach $X by YYYY", or price benchmarks like "$X/MT". When structured data is available, a price trend from commodity indices is used.',
+          minDataPoints: 3,
+          placement: 'after_prose',
+          dataSources: {
+            structuredAdapter: 'commodityToMarketSizeTrend',
+            structuredFields: ['pricing.historicalPrices'],
+            proseHints: ['market size', 'market value', 'CAGR', 'valued at', 'projected to reach', 'price trend'],
+          },
+          preferWidget: true,
+          trendSemantics: 'up-good',
+          tags: ['market', 'pricing', 'trend', 'outlook', 'forecast'],
+        },
+        {
+          slotId: 'cost_driver_breakdown',
+          type: 'bar_chart',
+          title: 'Cost Driver Breakdown',
+          description: 'Extract cost driver percentages (labor, materials, energy, logistics, overhead, etc.). Look for phrases like "labor accounts for X%" or "raw materials represent X% of total costs". Categories should be cost driver names, values should be percentages.',
+          minDataPoints: 3,
+          placement: 'after_prose',
+          dataSources: {
+            structuredAdapter: 'commodityToCostDriverBreakdown',
+            proseHints: ['cost driver', 'accounts for', 'represents', 'cost breakdown'],
+          },
+          preferWidget: false,
+          tags: ['cost', 'pricing', 'breakdown', 'driver', 'expense'],
+        },
+      ],
     },
     {
       id: 'supplier_landscape',
@@ -88,7 +151,33 @@ export const MARKET_ANALYSIS_TEMPLATE: ReportTemplate = {
         'Cover operational, financial, and compliance risks',
         'Note supplier concentration risks',
         'Include a summary table of key suppliers'
-      ]
+      ],
+      visualizationSlots: [
+        {
+          slotId: 'market_share_distribution',
+          type: 'pie_chart',
+          title: 'Market Share Distribution',
+          description: 'Extract supplier market share percentages. Look for phrases like "Company X holds Y% market share" or "the top 3 suppliers control Z% of the market". Each slice should be a supplier name with its percentage.',
+          minDataPoints: 3,
+          placement: 'after_prose',
+          dataSources: {
+            structuredAdapter: 'commodityToMarketShare',
+            structuredFields: ['marketStructure.topProducers'],
+            proseHints: ['market share', 'holds', 'controls'],
+          },
+          preferWidget: false,
+          tags: ['supplier', 'market share', 'landscape', 'producer', 'manufacturer'],
+        },
+        {
+          slotId: 'supplier_comparison',
+          type: 'table',
+          title: 'Key Supplier Comparison',
+          description: 'Extract a comparison table of key suppliers. Headers should include: Supplier, Region/HQ, Revenue (if mentioned), Key Capabilities, and any other distinguishing attributes. Each row is one supplier.',
+          minDataPoints: 2,
+          placement: 'after_prose',
+          tags: ['supplier', 'landscape', 'sourcing', 'vendor', 'comparison'],
+        },
+      ],
     },
     {
       id: 'contracting_strategies',
@@ -130,7 +219,23 @@ export const MARKET_ANALYSIS_TEMPLATE: ReportTemplate = {
         'Align recommendations with identified risks and opportunities',
         'Include both strategic and tactical recommendations',
         'Prioritize by impact and urgency'
-      ]
+      ],
+      visualizationSlots: [
+        {
+          slotId: 'key_metrics_summary',
+          type: 'metric',
+          title: 'Key Metrics Summary',
+          description: 'Extract 3-4 headline numbers from the full report — e.g., market size, CAGR, number of key suppliers, projected savings percentage. Each metric should have a label, a value (with unit), and optionally a trend direction (up/down/stable) and trend value.',
+          minDataPoints: 1,
+          placement: 'before_prose',
+          dataSources: {
+            structuredAdapter: 'commodityToKeyMetrics',
+            structuredFields: ['currentPrice', 'fundamentals', 'risks'],
+            proseHints: ['market size', 'key metric', 'headline', 'summary'],
+          },
+          preferWidget: true,
+        },
+      ],
     },
     {
       id: 'conclusion',

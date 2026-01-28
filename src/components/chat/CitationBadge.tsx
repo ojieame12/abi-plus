@@ -1,6 +1,6 @@
 // Citation Badge Component
 // Inline hoverable badge for citations [B1], [W1]
-// Subtle underline + icon style (Beroe squircle or Globe)
+// Icon style (Beroe squircle or Globe), no underline
 
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -153,10 +153,10 @@ const HybridCitationBadge = ({
         onMouseLeave={handleMouseLeave}
         className={`
           inline-flex items-center
-          border-b border-dotted
+          border rounded-sm no-underline
           ${getBorderColorClasses()}
           transition-colors cursor-pointer
-          ml-0.5 pb-px
+          ml-0.5 px-0.5 py-0.5
         `}
         style={displayData.providerColor ? { borderColor: displayData.providerColor } : undefined}
         aria-label={`Source: ${displayData.name}`}

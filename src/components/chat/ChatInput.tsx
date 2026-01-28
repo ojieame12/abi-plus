@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Globe, X, Paperclip, Brain, Zap, Search, Sparkles, Puzzle, ChevronRight, FlaskConical } from 'lucide-react';
+import { Plus, Globe, X, Paperclip, Brain, Zap, Search, Sparkles, Puzzle, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -416,15 +416,11 @@ export const ChatInput = ({
                                 <Tooltip>Include Internet Sources</Tooltip>
                             </div>
 
-                            {/* Deep Research Toggle */}
-                            <DeepResearchToggle
-                                enabled={deepResearchEnabled}
-                                onToggle={handleDeepResearchToggle}
-                                creditsAvailable={creditsAvailable}
+                            {/* Deep Research Mode Toggle (Fast ⚡ / Deep 🧠) */}
+                            <DeepResearchModeToggle
+                                deepResearchEnabled={deepResearchEnabled}
+                                onDeepResearchChange={handleDeepResearchToggle}
                             />
-
-                            {/* Thinking Mode Toggle - same component as default */}
-                            <ThinkingModeToggle mode={mode} onModeChange={handleModeChange} />
 
                             {/* Send Button */}
                             <button
@@ -666,13 +662,6 @@ export const ChatInput = ({
                             <Tooltip>Include Internet Sources</Tooltip>
                         </div>
 
-                        {/* Deep Research Toggle */}
-                        <DeepResearchToggle
-                            enabled={deepResearchEnabled}
-                            onToggle={handleDeepResearchToggle}
-                            creditsAvailable={creditsAvailable}
-                        />
-
                         {/* Builder Mode Toggle */}
                         <div className="relative group">
                             <ToolbarButton
@@ -683,8 +672,11 @@ export const ChatInput = ({
                             <Tooltip>{builderMode ? 'Exit builder' : 'Build a prompt'}</Tooltip>
                         </div>
 
-                        {/* Thinking Mode Toggle */}
-                        <ThinkingModeToggle mode={mode} onModeChange={handleModeChange} />
+                        {/* Deep Research Mode Toggle (Fast ⚡ / Deep 🧠) */}
+                        <DeepResearchModeToggle
+                            deepResearchEnabled={deepResearchEnabled}
+                            onDeepResearchChange={handleDeepResearchToggle}
+                        />
                     </div>
 
                     {/* Send Button - color changes based on mode, icon stays the same */}
@@ -830,13 +822,13 @@ const Tooltip = ({ children }: { children: React.ReactNode }) => (
     </div>
 );
 
-// Thinking Mode Toggle Component
-interface ThinkingModeToggleProps {
-    mode?: 'fast' | 'reasoning';
-    onModeChange?: (mode: 'fast' | 'reasoning') => void;
+// Deep Research Mode Toggle Component (Fast ⚡ / Deep 🧠)
+interface DeepResearchModeToggleProps {
+    deepResearchEnabled?: boolean;
+    onDeepResearchChange?: (enabled: boolean) => void;
 }
 
-const ThinkingModeToggle = ({ mode = 'fast', onModeChange }: ThinkingModeToggleProps) => {
+const DeepResearchModeToggle = ({ deepResearchEnabled = false, onDeepResearchChange }: DeepResearchModeToggleProps) => {
     const [hovered, setHovered] = useState(false);
 
     return (
@@ -846,29 +838,35 @@ const ThinkingModeToggle = ({ mode = 'fast', onModeChange }: ThinkingModeToggleP
             onMouseLeave={() => setHovered(false)}
         >
             {/* Outer container - matches toolbar button height */}
-            <div className="relative flex items-center h-9 p-0.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className={`relative flex items-center h-9 p-0.5 border rounded-xl transition-colors ${
+                deepResearchEnabled
+                    ? 'bg-violet-50 border-violet-200'
+                    : 'bg-slate-50 border-slate-200'
+            }`}>
                 {/* Sliding indicator */}
                 <div
-                    className={`absolute top-1 h-7 w-8 bg-white rounded-lg shadow-sm border border-slate-200/80 transition-all duration-200 ease-out ${
-                        mode === 'fast' ? 'left-1' : 'left-[calc(50%)]'
+                    className={`absolute top-1 h-7 w-8 rounded-lg shadow-sm transition-all duration-200 ease-out ${
+                        deepResearchEnabled
+                            ? 'left-[calc(50%)] bg-white border border-violet-200'
+                            : 'left-1 bg-white border border-slate-200/80'
                     }`}
                 />
 
                 {/* Fast Mode */}
                 <button
-                    onClick={() => onModeChange?.('fast')}
+                    onClick={() => onDeepResearchChange?.(false)}
                     className={`relative z-10 w-9 h-8 flex items-center justify-center transition-colors duration-200 ${
-                        mode === 'fast' ? 'text-primary' : 'text-muted hover:text-secondary'
+                        !deepResearchEnabled ? 'text-primary' : 'text-muted hover:text-secondary'
                     }`}
                 >
                     <Zap size={18} strokeWidth={1.5} />
                 </button>
 
-                {/* Reasoning Mode */}
+                {/* Deep Research Mode */}
                 <button
-                    onClick={() => onModeChange?.('reasoning')}
+                    onClick={() => onDeepResearchChange?.(true)}
                     className={`relative z-10 w-9 h-8 flex items-center justify-center transition-colors duration-200 ${
-                        mode === 'reasoning' ? 'text-violet-600' : 'text-muted hover:text-secondary'
+                        deepResearchEnabled ? 'text-violet-600' : 'text-muted hover:text-secondary'
                     }`}
                 >
                     <Brain size={18} strokeWidth={1.5} />
@@ -878,7 +876,7 @@ const ThinkingModeToggle = ({ mode = 'fast', onModeChange }: ThinkingModeToggleP
             {/* Hover Tooltip */}
             {hovered && (
                 <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[100] px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg whitespace-nowrap pointer-events-none">
-                    {mode === 'fast' ? 'Fast Response' : 'Deep Research'}
+                    {deepResearchEnabled ? 'Deep Research' : 'Fast Response'}
                     <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-900 rotate-45" />
                 </div>
             )}
@@ -941,60 +939,3 @@ const BuilderChip = ({ label, onClick, isSelected }: { label: string; onClick: (
     </motion.button>
 );
 
-// Deep Research Toggle Component
-interface DeepResearchToggleProps {
-    enabled: boolean;
-    onToggle: () => void;
-    creditsAvailable?: number;
-}
-
-const DeepResearchToggle = ({ enabled, onToggle, creditsAvailable = 0 }: DeepResearchToggleProps) => {
-    const [hovered, setHovered] = useState(false);
-    const hasEnoughCredits = creditsAvailable >= 500; // Minimum for deep research
-
-    return (
-        <div
-            className="relative"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-            <button
-                onClick={onToggle}
-                className={`
-                    h-9 rounded-xl flex items-center gap-1.5 transition-all border px-2.5
-                    ${enabled
-                        ? 'bg-gradient-to-r from-violet-50 to-blue-50 text-violet-600 border-violet-500'
-                        : 'text-secondary hover:text-primary hover:bg-slate-50 border-slate-200 hover:border-slate-300'
-                    }
-                `}
-            >
-                <FlaskConical size={16} strokeWidth={1.5} />
-                <span className="text-xs font-medium">Deep</span>
-            </button>
-
-            {/* Hover tooltip */}
-            {hovered && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[100] p-3 bg-slate-900 text-white text-xs rounded-xl whitespace-nowrap pointer-events-none min-w-[180px]">
-                    <div className="font-medium mb-1">
-                        {enabled ? 'Deep Research Active' : 'Enable Deep Research'}
-                    </div>
-                    <div className="text-slate-300 text-[11px]">
-                        {enabled
-                            ? 'Multi-source analysis with AI synthesis'
-                            : 'Comprehensive analysis from multiple sources'
-                        }
-                    </div>
-                    {!enabled && (
-                        <div className={`mt-1.5 pt-1.5 border-t border-slate-700 text-[11px] ${hasEnoughCredits ? 'text-emerald-400' : 'text-amber-400'}`}>
-                            {hasEnoughCredits
-                                ? `${creditsAvailable} credits available`
-                                : `Requires 500+ credits (${creditsAvailable} available)`
-                            }
-                        </div>
-                    )}
-                    <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-900 rotate-45" />
-                </div>
-            )}
-        </div>
-    );
-};

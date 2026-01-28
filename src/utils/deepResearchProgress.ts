@@ -31,10 +31,18 @@ export const computeProgress = (progress: CommandCenterProgress): number => {
       return Math.round(10 + (done / total) * 50);
     }
     case 'synthesis': {
+      // 60–85%: section writing, 85–90%: visuals/quality
+      const visualsPhase = phases?.find(p => p.id === 'synthesis.visuals');
+      const visualsDone = visualsPhase?.status === 'complete';
+      const visualsActive = visualsPhase?.status === 'active';
+
+      if (visualsDone) return 90;
+      if (visualsActive) return 87;
+
       if (!synthesis) return 60;
       const totalSections = Math.max(synthesis.totalSections, 1);
       const pct = (synthesis.sectionsComplete / totalSections) * 100;
-      return Math.round(60 + pct * 0.3);
+      return Math.round(60 + pct * 0.25); // Caps at ~85
     }
     case 'delivery': {
       if (!phases || phases.length === 0) return 92;

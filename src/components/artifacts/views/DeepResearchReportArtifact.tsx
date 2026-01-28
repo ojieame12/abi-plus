@@ -13,6 +13,7 @@ import type {
 import type { CitationMap, Citation } from '../../../types/hybridResponse';
 import type { WebSource, InternalSource } from '../../../types/aiResponse';
 import { CitedParagraph } from '../../chat/CitedContent';
+import { ReportVisualRenderer } from './ReportVisualRenderer';
 
 // ============================================
 // TYPES
@@ -24,6 +25,8 @@ interface DeepResearchReportArtifactProps {
   onDownloadPdf?: () => void;
   onShare?: () => void;
   onClose?: () => void;
+  onUpgradeReport?: () => void;
+  onMessageAnalyst?: () => void;
 }
 
 // ============================================
@@ -159,14 +162,23 @@ const ArticleSection = ({ section, citations, onSourceClick, sectionRef }: Artic
 
   const headingClass =
     section.level === 0
-      ? 'text-[20px] leading-[1.3] font-medium text-slate-900 mb-4 mt-10 first:mt-0'
+      ? 'text-[20px] leading-[1.3] font-medium text-slate-900 mb-4 mt-10 first:mt-0 pb-2 border-b border-slate-200'
       : section.level === 1
       ? 'text-[16px] leading-[1.35] font-medium text-slate-800 mb-3 mt-8'
       : 'text-[15px] leading-[1.4] font-normal text-slate-700 mb-2 mt-6';
 
+  // Split visuals by placement
+  const beforeVisuals = (section.visuals || []).filter(v => v.placement === 'before_prose');
+  const afterVisuals = (section.visuals || []).filter(v => v.placement !== 'before_prose');
+
   return (
-    <div ref={sectionRef} id={`section-${section.id}`} className="scroll-mt-8">
+    <div ref={sectionRef} id={`section-${section.id}`} className="scroll-mt-8 pb-8">
       <Heading className={headingClass}>{section.title}</Heading>
+
+      {/* Visuals placed before prose */}
+      {beforeVisuals.map(v => (
+        <ReportVisualRenderer key={v.id} visual={v} citations={citations} />
+      ))}
 
       {/* Section prose */}
       {section.content && (
@@ -179,6 +191,11 @@ const ArticleSection = ({ section, citations, onSourceClick, sectionRef }: Artic
           />
         </div>
       )}
+
+      {/* Visuals placed after prose */}
+      {afterVisuals.map(v => (
+        <ReportVisualRenderer key={v.id} visual={v} citations={citations} />
+      ))}
 
       {/* Child sections — rendered inline, no nesting boxes */}
       {section.children && section.children.length > 0 && (
@@ -301,6 +318,8 @@ export const DeepResearchReportArtifact = ({
   report,
   onDownloadPdf,
   onShare,
+  onUpgradeReport,
+  onMessageAnalyst,
 }: DeepResearchReportArtifactProps) => {
   const [highlightedCitation, setHighlightedCitation] = useState<string | null>(null);
   const [showToc, setShowToc] = useState(true);
@@ -357,6 +376,27 @@ export const DeepResearchReportArtifact = ({
               }
             />
           </div>
+
+          {/* Sidebar widget — Ask Analyst card */}
+          <div className="flex-shrink-0 px-3 pb-4">
+            <div className="rounded-2xl border border-slate-100/80 bg-slate-50 p-4">
+              <div className="flex items-start justify-between mb-3">
+                <img
+                  src="/analyst-avatar.jpg"
+                  alt="Dr. James Morrison"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              </div>
+              <p className="text-sm font-medium text-slate-900">Ask Analyst</p>
+              <p className="text-[12px] text-slate-500 mt-0.5 mb-3">Dr. James Morrison</p>
+              <button
+                onClick={onMessageAnalyst}
+                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[13px] font-medium transition-colors"
+              >
+                Message Analyst
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -411,9 +451,27 @@ export const DeepResearchReportArtifact = ({
           <div className="max-w-[680px] mx-auto px-8 py-10">
             {/* ── Title block ── */}
             <header className="mb-10">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-[13px] text-slate-400">
+                  {getStudyTypeLabel(report.studyType)}
+                </p>
+                {report.reportNumber && (
+                  <>
+                    <span className="text-[13px] text-slate-300">·</span>
+                    <p className="text-[13px] text-slate-400 font-mono">
+                      {report.reportNumber}
+                    </p>
+                  </>
+                )}
+              </div>
               <h1 className="text-[28px] leading-[1.2] font-medium text-slate-900 tracking-[-0.02em]">
                 {report.title}
               </h1>
+              {report.subtitle && (
+                <p className="text-[16px] leading-[1.5] text-slate-500 mt-2 tracking-[-0.01em]">
+                  {report.subtitle}
+                </p>
+              )}
               <p className="text-[14px] text-slate-400 mt-3">
                 {formatDate(report.generatedAt)}
                 {report.metadata?.customer && ` · ${report.metadata.customer}`}
@@ -421,9 +479,24 @@ export const DeepResearchReportArtifact = ({
               </p>
             </header>
 
+            {/* ── Key finding callout ── */}
+            {report.keyFinding && (
+              <div className="mb-10 rounded-lg border border-violet-100 bg-violet-50/50 px-5 py-4">
+                <p className="text-[11px] uppercase tracking-widest text-violet-500 mb-1.5 font-medium">
+                  Key Finding
+                </p>
+                <p className="text-[15px] leading-[1.6] text-slate-700">
+                  {report.keyFinding}
+                </p>
+              </div>
+            )}
+
             {/* ── Executive summary ── */}
             {report.summary && (
               <div className="mb-12 pb-8 border-b border-slate-100">
+                <h2 className="text-[20px] leading-[1.3] font-medium text-slate-900 mb-4">
+                  Executive Summary
+                </h2>
                 <div className="text-[15px] leading-[1.85] text-slate-600 tracking-[-0.01em]">
                   <CitedParagraph
                     content={report.summary}
@@ -453,6 +526,27 @@ export const DeepResearchReportArtifact = ({
             {/* ── References ── */}
             <div ref={referencesRef}>
               <References references={references} highlightedId={highlightedCitation} />
+            </div>
+
+            {/* ── Upgrade Report card ── */}
+            <div className="mt-12 rounded-2xl border border-slate-100/80 bg-slate-50 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center">
+                    <img src="/Container.svg" alt="" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Upgrade Report</p>
+                    <p className="text-[12px] text-slate-500">Decision Grade Market Analysis</p>
+                  </div>
+                </div>
+                <button
+                  onClick={onUpgradeReport}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white text-[13px] font-medium transition-all"
+                >
+                  Request Upgrade
+                </button>
+              </div>
             </div>
 
             {/* ── Footer ── */}

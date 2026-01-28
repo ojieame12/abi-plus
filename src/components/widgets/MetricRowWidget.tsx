@@ -3,9 +3,10 @@ import type { MetricRowData } from '../../types/widgets';
 
 interface Props {
   data: MetricRowData;
+  variant?: 'default' | 'report';
 }
 
-export const MetricRowWidget = ({ data }: Props) => {
+export const MetricRowWidget = ({ data, variant = 'default' }: Props) => {
   const { metrics } = data || {};
 
   // Guard against undefined metrics
@@ -22,15 +23,24 @@ export const MetricRowWidget = ({ data }: Props) => {
     }
   };
 
+  const isReport = variant === 'report';
+  const valueClass = isReport ? 'text-[17px] leading-snug break-words' : 'text-xl font-light';
+  const labelClass = isReport ? 'text-xs text-slate-600 mt-1' : 'text-sm text-slate-600 mt-1';
+  const subLabelClass = isReport ? 'text-[11px] text-slate-400' : 'text-xs text-slate-400';
+  const cellClass = isReport ? 'px-3 py-3 text-center' : 'px-4 py-4 text-center';
+
   return (
     <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-[1.25rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/[0.02]">
-      <div className={`grid grid-cols-${metrics.length} divide-x divide-slate-100`}>
+      <div
+        className="grid divide-x divide-slate-100"
+        style={{ gridTemplateColumns: `repeat(${Math.min(metrics.length, 4)}, minmax(0, 1fr))` }}
+      >
         {metrics.map((metric, i) => (
-          <div key={i} className="px-4 py-4 text-center">
-            <div className={`text-xl font-light ${getColorClass(metric.color)}`}>
+          <div key={i} className={cellClass}>
+            <div className={`${valueClass} ${getColorClass(metric.color)}`}>
               {metric.value}
               {metric.change && (
-                <span className={`ml-1.5 text-xs font-normal ${
+                <span className={`ml-1.5 text-xs font-normal align-middle ${
                   metric.change.direction === 'up' ? 'text-green-500' : 'text-red-500'
                 }`}>
                   {metric.change.direction === 'up' ? '↑' : '↓'}
@@ -38,9 +48,9 @@ export const MetricRowWidget = ({ data }: Props) => {
                 </span>
               )}
             </div>
-            <div className="text-sm text-slate-600 mt-1">{metric.label}</div>
+            <div className={labelClass}>{metric.label}</div>
             {metric.subLabel && (
-              <div className="text-xs text-slate-400">{metric.subLabel}</div>
+              <div className={subLabelClass}>{metric.subLabel}</div>
             )}
           </div>
         ))}

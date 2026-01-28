@@ -108,6 +108,7 @@ export const STAGE_PHASES: Record<CommandCenterStage, { id: string; label: strin
     { id: 'synthesis.template', label: 'Template Selection' },
     { id: 'synthesis.writing', label: 'Section Writing' },
     { id: 'synthesis.quality', label: 'Quality Validation' },
+    { id: 'synthesis.visuals', label: 'Chart & Data Extraction' },
   ],
   delivery: [
     { id: 'delivery.assembly', label: 'Report Assembly' },
@@ -293,6 +294,74 @@ export interface TocEntry {
   level: number;           // 0 = top-level, 1 = child, 2 = grandchild
 }
 
+// ── Report Visualization Types ──
+
+type VisualConfidence = 'high' | 'medium' | 'low';
+type VisualPlacement = 'before_prose' | 'after_prose';
+
+interface ReportVisualBase {
+  id: string;
+  title: string;
+  sourceIds: string[];          // citation IDs backing the data
+  confidence: VisualConfidence;
+  placement?: VisualPlacement;
+  footnote?: string;
+  /** Rendering hint for trend color semantics (used by TrendChartWidget delegation) */
+  trendSemantics?: 'up-good' | 'up-bad';
+}
+
+export interface LineChartVisual extends ReportVisualBase {
+  type: 'line_chart';
+  data: {
+    unit?: string;
+    series: { name: string; points: { x: string; y: number }[]; color?: string }[];
+  };
+}
+
+export interface BarChartVisual extends ReportVisualBase {
+  type: 'bar_chart';
+  data: {
+    unit?: string;
+    horizontal?: boolean;
+    categories: string[];
+    series: { name: string; values: number[]; color?: string }[];
+  };
+}
+
+export interface PieChartVisual extends ReportVisualBase {
+  type: 'pie_chart';
+  data: {
+    unit?: string;
+    slices: { label: string; value: number; color?: string }[];
+  };
+}
+
+export interface TableVisual extends ReportVisualBase {
+  type: 'table';
+  data: {
+    headers: string[];
+    rows: (string | number)[][];
+    columnAlignments?: ('left' | 'center' | 'right')[];
+    highlightFirstColumn?: boolean;
+  };
+}
+
+export interface MetricVisual extends ReportVisualBase {
+  type: 'metric';
+  data: {
+    metrics: {
+      label: string;
+      value: string;
+      subLabel?: string;
+      trend?: 'up' | 'down' | 'stable';
+      trendValue?: string;
+      color?: 'default' | 'success' | 'warning' | 'danger';
+    }[];
+  };
+}
+
+export type ReportVisual = LineChartVisual | BarChartVisual | PieChartVisual | TableVisual | MetricVisual;
+
 /** Section within the final report */
 export interface ReportSection {
   id: string;
@@ -301,27 +370,10 @@ export interface ReportSection {
   level: number;           // Hierarchy level (0, 1, 2)
   citationIds: string[];   // Citations used in this section
   sources?: Source[];
-  charts?: ReportChart[];
-  tables?: ReportTable[];
+  visuals?: ReportVisual[];
+  /** Slot titles where data extraction was attempted but insufficient data found */
+  missingVisuals?: string[];
   children?: ReportSection[];  // Nested subsections
-}
-
-/** Chart data for the report */
-export interface ReportChart {
-  id: string;
-  type: 'line' | 'bar' | 'pie' | 'area' | 'scatter';
-  title: string;
-  data: unknown;  // Chart.js compatible data
-  options?: unknown;
-}
-
-/** Table data for the report */
-export interface ReportTable {
-  id: string;
-  title: string;
-  headers: string[];
-  rows: (string | number)[][];
-  footnotes?: string[];
 }
 
 /** Report metadata */
@@ -338,6 +390,9 @@ export interface ReportMetadata {
 export interface DeepResearchReport {
   id: string;
   title: string;
+  subtitle?: string;        // One-line thesis / key takeaway
+  keyFinding?: string;      // Most impactful quantitative finding
+  reportNumber?: string;    // e.g., "ABI-2026-0142"
   summary: string;          // Executive summary
   studyType: StudyType;
 

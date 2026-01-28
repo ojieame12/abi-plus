@@ -503,10 +503,12 @@ const detectSubIntent = (query: string, category: IntentCategory): SubIntent => 
       return 'market_fairness';
 
     case 'market_context':
-      // Distinguish between news/events queries and price queries
+      // Distinguish between news/events queries and general market queries
       if (/news|event|happening|update|recent|latest|headline/i.test(q)) return 'news_events';
+      if (/industr(y|ies).*(outlook|landscape|overview|dynamic)/i.test(q)) return 'industry_context';
+      if (/benchmark|compare.*peer|vs\s/i.test(q)) return 'benchmark';
       if (/trend|price|cost|forecast|outlook/i.test(q)) return 'commodity_drivers';
-      return 'news_events'; // Default to news for market context
+      return 'none'; // Default: use Gemini/Beroe market intelligence, no web research
 
     default:
       return 'none';
@@ -536,14 +538,16 @@ export const classifyIntent = (query: string): DetectedIntent => {
         const intentCategory = category;
         const subIntent = detectSubIntent(normalizedQuery, intentCategory);
 
-        // Determine if this sub-intent needs research
+        // Determine if this sub-intent needs research (web via Perplexity).
+        // NOTE: market_context does NOT auto-trigger research — Gemini already has
+        // Beroe market intelligence. Only specific sub-intents that truly need
+        // external web data (news, events, benchmarks) trigger Perplexity.
         const needsResearch = researchCheck.trigger ||
           subIntent === 'benchmark' ||
           subIntent === 'news_events' ||
           subIntent === 'industry_context' ||
           subIntent === 'projections' ||
-          subIntent === 'strategic_advice' ||
-          intentCategory === 'market_context';
+          subIntent === 'strategic_advice';
 
         // Determine if needs discovery module
         const needsDiscovery = subIntent === 'find_alternatives' ||

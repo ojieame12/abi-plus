@@ -4,9 +4,13 @@ import type { TrendChartData } from '../../types/widgets';
 interface TrendChartWidgetProps {
   data: TrendChartData;
   size?: 'M' | 'L';
+  /** Controls color semantics for trend direction.
+   *  'up-bad' (default): up=rose/red, down=emerald/green — for costs, risk, inflation.
+   *  'up-good': up=emerald/green, down=rose/red — for revenue, market growth, output. */
+  trendSemantics?: 'up-good' | 'up-bad';
 }
 
-export const TrendChartWidget = ({ data, size = 'M' }: TrendChartWidgetProps) => {
+export const TrendChartWidget = ({ data, size = 'M', trendSemantics = 'up-bad' }: TrendChartWidgetProps) => {
   const { title, dataPoints, changeDirection, changeSummary, unit } = data;
 
   // Calculate chart dimensions
@@ -28,11 +32,20 @@ export const TrendChartWidget = ({ data, size = 'M' }: TrendChartWidgetProps) =>
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaD = `${pathD} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
 
-  const directionConfig = {
+  // Color configs based on trend semantics
+  const upBadConfig = {
     up: { icon: TrendingUp, color: 'text-rose-500', bgColor: 'bg-rose-50', strokeColor: '#f43f5e', fillColor: 'rgba(244, 63, 94, 0.1)' },
     down: { icon: TrendingDown, color: 'text-emerald-500', bgColor: 'bg-emerald-50', strokeColor: '#10b981', fillColor: 'rgba(16, 185, 129, 0.1)' },
     stable: { icon: Minus, color: 'text-slate-500', bgColor: 'bg-slate-50', strokeColor: '#64748b', fillColor: 'rgba(100, 116, 139, 0.1)' },
   };
+
+  const upGoodConfig = {
+    up: { icon: TrendingUp, color: 'text-emerald-500', bgColor: 'bg-emerald-50', strokeColor: '#10b981', fillColor: 'rgba(16, 185, 129, 0.1)' },
+    down: { icon: TrendingDown, color: 'text-rose-500', bgColor: 'bg-rose-50', strokeColor: '#f43f5e', fillColor: 'rgba(244, 63, 94, 0.1)' },
+    stable: { icon: Minus, color: 'text-slate-500', bgColor: 'bg-slate-50', strokeColor: '#64748b', fillColor: 'rgba(100, 116, 139, 0.1)' },
+  };
+
+  const directionConfig = trendSemantics === 'up-good' ? upGoodConfig : upBadConfig;
 
   const config = directionConfig[changeDirection];
   const Icon = config.icon;

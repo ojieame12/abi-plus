@@ -132,6 +132,87 @@ function renderInlineMarkdown(text: string, keyPrefix: string = ''): React.React
   return elements;
 }
 
+/**
+ * Split a text segment into prefix + anchor (last statement) + trailing whitespace.
+ * The anchor is underlined to indicate the cited statement.
+ */
+function splitTextForCitationAnchor(text: string): { prefix: string; anchor: string; trailing: string } {
+  let prefix = '';
+  let anchor = text;
+
+  // Prefer splitting by the last sentence boundary.
+  const sentenceRegex = /[.!?]\s+/g;
+  let lastSentenceIndex = -1;
+  let lastSentenceLen = 0;
+  let match: RegExpExecArray | null;
+  while ((match = sentenceRegex.exec(text)) !== null) {
+    lastSentenceIndex = match.index;
+    lastSentenceLen = match[0].length;
+  }
+
+  if (lastSentenceIndex >= 0 && lastSentenceIndex + lastSentenceLen < text.length) {
+    prefix = text.slice(0, lastSentenceIndex + lastSentenceLen);
+    anchor = text.slice(lastSentenceIndex + lastSentenceLen);
+  } else {
+    // Fallback: underline the last ~8 words (avoid splitting inside markdown when possible)
+    const hasMarkdown = /(\*\*|\*|`|\[[^\]]+?\]\([^)]+?\))/.test(text);
+    if (!hasMarkdown) {
+      const tokens = text.match(/\S+|\s+/g) || [];
+      let wordCount = 0;
+      let startIndex = tokens.length;
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        if (/\S/.test(tokens[i])) {
+          wordCount += 1;
+        }
+        if (wordCount >= 8) {
+          startIndex = i;
+          break;
+        }
+      }
+      prefix = tokens.slice(0, startIndex).join('');
+      anchor = tokens.slice(startIndex).join('');
+    }
+  }
+
+  // Separate trailing whitespace so underline doesn't extend
+  const trailingMatch = anchor.match(/(\s+)$/);
+  let trailing = '';
+  if (trailingMatch) {
+    trailing = trailingMatch[1];
+    anchor = anchor.slice(0, -trailing.length);
+  }
+
+  return { prefix, anchor, trailing };
+}
+
+/**
+ * Render a text segment, optionally underlining the last statement.
+ */
+function renderTextSegment(
+  text: string,
+  keyPrefix: string,
+  underlineAnchor: boolean
+): React.ReactNode {
+  if (!underlineAnchor || text.trim().length === 0) {
+    return <span>{renderInlineMarkdown(text, keyPrefix)}</span>;
+  }
+
+  const { prefix, anchor, trailing } = splitTextForCitationAnchor(text);
+  if (!anchor.trim().length) {
+    return <span>{renderInlineMarkdown(text, keyPrefix)}</span>;
+  }
+
+  return (
+    <span>
+      {prefix && <span>{renderInlineMarkdown(prefix, `${keyPrefix}-pre`)}</span>}
+      <span className="citation-anchor underline decoration-dotted decoration-slate-300 underline-offset-4">
+        {renderInlineMarkdown(anchor, `${keyPrefix}-anchor`)}
+      </span>
+      {trailing && <span>{trailing}</span>}
+    </span>
+  );
+}
+
 // ============================================
 // TYPES
 // ============================================
@@ -175,9 +256,11 @@ export const CitedContent = ({
       {segments.map((segment, index) => {
         // Text segment - render with inline markdown support
         if (segment.type === 'text') {
+          const next = segments[index + 1];
+          const underlineAnchor = next?.type === 'citation';
           return (
             <span key={index}>
-              {renderInlineMarkdown(segment.content, `seg-${index}`)}
+              {renderTextSegment(segment.content, `seg-${index}`, underlineAnchor)}
             </span>
           );
         }
@@ -225,8 +308,22 @@ export const CitedParagraph = ({
   className = '',
   block = true,
 }: CitedParagraphProps) => {
+  // Normalize "Action:" and "Actions:" to start on a new line for readability
+  const normalizeActions = (text: string) => {
+    let updated = text;
+    // After sentence punctuation
+    updated = updated.replace(/([.!?])\s+(Action:|Actions:)/g, '$1\n\n$2');
+    // After closing citation markers
+    updated = updated.replace(/(\[[BW]?\d+\])\s+(Action:|Actions:)/g, '$1\n\n$2');
+    // After bold "Action" labels
+    updated = updated.replace(/([.!?])\s+(\*\*Action:\*\*|\*\*Actions:\*\*)/g, '$1\n\n$2');
+    return updated;
+  };
+
+  const normalizedContent = normalizeActions(content);
+
   // Split content on double newlines (paragraph breaks)
-  const paragraphs = content.split(/\n\n+/);
+  const paragraphs = normalizedContent.split(/\n\n+/);
 
   if (!block || paragraphs.length <= 1) {
     return (

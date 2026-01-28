@@ -5,7 +5,10 @@ import { generateDynamicIntake } from './deepResearchIntake';
 import type { PerplexityResponse } from './perplexity';
 import { callPerplexity, isPerplexityConfigured } from './perplexity';
 import { synthesizeResearchReport, isDeepSeekConfigured, synthesizeTemplatedReport } from './deepseek';
+import type { StructuredDataContext } from './deepseek';
 import { getReportTemplate } from './reportTemplates';
+import { ENRICHED_COMMODITIES } from './enrichedCommodityData';
+import type { EnrichedCommodity } from '../types/enrichedData';
 import type { ChatMessage, Suggestion, Source } from '../types/chat';
 import { generateId } from '../types/chat';
 // Deep Research types
@@ -355,9 +358,12 @@ export const sendMessage = async (
 
     console.log('[AI] Intent classified:', intent.category, '| SubIntent:', intent.subIntent);
     console.log('[AI] Mode:', mode, '| WebSearch:', webSearchEnabled);
-    console.log('[AI] Auto-research triggered:', intent.requiresResearch);
+    console.log('[AI] Auto-research triggered:', intent.requiresResearch,
+      intent.requiresResearch ? `(reason: ${intent.researchContext ? 'research_trigger' : intent.subIntent})` : '');
     console.log('[AI] Hybrid mode:', hybridMode);
-    console.log('[AI] Using provider:', hybridMode ? 'hybrid' : (usePerplexity ? 'perplexity' : 'gemini'));
+    console.log('[AI] Gemini configured:', isGeminiConfigured(), '| Perplexity configured:', isPerplexityConfigured());
+    console.log('[AI] Provider decision: usePerplexity =', usePerplexity,
+      `(mode=${mode}, webSearch=${webSearchEnabled}, requiresResearch=${intent.requiresResearch})`);
 
     // HYBRID MODE: Call both Gemini (Beroe) and Perplexity (Web) in parallel
     // Trigger hybrid when:
@@ -365,7 +371,11 @@ export const sendMessage = async (
     // - webSearchEnabled: user toggled web search on (always use hybrid to combine Beroe + Web)
     // This ensures Beroe data is always included when doing web research
     const shouldUseHybrid = hybridMode || webSearchEnabled;
-    console.log('[AI] Should use hybrid:', shouldUseHybrid, '| webSearchEnabled:', webSearchEnabled, '| Perplexity configured:', isPerplexityConfigured());
+    const finalProvider = shouldUseHybrid && isPerplexityConfigured() && isGeminiConfigured()
+      ? 'hybrid'
+      : (usePerplexity && isPerplexityConfigured() ? 'perplexity' : (isGeminiConfigured() ? 'gemini' : 'local'));
+    console.log(`[AI] → ROUTING TO: ${finalProvider.toUpperCase()}`,
+      `(shouldUseHybrid=${shouldUseHybrid}, usePerplexity=${usePerplexity})`);
 
     // Warn if user enabled web search but Perplexity isn't configured
     if ((webSearchEnabled || hybridMode) && !isPerplexityConfigured()) {
@@ -1926,6 +1936,80 @@ export const confirmDeepResearchIntake = async (
   };
 };
 
+// ============================================
+// STRUCTURED DATA MATCHING
+// ============================================
+
+/** Scored commodity match result */
+interface ScoredCommodity {
+  commodity: EnrichedCommodity;
+  score: number; // 0-100, higher = stronger match
+  matchType: 'exact' | 'category' | 'subcategory';
+}
+
+/**
+ * Match commodities against query using scored tiers.
+ * Only returns commodities above a confidence threshold (score >= 60).
+ * Sorted by score descending so best match is used first.
+ */
+const extractRelevantCommodities = (
+  query: string,
+  intakeAnswers?: Record<string, string | string[]>
+): EnrichedCommodity[] => {
+  const queryLower = query.toLowerCase();
+
+  // Extract category from intake answers if available
+  const categoryAnswer = intakeAnswers?.category;
+  const categoryStr = Array.isArray(categoryAnswer) ? categoryAnswer.join(' ') : (categoryAnswer || '');
+  const combinedSearch = `${queryLower} ${categoryStr.toLowerCase()}`;
+
+  const scored: ScoredCommodity[] = [];
+
+  for (const commodity of ENRICHED_COMMODITIES) {
+    const nameLower = commodity.name.toLowerCase();
+    const slugLower = commodity.slug.toLowerCase();
+    const catLower = commodity.category.toLowerCase();
+    const subCatLower = (commodity.subcategory || '').toLowerCase();
+
+    let score = 0;
+    let matchType: ScoredCommodity['matchType'] = 'category';
+
+    // Exact name/slug match in query — strongest signal
+    if (combinedSearch.includes(nameLower) || combinedSearch.includes(slugLower)) {
+      score = 100;
+      matchType = 'exact';
+    }
+    // Subcategory match (e.g., "non-ferrous" matches aluminum)
+    else if (subCatLower && combinedSearch.includes(subCatLower)) {
+      score = 40;
+      matchType = 'subcategory';
+    }
+    // Broad category match (e.g., "metals" matches everything in metals)
+    else if (combinedSearch.includes(catLower)) {
+      score = 25;
+      matchType = 'category';
+    }
+
+    if (score > 0) {
+      scored.push({ commodity, score, matchType });
+    }
+  }
+
+  // Only include commodities above the confidence threshold
+  const MIN_SCORE = 60;
+  const qualified = scored
+    .filter(s => s.score >= MIN_SCORE)
+    .sort((a, b) => b.score - a.score);
+
+  if (scored.length > 0) {
+    console.log(`[AI] Commodity scoring:`,
+      scored.map(s => `${s.commodity.name}=${s.score}(${s.matchType})`).join(', '));
+    console.log(`[AI] Qualified (>=${MIN_SCORE}): ${qualified.length > 0 ? qualified.map(s => s.commodity.name).join(', ') : 'none — LLM extraction will handle visuals'}`);
+  }
+
+  return qualified.map(s => s.commodity);
+};
+
 /**
  * Execute deep research processing
  * Uses Perplexity for web research and DeepSeek R1 for synthesis
@@ -2268,6 +2352,32 @@ export const executeDeepResearch = async (
     const totalSections = reportTemplate.sections.length;
     let sectionsComplete = 0;
 
+    // Extract relevant enriched commodity data for structured visual generation
+    const relevantCommodities = extractRelevantCommodities(query, answers);
+    // Determine match confidence: 'exact' if any commodity scored 100 (name/slug match)
+    const hasExactCommodityMatch = relevantCommodities.length > 0 &&
+      ENRICHED_COMMODITIES.some(c => {
+        const qLower = query.toLowerCase();
+        return qLower.includes(c.name.toLowerCase()) || qLower.includes(c.slug.toLowerCase());
+      });
+    const structuredData: StructuredDataContext | undefined = relevantCommodities.length > 0
+      ? {
+          commodities: relevantCommodities,
+          region: regions?.[0],
+          timeframe,
+          matchConfidence: hasExactCommodityMatch ? 'exact' : 'broad',
+        }
+      : undefined;
+
+    if (structuredData) {
+      console.log('[DeepResearch] Structured data available:', {
+        commodities: structuredData.commodities.map(c => c.name),
+        matchConfidence: structuredData.matchConfidence,
+        region: structuredData.region || 'Global',
+        timeframe: structuredData.timeframe || 'Current',
+      });
+    }
+
     if (isDeepSeekConfigured() && combinedFindings) {
       try {
         console.log('[DeepResearch] Calling DeepSeek R1 for template-driven synthesis...');
@@ -2294,6 +2404,7 @@ export const executeDeepResearch = async (
               snippet: s.snippet || '',
             })),
             intakeAnswers: answers,
+            structuredData,
           },
           (status) => {
             // Update synthesis progress
@@ -2307,7 +2418,28 @@ export const executeDeepResearch = async (
               };
               addInsight(`Synthesizing: ${sectionTitle}`, 'synthesis', 'Report Generation');
             }
-            if (status.includes('complete') || status.includes('Finalizing')) {
+            if (status.startsWith('Validating citations')) {
+              sectionsComplete = totalSections; // Writing done
+              if (ccProgress.synthesis) {
+                ccProgress.synthesis.sectionsComplete = sectionsComplete;
+              }
+              updatePhase('synthesis.writing', 'complete');
+              updatePhase('synthesis.quality', 'active');
+            }
+            if (status.startsWith('Extracting visuals: starting')) {
+              updatePhase('synthesis.quality', 'complete');
+              updatePhase('synthesis.visuals', 'active');
+            }
+            if (status.startsWith('Extracting visuals:') && !status.includes('starting')) {
+              const detail = status.replace('Extracting visuals:', '').trim();
+              if (detail && !detail.includes('complete')) {
+                addInsight(`Extracting charts: ${detail}`, 'synthesis', 'Data Visualization');
+              }
+            }
+            if (status === 'Extracting visuals: complete') {
+              updatePhase('synthesis.visuals', 'complete');
+            }
+            if (status.includes('Finalizing')) {
               sectionsComplete++;
               if (ccProgress.synthesis) {
                 ccProgress.synthesis.sectionsComplete = sectionsComplete;
@@ -2339,9 +2471,10 @@ export const executeDeepResearch = async (
       report = convertFallbackToReport(fallbackData, jobId, query, studyType, answers, allSources, startTime);
     }
 
-    // Flush any pending throttled progress before signaling completion
+    // Ensure all synthesis phases are complete before transitioning
     updatePhase('synthesis.writing', 'complete');
     updatePhase('synthesis.quality', 'complete');
+    updatePhase('synthesis.visuals', 'complete');
     flushProgress();
 
     // Delivery stage: report assembly + finalization
