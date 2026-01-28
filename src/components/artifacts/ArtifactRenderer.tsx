@@ -3,7 +3,7 @@
 // Artifact Renderer
 // Renders the appropriate artifact component based on type
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { ArtifactType, ArtifactPayload, getArtifactMeta } from './registry';
 
 // Import existing artifacts
@@ -47,6 +47,7 @@ import { ReportViewerArtifact } from '../panel/ReportViewerArtifact';
 // Import deep research artifacts
 import { DeepResearchProgressArtifact } from './views/DeepResearchProgressArtifact';
 import { DeepResearchReportArtifact } from './views/DeepResearchReportArtifact';
+import { ArtifactOverlayDrawer } from './ArtifactOverlayDrawer';
 
 // ============================================
 // TYPES
@@ -58,6 +59,10 @@ export interface ArtifactRendererProps {
   isExpanded?: boolean;
   onClose?: () => void;
   onAction?: (action: string, data?: unknown) => void;
+  overlayContext?: {
+    remainingCredits: number;
+    creditCosts: { upgrade: number; analyst: number };
+  };
 }
 
 // ============================================
@@ -133,6 +138,77 @@ const AIContentSection = ({ aiContent }: { aiContent?: AIContent }) => {
 };
 
 // ============================================
+// DEEP RESEARCH REPORT OVERLAY WRAPPER
+// ============================================
+
+interface DeepResearchReportWithOverlayProps {
+  reportPayload: import('./registry').DeepResearchReportPayload;
+  overlayContext: {
+    remainingCredits: number;
+    creditCosts: { upgrade: number; analyst: number };
+  };
+  onAction?: (action: string, data?: unknown) => void;
+  onClose?: () => void;
+}
+
+const DeepResearchReportWithOverlay = ({
+  reportPayload,
+  overlayContext,
+  onAction,
+  onClose,
+}: DeepResearchReportWithOverlayProps) => {
+  const [overlay, setOverlay] = useState<'upgrade_confirm' | 'analyst_message' | null>(null);
+
+  return (
+    <div className="relative h-full">
+      <DeepResearchReportArtifact
+        jobId={reportPayload.jobId}
+        report={reportPayload.report}
+        onDownloadPdf={() => onAction?.('download_report_pdf', { jobId: reportPayload.jobId })}
+        onShare={() => onAction?.('share_report', { jobId: reportPayload.jobId })}
+        onUpgradeReport={() => setOverlay('upgrade_confirm')}
+        onMessageAnalyst={() => setOverlay('analyst_message')}
+        onClose={onClose}
+      />
+
+      <ArtifactOverlayDrawer isOpen={overlay !== null} onClose={() => setOverlay(null)}>
+        {overlay === 'upgrade_confirm' && (
+          <UpgradeConfirmArtifact
+            category={reportPayload.report?.studyType || 'Market Analysis'}
+            credits={overlayContext.creditCosts.upgrade}
+            balanceAfter={overlayContext.remainingCredits - overlayContext.creditCosts.upgrade}
+            onConfirm={(context) => {
+              onAction?.('confirm_upgrade', { context });
+              setOverlay(null);
+            }}
+            onBack={() => setOverlay(null)}
+          />
+        )}
+        {overlay === 'analyst_message' && (
+          <AnalystMessageArtifact
+            analyst={{
+              name: 'Dr. James Morrison',
+              specialty: 'Metals & Mining',
+              availability: 'available',
+              responseTime: '~4 hours',
+            }}
+            category={reportPayload.report?.studyType || 'Market Analysis'}
+            isManaged={false}
+            queryContext={reportPayload.report?.queryOriginal}
+            credits={overlayContext.creditCosts.analyst}
+            onSend={(message) => {
+              onAction?.('send_analyst_message', { message });
+              setOverlay(null);
+            }}
+            onBack={() => setOverlay(null)}
+          />
+        )}
+      </ArtifactOverlayDrawer>
+    </div>
+  );
+};
+
+// ============================================
 // RENDERER
 // ============================================
 
@@ -142,6 +218,7 @@ export const ArtifactRenderer = ({
   isExpanded = false,
   onClose,
   onAction,
+  overlayContext,
 }: ArtifactRendererProps): ReactNode => {
   // Get metadata for the artifact (unused but available for future use)
   const _meta = getArtifactMeta(type);
@@ -714,6 +791,17 @@ export const ArtifactRenderer = ({
     case 'deep_research_report':
       {
         const reportPayload = payload as unknown as import('./registry').DeepResearchReportPayload;
+        if (overlayContext) {
+          return (
+            <DeepResearchReportWithOverlay
+              reportPayload={reportPayload}
+              overlayContext={overlayContext}
+              onAction={onAction}
+              onClose={onClose}
+            />
+          );
+        }
+        // Fallback: no overlay context, use legacy behavior
         return (
           <DeepResearchReportArtifact
             jobId={reportPayload.jobId}

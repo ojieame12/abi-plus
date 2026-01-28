@@ -1282,6 +1282,13 @@ function App() {
               isExpanded={isArtifactExpanded}
               onClose={handleClosePanel}
               onAction={handleArtifactAction}
+              overlayContext={{
+                remainingCredits: subscription.remainingCredits,
+                creditCosts: {
+                  upgrade: CREDIT_COSTS.report_upgrade.typical,
+                  analyst: CREDIT_COSTS.analyst_call.typical,
+                },
+              }}
             />
           ) : (
             <div className="p-6">
