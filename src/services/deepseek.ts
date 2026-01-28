@@ -402,6 +402,7 @@ export const quickReason = async (
   const response = await callDeepSeek(messages, {
     maxTokens: 1000,
     temperature: 0.2,
+    timeoutMs: 30000, // 30s for quick reasoning
   });
 
   return response.content;
@@ -752,7 +753,7 @@ You MUST respond with ONLY a valid JSON object, no other text:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `EXECUTIVE SUMMARY:\n${execSummary.slice(0, 800)}\n\nSECTION DIGEST:\n${digest.slice(0, 3000)}` },
       ],
-      { maxTokens: 300, temperature: 0.4, model: 'deepseek-chat' }
+      { maxTokens: 300, temperature: 0.4, model: 'deepseek-chat', timeoutMs: 30000 }
     );
 
     const jsonMatch = response.content.match(/\{[\s\S]*\}/);
@@ -1550,7 +1551,7 @@ CRITICAL — "data" shape depends on "type":
 IMPORTANT: "y" and "value" in charts MUST be numbers (not strings). "x" and "label" MUST be strings.` },
           { role: 'user', content: 'Extract the data now.' },
         ],
-        { maxTokens: 4000, temperature: 0.1, model: 'deepseek-chat' }
+        { maxTokens: 4000, temperature: 0.1, model: 'deepseek-chat', timeoutMs: 45000 }
       );
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {

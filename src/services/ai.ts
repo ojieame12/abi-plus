@@ -2015,6 +2015,9 @@ const extractRelevantCommodities = (
  * Uses Perplexity for web research and DeepSeek R1 for synthesis
  * Returns updates via callback with structured CommandCenterProgress
  */
+// Global timeout for entire research process (3 minutes)
+const GLOBAL_RESEARCH_TIMEOUT_MS = 180000;
+
 export const executeDeepResearch = async (
   jobId: string,
   query: string,
@@ -2026,6 +2029,41 @@ export const executeDeepResearch = async (
   console.log('[DeepResearch] API Status - Perplexity:', isPerplexityConfigured(), 'DeepSeek:', isDeepSeekConfigured());
 
   const startTime = Date.now();
+
+  // Create timeout promise that returns a timeout error after GLOBAL_RESEARCH_TIMEOUT_MS
+  const timeoutPromise = new Promise<DeepResearchResponse>((resolve) => {
+    setTimeout(() => {
+      console.warn('[DeepResearch] Global timeout reached after', GLOBAL_RESEARCH_TIMEOUT_MS / 1000, 'seconds');
+      resolve({
+        type: 'deep_research',
+        jobId,
+        query,
+        studyType,
+        phase: 'error',
+        creditsAvailable: 0,
+        creditsRequired: getCreditsRequiredForStudy(studyType),
+        commandCenterProgress: createInitialProgress(),
+        error: {
+          message: 'Research took too long and was stopped. Please try a more focused query.',
+          canRetry: true,
+        },
+      });
+    }, GLOBAL_RESEARCH_TIMEOUT_MS);
+  });
+
+  // Race the actual execution against the timeout
+  return Promise.race([timeoutPromise, executeDeepResearchCore(jobId, query, answers, studyType, onProgress, startTime)]);
+};
+
+// Core implementation (separated for timeout wrapping)
+const executeDeepResearchCore = async (
+  jobId: string,
+  query: string,
+  answers: Record<string, string | string[]>,
+  studyType: StudyType,
+  onProgress: ((update: DeepResearchResponse) => void) | undefined,
+  startTime: number
+): Promise<DeepResearchResponse> => {
   const allSources: Source[] = [];
   const INSIGHT_STREAM_MAX = 50;
 
