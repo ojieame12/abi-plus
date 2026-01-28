@@ -36,7 +36,11 @@ export interface FileAttachment {
 export interface Suggestion {
   id: string;
   text: string;
-  icon: 'lightbulb' | 'message' | 'document' | 'chart' | 'search' | 'alert' | 'compare';
+  icon: 'lightbulb' | 'message' | 'document' | 'chart' | 'search' | 'alert' | 'compare' | 'deep_research';
+  /** Optional: mark as a deep research suggestion for special styling */
+  isDeepResearch?: boolean;
+  /** Optional: credit cost to display (for deep research suggestions) */
+  creditCost?: number;
 }
 
 export interface Source {

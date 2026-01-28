@@ -7,6 +7,7 @@ import { AIResponse } from '../components/chat/AIResponse';
 import { ChatInput } from '../components/chat/ChatInput';
 import { DeepResearchMessage } from '../components/chat/DeepResearchMessage';
 import { ResearchCommandCenter } from '../components/chat/ResearchCommandCenter';
+import { DeepResearchInterstitial } from '../components/chat/DeepResearchInterstitial';
 import type { AIResponse as AIResponseType, ThinkingMode } from '../services/ai';
 import { sendMessage, confirmDeepResearchIntake, executeDeepResearch } from '../services/ai';
 import type { ChatMessage } from '../types/chat';
@@ -20,6 +21,11 @@ import { getManagedCategoryNames } from '../services/mockCategories';
 import { ResponseBody } from '../components/response';
 import type { IntakeAnswers, DeepResearchResponse } from '../types/deepResearch';
 import { createInitialProgress } from '../types/deepResearch';
+import {
+  scoreDeepResearchIntent,
+  buildChatContext,
+  type DeepResearchScore,
+} from '../services/deepResearchScoring';
 
 interface LiveChatViewProps {
   initialQuestion?: string;
@@ -52,6 +58,12 @@ export const LiveChatView = ({
   const deepResearchCredits = 1000;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
+
+  // Deep Research Auto-Trigger State
+  const [showDeepResearchInterstitial, setShowDeepResearchInterstitial] = useState(false);
+  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
+  const [pendingScoreResult, setPendingScoreResult] = useState<DeepResearchScore | null>(null);
+  const [isInterstitialLoading, setIsInterstitialLoading] = useState(false);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -112,8 +124,29 @@ export const LiveChatView = ({
     }
   }, [initialQuestion, mode, webSearchEnabled, onArtifactChange]);
 
-  const handleSendMessage = async (content: string, deepResearch?: boolean) => {
+  const handleSendMessage = async (content: string, deepResearch?: boolean, skipScoring?: boolean) => {
     if (!content.trim()) return;
+
+    // Build chat context for scoring
+    const chatContext = buildChatContext(messages.map(m => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(),
+    })));
+
+    // Score the query for deep research intent (unless explicitly deep research or scoring skipped)
+    if (!deepResearch && !skipScoring && !deepResearchEnabled) {
+      const scoreResult = scoreDeepResearchIntent(content, chatContext);
+
+      // High score (>= 0.75) → Show interstitial
+      if (scoreResult.shouldTriggerInterstitial) {
+        setPendingQuery(content);
+        setPendingScoreResult(scoreResult);
+        setShowDeepResearchInterstitial(true);
+        return; // Don't send yet, wait for user decision
+      }
+    }
 
     // Add user message
     const userMessage: Message = {
@@ -133,6 +166,14 @@ export const LiveChatView = ({
         timestamp: new Date(),
       }));
 
+      // Score for medium signals (suggestion injection) if not deep research
+      let shouldInjectDeepResearchSuggestion = false;
+      let suggestionScoreResult: DeepResearchScore | null = null;
+      if (!deepResearch && !deepResearchEnabled && !skipScoring) {
+        suggestionScoreResult = scoreDeepResearchIntent(content, chatContext);
+        shouldInjectDeepResearchSuggestion = suggestionScoreResult.shouldSuggest;
+      }
+
       // Call AI
       const response = await sendMessage(content, {
         mode,
@@ -141,6 +182,27 @@ export const LiveChatView = ({
         deepResearchMode: deepResearch,
         creditsAvailable: deepResearchCredits,
       });
+
+      // Inject deep research suggestion if score is in medium range (0.45-0.74)
+      if (shouldInjectDeepResearchSuggestion && suggestionScoreResult && response.suggestions) {
+        const deepResearchSuggestion = {
+          id: generateId(),
+          text: 'Get a comprehensive deep research report on this topic',
+          icon: 'deep_research' as const,
+          isDeepResearch: true,
+          creditCost: suggestionScoreResult.estimatedCredits,
+        };
+        // Prepend to suggestions so it appears first
+        response.suggestions = [deepResearchSuggestion, ...response.suggestions];
+      } else if (shouldInjectDeepResearchSuggestion && suggestionScoreResult && !response.suggestions) {
+        response.suggestions = [{
+          id: generateId(),
+          text: 'Get a comprehensive deep research report on this topic',
+          icon: 'deep_research' as const,
+          isDeepResearch: true,
+          creditCost: suggestionScoreResult.estimatedCredits,
+        }];
+      }
 
       // Add AI response
       const aiMessage: Message = {
@@ -170,8 +232,42 @@ export const LiveChatView = ({
     }
   };
 
-  const handleSuggestionClick = (item: { text: string }) => {
-    handleSendMessage(item.text);
+  const handleSuggestionClick = (item: { text: string; isDeepResearch?: boolean }) => {
+    // If it's a deep research suggestion, trigger deep research mode
+    if (item.isDeepResearch) {
+      handleSendMessage(item.text, true, true); // deepResearch=true, skipScoring=true
+    } else {
+      handleSendMessage(item.text);
+    }
+  };
+
+  // Deep Research Interstitial Handlers
+  const handleDeepResearchConfirm = () => {
+    if (!pendingQuery) return;
+
+    setIsInterstitialLoading(true);
+    setShowDeepResearchInterstitial(false);
+
+    // Send the message with deep research enabled
+    handleSendMessage(pendingQuery, true, true);
+
+    // Clean up state
+    setPendingQuery(null);
+    setPendingScoreResult(null);
+    setIsInterstitialLoading(false);
+  };
+
+  const handleDeepResearchSkip = () => {
+    if (!pendingQuery) return;
+
+    setShowDeepResearchInterstitial(false);
+
+    // Send the message normally (skip scoring to avoid re-triggering)
+    handleSendMessage(pendingQuery, false, true);
+
+    // Clean up state
+    setPendingQuery(null);
+    setPendingScoreResult(null);
   };
 
   const handleDeepResearchChange = (enabled: boolean) => {
@@ -394,6 +490,8 @@ export const LiveChatView = ({
                       id: s.id,
                       text: s.text,
                       icon: mapIcon(s.icon),
+                      isDeepResearch: s.isDeepResearch,
+                      creditCost: s.creditCost,
                     }))}
                     onFollowUpClick={handleSuggestionClick}
                     // Value Ladder - Progressive disclosure triggers
@@ -435,6 +533,29 @@ export const LiveChatView = ({
                 )}
               </motion.div>
             ))}
+          </AnimatePresence>
+
+          {/* Deep Research Interstitial */}
+          <AnimatePresence>
+            {showDeepResearchInterstitial && pendingScoreResult && pendingQuery && (
+              <motion.div
+                key="deep-research-interstitial"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="mb-6"
+              >
+                <DeepResearchInterstitial
+                  scoreResult={pendingScoreResult}
+                  query={pendingQuery}
+                  creditsAvailable={deepResearchCredits}
+                  onConfirm={handleDeepResearchConfirm}
+                  onSkip={handleDeepResearchSkip}
+                  isLoading={isInterstitialLoading}
+                />
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {/* Thinking indicator */}
@@ -501,7 +622,7 @@ function formatMarkdown(text: string): string {
 }
 
 // Map icon string to allowed icon types
-function mapIcon(icon: string): 'lightbulb' | 'message' | 'document' {
+function mapIcon(icon: string): 'lightbulb' | 'message' | 'document' | 'deep_research' {
   switch (icon) {
     case 'chart':
     case 'lightbulb':
@@ -511,6 +632,8 @@ function mapIcon(icon: string): 'lightbulb' | 'message' | 'document' {
     case 'compare':
     case 'document':
       return 'document';
+    case 'deep_research':
+      return 'deep_research';
     default:
       return 'message';
   }

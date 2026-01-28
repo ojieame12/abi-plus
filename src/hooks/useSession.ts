@@ -57,7 +57,7 @@ interface UseSessionReturn {
 // ══════════════════════════════════════════════════════════════════
 
 const PERSONA_STORAGE_KEY = 'abi_demo_persona';
-const DEFAULT_PERSONA: DemoPersona = 'member';
+const DEFAULT_PERSONA: DemoPersona = 'admin';
 
 // Default permissions - will be overridden by auth response
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -91,12 +91,8 @@ const ROLE_PERMISSIONS: Record<DemoPersona, Partial<UserPermissions>> = {
 // ══════════════════════════════════════════════════════════════════
 
 function getSavedPersona(): DemoPersona {
-  if (typeof localStorage === 'undefined') return DEFAULT_PERSONA;
-  const saved = localStorage.getItem(PERSONA_STORAGE_KEY);
-  if (saved && ['admin', 'approver', 'member'].includes(saved)) {
-    return saved as DemoPersona;
-  }
-  return DEFAULT_PERSONA;
+  // Always use admin - demo mode UI is disabled
+  return 'admin';
 }
 
 function savePersona(persona: DemoPersona): void {
@@ -220,9 +216,9 @@ export function useSession(): UseSessionReturn {
     user: session.user,
     userId: session.user?.id || null,
     permissions: session.permissions,
-    // Demo-specific - use session.demoMode which is set based on login success/failure
+    // Demo mode disabled - always use admin persona without UI
     persona,
     switchPersona,
-    isDemoMode: session.demoMode ?? false,
+    isDemoMode: false, // Disabled demo mode UI
   };
 }

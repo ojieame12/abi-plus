@@ -523,13 +523,8 @@ export const DeepResearchReportArtifact = ({
               ))}
             </div>
 
-            {/* ── References ── */}
-            <div ref={referencesRef}>
-              <References references={references} highlightedId={highlightedCitation} />
-            </div>
-
-            {/* ── Upgrade Report card ── */}
-            <div className="mt-12 rounded-2xl border border-slate-100/80 bg-slate-50 p-5">
+            {/* ── Upgrade Report card (before References, after Conclusion) ── */}
+            <div className="mt-6 rounded-2xl border border-slate-100/80 bg-slate-50 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center">
@@ -547,6 +542,11 @@ export const DeepResearchReportArtifact = ({
                   Request Upgrade
                 </button>
               </div>
+            </div>
+
+            {/* ── References ── */}
+            <div ref={referencesRef}>
+              <References references={references} highlightedId={highlightedCitation} />
             </div>
 
             {/* ── Footer ── */}
