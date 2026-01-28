@@ -8,6 +8,7 @@
 
 import type { DeepResearchReport, ReportSection, ReportCitation } from '../types/deepResearch';
 import { renderMarkdown } from './markdownRenderer';
+import { renderReportVisualToHtml } from './reportPdfVisualRenderer';
 
 // ============================================
 // TAILWIND SLATE PALETTE (single source of truth)
@@ -142,8 +143,19 @@ function renderSection(section: ReportSection, citationMap: Map<string, number>)
 
   let html = `<${headingTag}>${escapeHtml(section.title)}</${headingTag}>\n`;
 
+  const beforeVisuals = (section.visuals || []).filter(v => v.placement === 'before_prose');
+  const afterVisuals = (section.visuals || []).filter(v => v.placement !== 'before_prose');
+
+  if (beforeVisuals.length > 0) {
+    html += beforeVisuals.map(v => renderReportVisualToHtml(v, citationMap)).join('\n');
+  }
+
   if (section.content) {
     html += contentToHtml(section.content, citationMap);
+  }
+
+  if (afterVisuals.length > 0) {
+    html += afterVisuals.map(v => renderReportVisualToHtml(v, citationMap)).join('\n');
   }
 
   if (section.children && section.children.length > 0) {
@@ -495,6 +507,66 @@ export function generateReportPdf(report: DeepResearchReport): void {
     .page-break { page-break-before: always; break-before: page; }
     h2, h3 { break-inside: avoid; }
     table { break-inside: avoid; }
+
+    /* ── Report visuals ── */
+    .report-visual {
+      margin: 14px 0 18px 0;
+      padding: 12px 14px;
+      border: 1px solid ${C.slate200};
+      border-radius: 10px;
+      background: ${C.slate50};
+    }
+    .visual-title {
+      font-size: 11pt;
+      font-weight: 500;
+      color: ${C.slate800};
+      margin: 0 0 10px 0;
+    }
+    .visual-footer {
+      margin-top: 8px;
+      font-size: 9pt;
+      color: ${C.slate400};
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .visual-cites sup { margin-right: 2px; }
+    .visual-note { font-style: italic; }
+
+    .chart { margin: 6px 0 2px 0; }
+    .chart-unit {
+      text-align: center;
+      font-size: 9pt;
+      color: ${C.slate400};
+      margin-top: 2px;
+    }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 6px;
+      font-size: 9pt;
+      color: ${C.slate500};
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+
+    .bar-row { margin-bottom: 10px; }
+    .bar-row-head { display: flex; justify-content: space-between; font-size: 9.5pt; color: ${C.slate600}; }
+    .bar-track { display: flex; gap: 4px; height: 8px; background: ${C.slate100}; border-radius: 6px; overflow: hidden; margin-top: 4px; }
+    .bar-fill { display: inline-block; height: 100%; border-radius: 6px; }
+
+    .visual-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    .visual-table th, .visual-table td { border: 1px solid ${C.slate200}; padding: 6px 8px; }
+    .visual-table th { background: ${C.slate50}; color: ${C.slate700}; font-weight: 500; }
+    .visual-table tr.alt { background: ${C.slate50}; }
+
+    .metric-grid { display: grid; gap: 0; }
+    .metric-cell { padding: 6px 8px; text-align: center; }
+    .metric-value { font-size: 12pt; color: ${C.slate900}; }
+    .metric-label { font-size: 9.5pt; color: ${C.slate600}; margin-top: 2px; }
+    .metric-sub { font-size: 9pt; color: ${C.slate400}; }
+    .metric-change { font-size: 9pt; color: ${C.slate500}; margin-left: 4px; }
   </style>
 </head>
 <body>
