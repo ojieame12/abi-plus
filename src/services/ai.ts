@@ -2379,6 +2379,16 @@ export const executeDeepResearch = async (
     }
 
     if (isDeepSeekConfigured() && combinedFindings) {
+      // Heartbeat: emit progress every 5s during synthesis so UI doesn't appear frozen
+      const HEARTBEAT_INTERVAL_MS = 5000;
+      let heartbeatCount = 0;
+      const heartbeatInterval = setInterval(() => {
+        heartbeatCount++;
+        const currentSection = ccProgress.synthesis?.currentSectionTitle || 'report';
+        addInsight(`Still synthesizing ${currentSection}... (${heartbeatCount * 5}s)`, 'synthesis', 'Report Generation');
+        emitProgress();
+      }, HEARTBEAT_INTERVAL_MS);
+
       try {
         console.log('[DeepResearch] Calling DeepSeek R1 for template-driven synthesis...');
         console.log('[DeepResearch] Sources breakdown:', {
@@ -2451,6 +2461,8 @@ export const executeDeepResearch = async (
           }
         );
 
+        clearInterval(heartbeatInterval);
+
         // Override some fields with job-specific data
         report.id = `dr-report-${jobId}`;
         report.queryOriginal = query;
@@ -2461,6 +2473,7 @@ export const executeDeepResearch = async (
           qualityScore: report.qualityMetrics?.completenessScore,
         });
       } catch (error) {
+        clearInterval(heartbeatInterval);
         console.error('[DeepResearch] DeepSeek template synthesis error:', error);
         const fallbackData = createFallbackReport(query, combinedFindings, studyType);
         report = convertFallbackToReport(fallbackData, jobId, query, studyType, answers, allSources, startTime);

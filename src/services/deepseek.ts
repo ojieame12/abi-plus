@@ -157,9 +157,11 @@ export const callDeepSeek = async (
     onStream?: DeepSeekStreamCallback;
     /** Use 'deepseek-chat' (V3) for structured JSON extraction, 'deepseek-reasoner' (R1) for prose synthesis */
     model?: 'deepseek-reasoner' | 'deepseek-chat';
+    /** Custom timeout in milliseconds. Default: 120000 (2 min). Use lower values for section synthesis. */
+    timeoutMs?: number;
   }
 ): Promise<DeepSeekResponse> => {
-  const { maxTokens = 4000, temperature = 0.3, stream = false, onStream, model = 'deepseek-reasoner' } = options || {};
+  const { maxTokens = 4000, temperature = 0.3, stream = false, onStream, model = 'deepseek-reasoner', timeoutMs = 120000 } = options || {};
 
   if (!DEEPSEEK_API_KEY) {
     console.warn('[DeepSeek] API key not configured');
@@ -167,7 +169,7 @@ export const callDeepSeek = async (
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
@@ -877,6 +879,9 @@ ${Object.entries(context.intakeAnswers).map(([k, v]) => `- ${k}: ${Array.isArray
 
 Now write the "${sectionTemplate.title}" section following all guidelines above.`;
 
+  // Per-section timeout: 45 seconds. If it takes longer, return fallback content.
+  const SECTION_TIMEOUT_MS = 45000;
+
   try {
     const response = await callDeepSeek([
       { role: 'system', content: systemPrompt },
@@ -884,6 +889,7 @@ Now write the "${sectionTemplate.title}" section following all guidelines above.
     ], {
       maxTokens: 2000,
       temperature: 0.3,
+      timeoutMs: SECTION_TIMEOUT_MS,
     });
 
     // Use stable template title — never override with LLM output
@@ -929,11 +935,15 @@ Now write the "${sectionTemplate.title}" section following all guidelines above.
       children,
     };
   } catch (error) {
-    console.error(`[DeepSeek] Failed to synthesize section ${sectionTemplate.id}:`, error);
+    const isTimeout = error instanceof Error && error.message.includes('timed out');
+    console.error(`[DeepSeek] Failed to synthesize section ${sectionTemplate.id}:`, isTimeout ? 'TIMEOUT' : error);
+    onProgress?.(`Section ${sectionTemplate.title} ${isTimeout ? 'timed out' : 'failed'}, using fallback...`);
     return {
       id: sectionTemplate.id,
       title: sectionTemplate.title,
-      content: `*Section content generation failed. Please retry.*`,
+      content: isTimeout
+        ? `*This section is being generated. The analysis is taking longer than expected — please check back shortly or regenerate the report.*`
+        : `*Section content generation failed. Please retry.*`,
       citationIds: [],
       level,
     };

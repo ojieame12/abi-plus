@@ -525,16 +525,28 @@ Include detailed reasoning in your "thought" field. Explain:
 // ============================================
 
 export const extractJSONFromResponse = (text: string): string | null => {
-  // Try to find JSON block in markdown code fence
+  // Only extract JSON from properly fenced code blocks to avoid false positives
+  // from prose content that contains braces (e.g., "growth rate of {8-10%}")
   const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
   if (jsonMatch) {
     return jsonMatch[1].trim();
   }
 
-  // Try to find raw JSON object
-  const objectMatch = text.match(/\{[\s\S]*\}/);
-  if (objectMatch) {
-    return objectMatch[0];
+  // Also accept generic code fence if it looks like JSON
+  const codeMatch = text.match(/```\s*([\s\S]*?)\s*```/);
+  if (codeMatch) {
+    const content = codeMatch[1].trim();
+    if (content.startsWith('{') || content.startsWith('[')) {
+      return content;
+    }
+  }
+
+  // Only match raw JSON if it's the entire response (no prose before/after)
+  // This prevents matching partial braces in prose
+  const trimmed = text.trim();
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    return trimmed;
   }
 
   return null;
