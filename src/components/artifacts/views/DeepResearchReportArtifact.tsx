@@ -382,7 +382,7 @@ export const DeepResearchReportArtifact = ({
             <div className="rounded-2xl border border-slate-100/80 bg-slate-50 p-4">
               <div className="flex items-start justify-between mb-3">
                 <img
-                  src="/analyst-avatar.jpg"
+                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
                   alt="Dr. James Morrison"
                   className="w-10 h-10 rounded-full object-cover"
                 />

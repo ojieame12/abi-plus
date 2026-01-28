@@ -720,6 +720,8 @@ export const ArtifactRenderer = ({
             report={reportPayload.report}
             onDownloadPdf={() => onAction?.('download_report_pdf', { jobId: reportPayload.jobId })}
             onShare={() => onAction?.('share_report', { jobId: reportPayload.jobId })}
+            onUpgradeReport={() => onAction?.('open_upgrade_confirm', { jobId: reportPayload.jobId, category: reportPayload.report?.studyType || 'Market Analysis' })}
+            onMessageAnalyst={() => onAction?.('open_analyst_message', { jobId: reportPayload.jobId, report: reportPayload.report })}
             onClose={onClose}
           />
         );
