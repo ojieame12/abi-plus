@@ -53,16 +53,26 @@ import { ArtifactOverlayDrawer } from './ArtifactOverlayDrawer';
 // TYPES
 // ============================================
 
+export interface OverlayContext {
+  remainingCredits: number;
+  creditCosts: { upgrade: number; analyst: number };
+  isManaged?: boolean;
+  analyst?: {
+    name: string;
+    specialty: string;
+    photo?: string;
+    availability?: 'available' | 'busy' | 'offline';
+    responseTime?: string;
+  };
+}
+
 export interface ArtifactRendererProps {
   type: ArtifactType;
   payload: ArtifactPayload;
   isExpanded?: boolean;
   onClose?: () => void;
   onAction?: (action: string, data?: unknown) => void;
-  overlayContext?: {
-    remainingCredits: number;
-    creditCosts: { upgrade: number; analyst: number };
-  };
+  overlayContext?: OverlayContext;
 }
 
 // ============================================
@@ -143,10 +153,7 @@ const AIContentSection = ({ aiContent }: { aiContent?: AIContent }) => {
 
 interface DeepResearchReportWithOverlayProps {
   reportPayload: import('./registry').DeepResearchReportPayload;
-  overlayContext: {
-    remainingCredits: number;
-    creditCosts: { upgrade: number; analyst: number };
-  };
+  overlayContext: OverlayContext;
   onAction?: (action: string, data?: unknown) => void;
   onClose?: () => void;
 }
@@ -159,13 +166,28 @@ const DeepResearchReportWithOverlay = ({
 }: DeepResearchReportWithOverlayProps) => {
   const [overlay, setOverlay] = useState<'upgrade_confirm' | 'analyst_message' | null>(null);
 
+  const { jobId, report } = reportPayload;
+  const category = report?.studyType || 'Market Analysis';
+
+  // Guard against negative balance
+  const upgradeBalanceAfter = Math.max(0, overlayContext.remainingCredits - overlayContext.creditCosts.upgrade);
+  const analystBalanceAfter = Math.max(0, overlayContext.remainingCredits - overlayContext.creditCosts.analyst);
+
+  // Use analyst from context or fall back to default
+  const analyst = overlayContext.analyst || {
+    name: 'Dr. James Morrison',
+    specialty: 'Metals & Mining',
+    availability: 'available' as const,
+    responseTime: '~4 hours',
+  };
+
   return (
     <div className="relative h-full">
       <DeepResearchReportArtifact
-        jobId={reportPayload.jobId}
-        report={reportPayload.report}
-        onDownloadPdf={() => onAction?.('download_report_pdf', { jobId: reportPayload.jobId })}
-        onShare={() => onAction?.('share_report', { jobId: reportPayload.jobId })}
+        jobId={jobId}
+        report={report}
+        onDownloadPdf={() => onAction?.('download_report_pdf', { jobId })}
+        onShare={() => onAction?.('share_report', { jobId })}
         onUpgradeReport={() => setOverlay('upgrade_confirm')}
         onMessageAnalyst={() => setOverlay('analyst_message')}
         onClose={onClose}
@@ -174,11 +196,11 @@ const DeepResearchReportWithOverlay = ({
       <ArtifactOverlayDrawer isOpen={overlay !== null} onClose={() => setOverlay(null)}>
         {overlay === 'upgrade_confirm' && (
           <UpgradeConfirmArtifact
-            category={reportPayload.report?.studyType || 'Market Analysis'}
+            category={category}
             credits={overlayContext.creditCosts.upgrade}
-            balanceAfter={overlayContext.remainingCredits - overlayContext.creditCosts.upgrade}
+            balanceAfter={upgradeBalanceAfter}
             onConfirm={(context) => {
-              onAction?.('confirm_upgrade', { context });
+              onAction?.('confirm_upgrade', { jobId, category, context });
               setOverlay(null);
             }}
             onBack={() => setOverlay(null)}
@@ -186,18 +208,13 @@ const DeepResearchReportWithOverlay = ({
         )}
         {overlay === 'analyst_message' && (
           <AnalystMessageArtifact
-            analyst={{
-              name: 'Dr. James Morrison',
-              specialty: 'Metals & Mining',
-              availability: 'available',
-              responseTime: '~4 hours',
-            }}
-            category={reportPayload.report?.studyType || 'Market Analysis'}
-            isManaged={false}
-            queryContext={reportPayload.report?.queryOriginal}
+            analyst={analyst}
+            category={category}
+            isManaged={overlayContext.isManaged ?? false}
+            queryContext={report?.queryOriginal}
             credits={overlayContext.creditCosts.analyst}
             onSend={(message) => {
-              onAction?.('send_analyst_message', { message });
+              onAction?.('send_analyst_message', { jobId, category, message });
               setOverlay(null);
             }}
             onBack={() => setOverlay(null)}

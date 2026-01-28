@@ -1288,6 +1288,10 @@ function App() {
                   upgrade: CREDIT_COSTS.report_upgrade.typical,
                   analyst: CREDIT_COSTS.analyst_call.typical,
                 },
+                // Compute isManaged from report's studyType if available
+                isManaged: artifactType === 'deep_research_report'
+                  ? isManagedCategory([(artifactPayload as { report?: { studyType?: string } })?.report?.studyType])
+                  : false,
               }}
             />
           ) : (
