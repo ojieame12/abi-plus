@@ -880,8 +880,9 @@ ${Object.entries(context.intakeAnswers).map(([k, v]) => `- ${k}: ${Array.isArray
 
 Now write the "${sectionTemplate.title}" section following all guidelines above.`;
 
-  // Per-section timeout: 45 seconds. If it takes longer, return fallback content.
-  const SECTION_TIMEOUT_MS = 45000;
+  // Per-section timeout: 30 seconds with V3 (faster than R1).
+  // V3 (chat) is 3-5x faster than R1 (reasoner) for prose generation.
+  const SECTION_TIMEOUT_MS = 30000;
 
   try {
     const response = await callDeepSeek([
@@ -891,6 +892,7 @@ Now write the "${sectionTemplate.title}" section following all guidelines above.
       maxTokens: 2000,
       temperature: 0.3,
       timeoutMs: SECTION_TIMEOUT_MS,
+      model: 'deepseek-chat', // V3 is much faster than R1 for prose
     });
 
     // Use stable template title — never override with LLM output

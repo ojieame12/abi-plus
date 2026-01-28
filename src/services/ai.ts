@@ -2015,8 +2015,9 @@ const extractRelevantCommodities = (
  * Uses Perplexity for web research and DeepSeek R1 for synthesis
  * Returns updates via callback with structured CommandCenterProgress
  */
-// Global timeout for entire research process (3 minutes)
-const GLOBAL_RESEARCH_TIMEOUT_MS = 180000;
+// Global timeout for entire research process (4 minutes)
+// With DeepSeek V3 (faster), typical completion is 1-2 min. 4 min is safety buffer.
+const GLOBAL_RESEARCH_TIMEOUT_MS = 240000;
 
 export const executeDeepResearch = async (
   jobId: string,
