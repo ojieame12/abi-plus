@@ -78,7 +78,7 @@ export const MainHeader = ({
                                 className="hover:opacity-80 transition-opacity cursor-pointer"
                             >
                                 <img
-                                    src="/logo-white.svg fill.svg"
+                                    src="/logo-white.svg%20fill.svg"
                                     alt="Abi"
                                     className="h-[22px]"
                                 />
