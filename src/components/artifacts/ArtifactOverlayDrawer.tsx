@@ -98,17 +98,15 @@ export const ArtifactOverlayDrawer = ({
           {/* Drawer panel */}
           <motion.div
             ref={drawerRef}
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
+            exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="absolute inset-0 bg-white z-40 flex flex-col overflow-hidden"
+            className="absolute inset-0 bg-white z-40 flex flex-col overflow-auto"
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex-1 overflow-auto">
-              {children}
-            </div>
+            {children}
           </motion.div>
         </>
       )}

@@ -9,7 +9,6 @@ import {
   FileSearch,
   Brain,
   Download,
-  Sparkles,
   Coins,
 } from 'lucide-react';
 import type {
@@ -141,7 +140,7 @@ const ResearchBrief = ({ questions, answers, estimatedCredits, estimatedTime }: 
     >
       <div className="mx-5 mb-4 rounded-xl bg-[#F7F8FB] px-4 py-3.5">
         <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-3.5 h-3.5 text-[#7C83A1]" />
+          <img src="/Abi.svg" alt="" className="w-3.5 h-3.5 opacity-50" />
           <span className="text-[11px] font-normal text-[#7C83A1] uppercase tracking-widest">Research Brief</span>
         </div>
         <p className="text-[13px] text-[#5D6A89] leading-relaxed">

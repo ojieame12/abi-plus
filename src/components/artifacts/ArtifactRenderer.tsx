@@ -182,17 +182,21 @@ const DeepResearchReportWithOverlay = ({
   };
 
   return (
-    <div className="relative h-full">
-      <DeepResearchReportArtifact
-        jobId={jobId}
-        report={report}
-        onDownloadPdf={() => onAction?.('download_report_pdf', { jobId })}
-        onShare={() => onAction?.('share_report', { jobId })}
-        onUpgradeReport={() => setOverlay('upgrade_confirm')}
-        onMessageAnalyst={() => setOverlay('analyst_message')}
-        onClose={onClose}
-      />
+    <div className="relative h-full overflow-hidden">
+      {/* Report — scrolls independently */}
+      <div className="h-full overflow-auto">
+        <DeepResearchReportArtifact
+          jobId={jobId}
+          report={report}
+          onDownloadPdf={() => onAction?.('download_report_pdf', { jobId })}
+          onShare={() => onAction?.('share_report', { jobId })}
+          onUpgradeReport={() => setOverlay('upgrade_confirm')}
+          onMessageAnalyst={() => setOverlay('analyst_message')}
+          onClose={onClose}
+        />
+      </div>
 
+      {/* Overlay — covers visible area only */}
       <ArtifactOverlayDrawer isOpen={overlay !== null} onClose={() => setOverlay(null)}>
         {overlay === 'upgrade_confirm' && (
           <UpgradeConfirmArtifact
