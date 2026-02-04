@@ -123,11 +123,12 @@ describe('InterestsSection', () => {
       expect(screen.getByTestId('grade-pill')).toHaveTextContent('HRC');
     });
 
-    it('interest cards use rounded-2xl with cursor-pointer', () => {
+    it('interest cards use floaty pattern with cursor-pointer', () => {
       render(<InterestsSection />);
       const card = screen.getByTestId('interest-card-test_1');
-      expect(card.className).toContain('rounded-2xl');
+      expect(card.className).toContain('rounded-[1.25rem]');
       expect(card.className).toContain('cursor-pointer');
+      expect(card.className).toContain('backdrop-blur-sm');
     });
 
     it('heading uses text-xl font-normal', () => {
@@ -309,7 +310,7 @@ describe('InterestsSection', () => {
       expect(screen.getByTestId('drawer-title')).toHaveTextContent('Aluminum Pricing');
 
       const card1 = screen.getByTestId('interest-card-test_1');
-      expect(card1.className).toContain('bg-slate-50');
+      expect(card1.className).toContain('bg-white/80');
       expect(card1.className).not.toContain('ring-2');
     });
 

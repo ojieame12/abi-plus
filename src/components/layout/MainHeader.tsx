@@ -1,20 +1,71 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell } from 'lucide-react';
+import { Bell, Compass, Coins } from 'lucide-react';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
-import { CreditTicker } from '../subscription/CreditTicker';
 import type { CompanySubscription } from '../../types/subscription';
+import { getCreditStatus, formatCredits } from '../../types/subscription';
+
+// Shared icon-button base styles per variant
+const ICON_BTN = {
+    home: 'w-9 h-9 rounded-full bg-white/40 backdrop-blur-sm border-2 border-white/80 flex items-center justify-center text-slate-500 hover:bg-white/60 transition-all',
+    conversation: 'w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:border-slate-300 hover:text-slate-600 transition-all',
+} as const;
+
+// Indicator dot — no numbers, just a colored dot
+function IndicatorDot({ visible, color = 'emerald' }: { visible: boolean; color?: 'emerald' | 'violet' }) {
+    if (!visible) return null;
+    const bg = color === 'emerald' ? 'bg-emerald-500' : 'bg-violet-500';
+    return (
+        <span className={`absolute -top-0.5 -right-0.5 w-[10px] h-[10px] ${bg} rounded-full border-2 border-white`} />
+    );
+}
+
+// Credit pill — glassmorphic on home, solid on conversation
+function CreditPill({
+    subscription,
+    onClick,
+    variant,
+}: {
+    subscription: CompanySubscription;
+    onClick?: () => void;
+    variant: 'home' | 'conversation';
+}) {
+    const status = getCreditStatus(subscription.remainingCredits, subscription.totalCredits);
+    const dotColor = status === 'healthy' ? 'bg-emerald-400' : status === 'warning' ? 'bg-amber-400' : 'bg-red-400';
+
+    return (
+        <button
+            onClick={onClick}
+            className={`
+                inline-flex items-center gap-2 px-3.5 py-2 rounded-full transition-all
+                ${variant === 'home'
+                    ? 'bg-white/40 backdrop-blur-sm border-2 border-white/80 hover:bg-white/60'
+                    : 'bg-white border border-slate-200 hover:border-slate-300'
+                }
+            `}
+        >
+            <Coins className="w-4 h-4 text-slate-400" strokeWidth={1.5} />
+            <span className="text-sm font-medium text-slate-600 tabular-nums">
+                {formatCredits(subscription.remainingCredits)}
+            </span>
+            <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+        </button>
+    );
+}
 
 interface MainHeaderProps {
     variant?: 'home' | 'conversation' | 'transitioning';
     isSidebarExpanded?: boolean;
     conversationTitle?: string;
     notificationCount?: number;
+    interestCount?: number;
     isLoading?: boolean;
     // Subscription/credits (Phase 2)
     subscription?: CompanySubscription;
     onCreditsClick?: () => void;
+    onWorldviewClick?: () => void;
     onNotificationsClick?: () => void;
     onLogoClick?: () => void;
+    artifactCount?: number;
 }
 
 export const MainHeader = ({
@@ -22,14 +73,17 @@ export const MainHeader = ({
     isSidebarExpanded = false,
     conversationTitle = '',
     notificationCount = 0,
+    interestCount = 0,
     isLoading = false,
     subscription,
     onCreditsClick,
+    onWorldviewClick,
     onNotificationsClick,
     onLogoClick,
 }: MainHeaderProps) => {
     const isHome = variant === 'home';
     const showLogo = isHome && !isSidebarExpanded;
+    const btnStyle = isHome ? ICON_BTN.home : ICON_BTN.conversation;
 
     return (
         <header
@@ -92,7 +146,6 @@ export const MainHeader = ({
             <div className="flex items-center gap-2">
                 <AnimatePresence mode="wait">
                     {isHome ? (
-                        /* Home: Credits, Bell, Sources, Worldview */
                         <motion.div
                             key="home-actions"
                             initial={{ opacity: 0 }}
@@ -102,26 +155,30 @@ export const MainHeader = ({
                             className="flex items-center gap-2"
                         >
                             {subscription && (
-                                <CreditTicker
+                                <CreditPill
                                     subscription={subscription}
                                     onClick={onCreditsClick}
-                                    variant="default"
+                                    variant="home"
                                 />
                             )}
                             <button
+                                onClick={onWorldviewClick}
+                                className={`relative ${btnStyle}`}
+                                aria-label="Open worldview"
+                            >
+                                <Compass size={16} strokeWidth={1.5} />
+                                <IndicatorDot visible={interestCount > 0} color="emerald" />
+                            </button>
+                            <button
                                 onClick={onNotificationsClick}
-                                className="relative w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:border-slate-300 hover:text-slate-600 transition-colors"
+                                className={`relative ${btnStyle}`}
+                                aria-label="Notifications"
                             >
                                 <Bell size={16} strokeWidth={1.5} />
-                                {notificationCount > 0 && (
-                                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-violet-500 text-white text-[10px] font-medium rounded-full flex items-center justify-center">
-                                        {notificationCount > 9 ? '9+' : notificationCount}
-                                    </span>
-                                )}
+                                <IndicatorDot visible={notificationCount > 0} color="violet" />
                             </button>
                         </motion.div>
                     ) : (
-                        /* Conversation: Credits (compact), Artifacts, Worldview */
                         <motion.div
                             key="conversation-actions"
                             initial={{ opacity: 0 }}
@@ -132,28 +189,34 @@ export const MainHeader = ({
                         >
                             {isLoading ? (
                                 <>
-                                    <SkeletonLoader width={100} height={32} rounded="full" />
-                                    <SkeletonLoader width={90} height={32} rounded="full" />
+                                    <SkeletonLoader width={100} height={36} rounded="full" />
+                                    <SkeletonLoader width={36} height={36} rounded="full" />
+                                    <SkeletonLoader width={36} height={36} rounded="full" />
                                 </>
                             ) : (
                                 <>
                                     {subscription && (
-                                        <CreditTicker
+                                        <CreditPill
                                             subscription={subscription}
                                             onClick={onCreditsClick}
-                                            variant="compact"
+                                            variant="conversation"
                                         />
                                     )}
                                     <button
+                                        onClick={onWorldviewClick}
+                                        className={`relative ${btnStyle}`}
+                                        aria-label="Open worldview"
+                                    >
+                                        <Compass size={16} strokeWidth={1.5} />
+                                        <IndicatorDot visible={interestCount > 0} color="emerald" />
+                                    </button>
+                                    <button
                                         onClick={onNotificationsClick}
-                                        className="relative w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:border-slate-300 hover:text-slate-600 transition-colors"
+                                        className={`relative ${btnStyle}`}
+                                        aria-label="Notifications"
                                     >
                                         <Bell size={16} strokeWidth={1.5} />
-                                        {notificationCount > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-violet-500 text-white text-[10px] font-medium rounded-full flex items-center justify-center">
-                                                {notificationCount > 9 ? '9+' : notificationCount}
-                                            </span>
-                                        )}
+                                        <IndicatorDot visible={notificationCount > 0} color="violet" />
                                     </button>
                                 </>
                             )}

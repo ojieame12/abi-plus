@@ -13,6 +13,7 @@ import { ExpertDashboardView } from './views/ExpertDashboardView';
 import { ExpertMarketplaceView } from './views/ExpertMarketplaceView';
 import { ApprovalWorkflowView } from './views/ApprovalWorkflowView';
 import { SettingsView } from './views/SettingsView';
+import { OnboardingView } from './views/OnboardingView';
 import { useSession } from './hooks/useSession';
 import { usePreloader } from './hooks/usePreloader';
 import { Preloader } from './components/Preloader';
@@ -66,6 +67,8 @@ import { DEMO_COMPANY_ID, DEMO_DEFAULT_TEAM_ID } from './constants/demo';
 // Interest system
 import { useUserInterests } from './hooks/useUserInterests';
 import { extractTopicFromResponse, extractInterestContext } from './services/interestService';
+// Worldview drawer
+import { WorldviewDrawer } from './components/worldview/WorldviewDrawer';
 import './App.css';
 
 // Type for database message with metadata
@@ -238,7 +241,7 @@ function App() {
   const { progress, isDone, isExiting } = usePreloader();
 
   // Auth session - needed early for view gating
-  const { isAuthenticated, userId, permissions, persona, isDemoMode } = useSession();
+  const { session, isAuthenticated, userId, permissions, persona, isDemoMode } = useSession();
 
   // User interests for personalization
   const {
@@ -246,6 +249,24 @@ function App() {
     hasInterest,
     addInterest: addUserInterest,
   } = useUserInterests();
+
+  // Onboarding gate — check if user has completed onboarding
+  const [onboardingComplete, setOnboardingComplete] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('abi_onboarding_complete') === 'true';
+    }
+    return false;
+  });
+
+  const handleOnboardingComplete = useCallback(() => {
+    localStorage.setItem('abi_onboarding_complete', 'true');
+    setOnboardingComplete(true);
+  }, []);
+
+  const handleOnboardingSkip = useCallback(() => {
+    localStorage.setItem('abi_onboarding_complete', 'true');
+    setOnboardingComplete(true);
+  }, []);
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
@@ -296,6 +317,9 @@ function App() {
   const [isCreditDrawerOpen, setIsCreditDrawerOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [upgradeContext, setUpgradeContext] = useState<RequestContext | undefined>(undefined);
+
+  // Worldview drawer state
+  const [isWorldviewDrawerOpen, setIsWorldviewDrawerOpen] = useState(false);
 
   // Notifications state
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
@@ -1128,13 +1152,8 @@ function App() {
     setArtifactType(null);
     setArtifactPayload(null);
     setIsArtifactExpanded(false);
-    // Reset interest prompt state
-    setPendingInterestTopic(null);
-    setPendingInterestContext(null);
-    setPendingInterestQuery(null);
-    setPendingInterestMessageId(null);
-    setPendingInterestIsDuplicate(false);
-    setPromptedTopicsThisConversation(new Set());
+    // Interest prompt state reset handled by per-message tracking (savingInterestForMessage)
+    setSavingInterestForMessage(null);
   };
 
   // Widget rendering is now handled by WidgetRenderer via widgetContext prop
@@ -1258,11 +1277,21 @@ function App() {
         )}
       </AnimatePresence>
 
+      {/* Onboarding gate — show before main app for first-run users */}
+      {isDone && !onboardingComplete && (
+        <OnboardingView
+          userName={session?.user?.profile?.displayName ?? undefined}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
+
       {/* Main app - animate in after preloader */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: isDone ? 1 : 0 }}
+        animate={{ opacity: isDone && onboardingComplete ? 1 : 0 }}
         transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+        style={{ display: onboardingComplete ? undefined : 'none' }}
       >
         <MainLayout
           headerVariant={headerVariant}
@@ -1282,6 +1311,8 @@ function App() {
           isArtifactExpanded={isArtifactExpanded}
           subscription={subscription}
           onCreditsClick={() => setIsCreditDrawerOpen(true)}
+          onWorldviewClick={() => setIsWorldviewDrawerOpen(true)}
+          interestCount={userInterestTexts.length}
           notificationCount={unreadNotificationCount}
           onNotificationsClick={handleNotificationsClick}
           panel={
@@ -1828,6 +1859,20 @@ function App() {
         onMarkAsRead={handleMarkNotificationAsRead}
         onMarkAllAsRead={handleMarkAllNotificationsAsRead}
         onNotificationClick={handleNotificationAction}
+      />
+
+      {/* Worldview Drawer */}
+      <WorldviewDrawer
+        isOpen={isWorldviewDrawerOpen}
+        onClose={() => setIsWorldviewDrawerOpen(false)}
+        onAskAbi={(topic) => {
+          setIsWorldviewDrawerOpen(false);
+          handleStartChat(`What is the latest market update for ${topic}?`);
+        }}
+        onNavigateToSettings={() => {
+          setIsWorldviewDrawerOpen(false);
+          setViewState('settings');
+        }}
       />
 
       {/* Phase 2: Upgrade Request Modal */}

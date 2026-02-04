@@ -27,6 +27,8 @@ interface MainLayoutProps {
     // Subscription/credits (Phase 2)
     subscription?: CompanySubscription;
     onCreditsClick?: () => void;
+    onWorldviewClick?: () => void;
+    interestCount?: number;
     onNotificationsClick?: () => void;
 }
 
@@ -53,6 +55,8 @@ export const MainLayout = (props: MainLayoutProps) => {
         showExpertPortal = false,
         subscription,
         onCreditsClick,
+        onWorldviewClick,
+        interestCount = 0,
         onNotificationsClick,
     } = props;
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -162,9 +166,11 @@ export const MainLayout = (props: MainLayoutProps) => {
                                         conversationTitle={conversationTitle}
                                         artifactCount={artifactCount}
                                         notificationCount={notificationCount}
+                                        interestCount={interestCount}
                                         isLoading={isHeaderLoading}
                                         subscription={subscription}
                                         onCreditsClick={onCreditsClick}
+                                        onWorldviewClick={onWorldviewClick}
                                         onNotificationsClick={onNotificationsClick}
                                         onLogoClick={onNavigateToHome}
                                     />
