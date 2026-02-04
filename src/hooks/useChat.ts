@@ -5,6 +5,10 @@ import type { AIResponse, ThinkingMode } from '../services/ai';
 import { sendMessage } from '../services/ai';
 import type { ChatMessage, Suggestion, FileAttachment } from '../types/chat';
 
+interface UseChatOptions {
+  userInterests?: string[];
+}
+
 interface UseChatReturn {
   // State
   messages: ChatMessage[];
@@ -27,8 +31,9 @@ interface UseChatReturn {
 // Simulate a typing delay for more natural feel
 const THINKING_DELAY_MS = 1500; // 1.5 seconds minimum "thinking" time
 
-export const useChat = (): UseChatReturn => {
+export const useChat = (options?: UseChatOptions): UseChatReturn => {
   const { state, dispatch } = useChatContext();
+  const userInterests = options?.userInterests;
 
   // Send a message
   const send = useCallback(async (message: string, attachments?: FileAttachment[]) => {
@@ -55,6 +60,7 @@ export const useChat = (): UseChatReturn => {
         mode: state.thinkingMode,
         webSearchEnabled: state.webSearchEnabled,
         conversationHistory: state.messages,
+        userInterests,
       });
 
       // Ensure minimum thinking time for UX
@@ -73,7 +79,7 @@ export const useChat = (): UseChatReturn => {
         payload: error instanceof Error ? error.message : 'An error occurred',
       });
     }
-  }, [dispatch, state.thinkingMode, state.webSearchEnabled, state.messages]);
+  }, [dispatch, state.thinkingMode, state.webSearchEnabled, state.messages, userInterests]);
 
   // Send a suggestion (tap-to-send)
   const sendSuggestion = useCallback(async (suggestion: Suggestion) => {

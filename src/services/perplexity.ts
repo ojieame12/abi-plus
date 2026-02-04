@@ -180,16 +180,24 @@ const generateThinkingSteps = (query: string, intent: DetectedIntent): ThinkingS
 // Main function to call Perplexity API
 export const callPerplexity = async (
   userMessage: string,
-  conversationHistory: ChatMessage[] = []
+  conversationHistory: ChatMessage[] = [],
+  userInterests?: string[]
 ): Promise<PerplexityResponse> => {
   const intent = classifyIntent(userMessage);
   const researchContext = buildResearchContext();
+
+  // Build interest context for system prompt (kept separate from user message)
+  let interestContext = '';
+  if (userInterests?.length) {
+    const capped = userInterests.slice(-10);
+    interestContext = `\n\nUser Interests (for personalization only, ${capped.length} of ${userInterests.length}):\n${capped.map(i => `- ${i}`).join('\n')}\nOnly reference these when directly relevant. Do not force connections.`;
+  }
 
   // Build messages array for Perplexity
   const messages = [
     {
       role: 'system',
-      content: `${PERPLEXITY_SYSTEM_PROMPT}\n\n${researchContext}`,
+      content: `${PERPLEXITY_SYSTEM_PROMPT}\n\n${researchContext}${interestContext}`,
     },
     ...conversationHistory.slice(-4).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'assistant',

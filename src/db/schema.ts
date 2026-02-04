@@ -35,7 +35,7 @@ export const profiles = pgTable('profiles', {
   bio: text('bio'),
   industry: text('industry'),
   certifications: jsonb('certifications').$type<string[]>(), // ["CPSM", "CSCP"]
-  interests: jsonb('interests').$type<string[]>(), // ["risk", "sourcing"]
+  interests: jsonb('interests').$type<import('../types/interests').Interest[]>(), // Structured interest objects (backward compat with legacy string[])
   reputation: integer('reputation').default(0).notNull(),
   inviteSlots: integer('invite_slots').default(0).notNull(),
   isPublic: boolean('is_public').default(true).notNull(),

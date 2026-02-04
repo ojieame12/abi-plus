@@ -222,6 +222,26 @@ export interface SendMessageOptions {
   deepResearchStudyType?: StudyType;
   // Credits available for deep research
   creditsAvailable?: number;
+  // User interests for context personalization
+  userInterests?: string[];
+}
+
+/** Max interests injected into prompts to avoid context bloat */
+const MAX_INJECTED_INTERESTS = 10;
+
+/**
+ * Build interest context string for system prompt injection.
+ * Returns empty string if no interests provided.
+ * Caps at MAX_INJECTED_INTERESTS most recent interests and includes
+ * a relevance instruction to avoid biasing off-topic responses.
+ */
+export function buildInterestContext(interests?: string[]): string {
+  if (!interests?.length) return '';
+
+  // Take the most recent N interests (array order = insertion order)
+  const capped = interests.slice(-MAX_INJECTED_INTERESTS);
+
+  return `\n\nUSER INTERESTS (${capped.length} of ${interests.length}):\n${capped.map(i => `- ${i}`).join('\n')}\n\nOnly reference these interests when directly relevant to the user's current question. Do not force connections.`;
 }
 
 // Note: simulateThinkingDuration and generateThinkingSteps removed - using real timing instead
@@ -231,7 +251,7 @@ export const sendMessage = async (
   message: string,
   options: SendMessageOptions
 ): Promise<AIResponse> => {
-  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone, hybridMode, managedCategories, deepResearchMode, deepResearchStudyType, creditsAvailable } = options;
+  const { mode, webSearchEnabled, conversationHistory = [], builderMeta, onMilestone, hybridMode, managedCategories, deepResearchMode, deepResearchStudyType, creditsAvailable, userInterests } = options;
 
   // ============================================
   // DEEP RESEARCH BYPASS - Must come BEFORE hybrid/standard routing
@@ -392,6 +412,7 @@ export const sendMessage = async (
         intent,
         conversationHistory,
         managedCategories,
+        userInterests,
       });
 
       // Emit sources milestone
@@ -414,7 +435,7 @@ export const sendMessage = async (
     } else if (usePerplexity && isPerplexityConfigured()) {
       console.log('[AI] Calling Perplexity for deep research...');
       emitMilestone('provider_selected', 'Perplexity (web research)', 'perplexity');
-      const perplexityResponse = await callPerplexity(message, conversationHistory);
+      const perplexityResponse = await callPerplexity(message, conversationHistory, userInterests);
       response = transformPerplexityResponse(perplexityResponse, intent);
       provider = 'perplexity';
 
@@ -433,7 +454,8 @@ export const sendMessage = async (
         builderMeta?.promptTemplate ? {
           promptTemplate: builderMeta.promptTemplate,
           routePath: builderMeta.path,
-        } : undefined
+        } : undefined,
+        userInterests
       );
       response = transformGeminiResponse(geminiResponse, intent);
       provider = 'gemini';

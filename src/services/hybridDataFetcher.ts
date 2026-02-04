@@ -23,16 +23,16 @@ export async function fetchHybridData(
   query: string,
   options: FetchHybridDataOptions
 ): Promise<HybridDataResult> {
-  const { webEnabled, intent, conversationHistory } = options;
+  const { webEnabled, intent, conversationHistory, userInterests } = options;
 
   console.log('[HybridFetcher] Starting parallel fetch...', { webEnabled });
 
-  // Always fetch Beroe data from Gemini
-  const beroePromise = fetchBeroeData(query, intent as DetectedIntent, conversationHistory);
+  // Always fetch Beroe data from Gemini (interests injected into system prompt, not query)
+  const beroePromise = fetchBeroeData(query, intent as DetectedIntent, conversationHistory, userInterests);
 
-  // Conditionally fetch web data from Perplexity
+  // Conditionally fetch web data from Perplexity (interests injected into system prompt, not query)
   const webPromise = webEnabled && isPerplexityConfigured()
-    ? fetchWebData(query, conversationHistory)
+    ? fetchWebData(query, conversationHistory, userInterests)
     : Promise.resolve(null);
 
   // Execute in parallel
@@ -55,10 +55,11 @@ export async function fetchHybridData(
 async function fetchBeroeData(
   query: string,
   intent: DetectedIntent,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  userInterests?: string[]
 ): Promise<BeroeDataResult> {
   try {
-    const response = await callGeminiV2(query, history, intent);
+    const response = await callGeminiV2(query, history, intent, undefined, userInterests);
 
     // Extract internal sources from response
     const sources = extractInternalSources(response.sources);
@@ -83,10 +84,11 @@ async function fetchBeroeData(
  */
 async function fetchWebData(
   query: string,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  userInterests?: string[]
 ): Promise<WebDataResult> {
   try {
-    const response = await callPerplexity(query, history);
+    const response = await callPerplexity(query, history, userInterests);
 
     // Convert Perplexity sources to WebSource format
     const sources = extractWebSources(response.sources);

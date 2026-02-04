@@ -88,16 +88,17 @@ describe('computeProgress', () => {
         stage: 'synthesis',
         synthesis: { currentSection: 'exec', currentSectionTitle: 'Executive Summary', sectionsComplete: 3, totalSections: 6 },
       });
-      // 60 + (50 * 0.3) = 75
-      expect(computeProgress(p)).toBe(75);
+      // 60 + (50 * 0.25) = 72.5 → 73
+      expect(computeProgress(p)).toBe(73);
     });
 
-    it('returns 90 when all sections complete', () => {
+    it('returns 85 when all sections complete (caps before visuals phase)', () => {
       const p = makeProgress({
         stage: 'synthesis',
         synthesis: { currentSection: 'done', currentSectionTitle: 'Done', sectionsComplete: 6, totalSections: 6 },
       });
-      expect(computeProgress(p)).toBe(90);
+      // 60 + (100 * 0.25) = 85 — visuals phase pushes to 87/90
+      expect(computeProgress(p)).toBe(85);
     });
 
     it('handles zero totalSections without NaN', () => {

@@ -29,11 +29,11 @@ describe('normalizeStage', () => {
 });
 
 describe('STAGE_PHASES', () => {
-  it('has 3 phases for each active stage', () => {
-    const activeStages: CommandCenterStage[] = ['plan', 'research', 'synthesis', 'delivery'];
-    for (const stage of activeStages) {
-      expect(STAGE_PHASES[stage]).toHaveLength(3);
-    }
+  it('has correct phase count for each active stage', () => {
+    expect(STAGE_PHASES.plan).toHaveLength(3);
+    expect(STAGE_PHASES.research).toHaveLength(3);
+    expect(STAGE_PHASES.synthesis).toHaveLength(4); // template, writing, quality, visuals
+    expect(STAGE_PHASES.delivery).toHaveLength(3);
   });
 
   it('has 0 phases for the complete stage', () => {
@@ -55,7 +55,7 @@ describe('initPhases', () => {
   it('returns correct phase count per stage', () => {
     expect(initPhases('plan')).toHaveLength(3);
     expect(initPhases('research')).toHaveLength(3);
-    expect(initPhases('synthesis')).toHaveLength(3);
+    expect(initPhases('synthesis')).toHaveLength(4);
     expect(initPhases('delivery')).toHaveLength(3);
     expect(initPhases('complete')).toHaveLength(0);
   });

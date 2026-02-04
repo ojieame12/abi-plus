@@ -846,7 +846,8 @@ async function fetchDataForIntent(
 function buildDataContext(
   intent: DetectedIntent,
   data: FetchedData,
-  query: string
+  query: string,
+  userInterests?: string[]
 ): string {
   const parts: string[] = [];
 
@@ -991,6 +992,12 @@ ${regionList}`);
     if (entityParts.length > 0) {
       parts.push(`\nExtracted Context: ${entityParts.join(', ')}`);
     }
+  }
+
+  // Inject user interests as separate personalization context (not in the query)
+  if (userInterests?.length) {
+    const capped = userInterests.slice(-10);
+    parts.push(`\nUser Interests (for personalization only, ${capped.length} of ${userInterests.length}):\n${capped.map(i => `- ${i}`).join('\n')}\nOnly reference these when directly relevant. Do not force connections.`);
   }
 
   return parts.join('\n');
@@ -1675,7 +1682,8 @@ export async function callGeminiV2(
   userMessage: string,
   conversationHistory: ChatMessage[] = [], // Preserved for future context awareness
   intentOverride?: DetectedIntent,
-  builderOptions?: { promptTemplate?: string; routePath?: string }
+  builderOptions?: { promptTemplate?: string; routePath?: string },
+  userInterests?: string[]
 ): Promise<GeminiResponse> {
   // Mark conversationHistory as intentionally unused (preserved for future multi-turn support)
   void conversationHistory;
@@ -1717,8 +1725,8 @@ export async function callGeminiV2(
     riskChanges: data.riskChanges?.length || 0,
   });
 
-  // 4. Build data context for AI
-  const dataContext = buildDataContext(intent, data, userMessage);
+  // 4. Build data context for AI (interests injected as separate context, NOT in user query)
+  const dataContext = buildDataContext(intent, data, userMessage, userInterests);
 
   // 5. Call AI for content generation (pass synthetic supplier flag and builder template)
   const aiContent = await generateAIContent(

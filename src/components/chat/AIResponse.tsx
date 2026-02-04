@@ -8,6 +8,8 @@ import { SourceAttribution } from './SourceAttribution';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
 import { ValueLadderTriggers } from './ValueLadderActions';
+import { TrackInterestButton } from './TrackInterestButton';
+import { InterestTrackingPanel } from './SaveInterestPrompt';
 // SourceEnhancementChips import removed - currently not used but kept for reference
 // import { SourceEnhancementChips } from './SourceEnhancementChips';
 import { WidgetRenderer } from '../widgets/WidgetRenderer';
@@ -132,6 +134,15 @@ interface AIResponseProps {
     /** Callback to expand response with web search (when confidence suggests it) */
     onExpandToWeb?: () => void;
 
+    // Interest tracking
+    detectedInterest?: { text: string; region?: string; grade?: string } | null;
+    isTracked?: boolean;
+    /** Dynamic duplicate checker — re-evaluated as user edits topic in panel */
+    checkDuplicate?: (text: string) => boolean;
+    onTrackInterest?: (interest: { text: string; region?: string; grade?: string }) => void;
+    onNavigateToInterests?: () => void;
+    isSavingInterest?: boolean;
+
     // Animation control
     isAnimating?: boolean; // When true, plays staggered entrance animation
 }
@@ -190,6 +201,12 @@ export const AIResponse = ({
     onWidgetExpand,
     onInsightClick,
     onExpandToWeb,
+    detectedInterest,
+    isTracked = false,
+    checkDuplicate,
+    onTrackInterest,
+    onNavigateToInterests,
+    isSavingInterest = false,
     isAnimating = false,
 }: AIResponseProps) => {
 
@@ -205,6 +222,16 @@ export const AIResponse = ({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [showSourceEnhancement, setShowSourceEnhancement] = useState(!isAnimating);
     const [showFollowUps, setShowFollowUps] = useState(!isAnimating);
+
+    // Interest tracking panel state
+    const [isTrackPanelOpen, setIsTrackPanelOpen] = useState(false);
+
+    // Auto-close panel when topic becomes tracked
+    useEffect(() => {
+        if (isTracked) {
+            setIsTrackPanelOpen(false);
+        }
+    }, [isTracked]);
 
     // Orchestrate animation phases
     useEffect(() => {
@@ -625,31 +652,69 @@ export const AIResponse = ({
                 )}
             </AnimatePresence>
 
-            {/* 6. Response Feedback + Value Ladder Actions - Same row: feedback left, launchers right */}
+            {/* 6. Response Feedback + Track + Value Ladder Actions */}
             <AnimatePresence>
                 {showFooter && hasFooter && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="flex items-center justify-between pt-3 gap-4"
                     >
-                        <ResponseFeedback
-                            onDownload={onDownload}
-                            onThumbsUp={() => onFeedback?.('up')}
-                            onThumbsDown={() => onFeedback?.('down')}
-                            onRefresh={onRefresh}
-                        />
-                        {/* Right side: Value Ladder Triggers (Get Deeper Analysis, Ask Analyst) */}
-                        <div className="flex items-center gap-3">
-                            {showValueLadder && valueLadder && (
-                                <ValueLadderTriggers
-                                    valueLadder={valueLadder}
-                                    onOpenDeeperAnalysis={onOpenDeeperAnalysis}
-                                    onAskAnalyst={onAskAnalyst}
+                        <div className="flex items-center justify-between pt-3 gap-4">
+                            {/* Left side: Feedback buttons + Track */}
+                            <div className="flex items-center gap-1">
+                                <ResponseFeedback
+                                    onDownload={onDownload}
+                                    onThumbsUp={() => onFeedback?.('up')}
+                                    onThumbsDown={() => onFeedback?.('down')}
+                                    onRefresh={onRefresh}
                                 />
-                            )}
+                                {detectedInterest && (
+                                    <TrackInterestButton
+                                        isTracked={isTracked}
+                                        isExpanded={isTrackPanelOpen}
+                                        onClick={() => setIsTrackPanelOpen(prev => !prev)}
+                                    />
+                                )}
+                            </div>
+                            {/* Right side: Value Ladder Triggers */}
+                            <div className="flex items-center gap-3">
+                                {showValueLadder && valueLadder && (
+                                    <ValueLadderTriggers
+                                        valueLadder={valueLadder}
+                                        onOpenDeeperAnalysis={onOpenDeeperAnalysis}
+                                        onAskAnalyst={onAskAnalyst}
+                                    />
+                                )}
+                            </div>
                         </div>
+
+                        {/* Expandable tracking panel — below footer */}
+                        <AnimatePresence>
+                            {isTrackPanelOpen && detectedInterest && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <InterestTrackingPanel
+                                        detectedTopic={detectedInterest.text}
+                                        detectedRegion={detectedInterest.region}
+                                        detectedGrade={detectedInterest.grade}
+                                        isDuplicate={isTracked}
+                                        checkDuplicate={checkDuplicate}
+                                        onTrack={(interest) => {
+                                            onTrackInterest?.(interest);
+                                            setIsTrackPanelOpen(false);
+                                        }}
+                                        onClose={() => setIsTrackPanelOpen(false)}
+                                        isLoading={isSavingInterest}
+                                        onUpdateExisting={onNavigateToInterests}
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </motion.div>
                 )}
             </AnimatePresence>

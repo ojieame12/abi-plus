@@ -136,8 +136,8 @@ describe('parseJsonResponse', () => {
 
     const result = parseJsonResponse(response);
 
-    // Falls back because content is not a string
-    expect(result.content).toBe(response);
+    // Falls back and cleans trailing "} from raw text
+    expect(result.content).toBe('{"message": "Hello", "status": "ok');
   });
 
   it('handles malformed JSON gracefully', () => {
@@ -145,7 +145,8 @@ describe('parseJsonResponse', () => {
 
     const result = parseJsonResponse(response);
 
-    expect(result.content).toBe(response);
+    // Cleaned fallback strips the JSON prefix '{"content": "'
+    expect(result.content).toBe('incomplete...');
   });
 });
 

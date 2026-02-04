@@ -63,6 +63,9 @@ import type { InsightDetailData } from './utils/insightBuilder';
 import type { ResponseInsight } from './types/aiResponse';
 import { PersonaSwitcher } from './components/demo/PersonaSwitcher';
 import { DEMO_COMPANY_ID, DEMO_DEFAULT_TEAM_ID } from './constants/demo';
+// Interest system
+import { useUserInterests } from './hooks/useUserInterests';
+import { extractTopicFromResponse, extractInterestContext } from './services/interestService';
 import './App.css';
 
 // Type for database message with metadata
@@ -237,6 +240,13 @@ function App() {
   // Auth session - needed early for view gating
   const { isAuthenticated, userId, permissions, persona, isDemoMode } = useSession();
 
+  // User interests for personalization
+  const {
+    interestTexts: userInterestTexts,
+    hasInterest,
+    addInterest: addUserInterest,
+  } = useUserInterests();
+
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
   const [viewState, setViewStateRaw] = useState<ViewState>('home');
@@ -274,6 +284,9 @@ function App() {
   // New artifact system state
   const [artifactType, setArtifactType] = useState<ArtifactType | null>(null);
   const [artifactPayload, setArtifactPayload] = useState<ArtifactPayload | null>(null);
+
+  // Interest tracking — per-message save state (replaces 7 old vars)
+  const [savingInterestForMessage, setSavingInterestForMessage] = useState<string | null>(null);
 
   // Phase 2: Subscription state - fetched from live API
   const [subscription, setSubscription] = useState<CompanySubscription>(MOCK_SUBSCRIPTION);
@@ -994,6 +1007,8 @@ function App() {
         // Deep research options
         deepResearchMode: deepResearch,
         creditsAvailable: subscription.remainingCredits,
+        // User interests for personalization
+        userInterests: userInterestTexts,
       });
 
       console.log('[App] Got response:', response.id, response.content.slice(0, 100));
@@ -1113,6 +1128,13 @@ function App() {
     setArtifactType(null);
     setArtifactPayload(null);
     setIsArtifactExpanded(false);
+    // Reset interest prompt state
+    setPendingInterestTopic(null);
+    setPendingInterestContext(null);
+    setPendingInterestQuery(null);
+    setPendingInterestMessageId(null);
+    setPendingInterestIsDuplicate(false);
+    setPromptedTopicsThisConversation(new Set());
   };
 
   // Widget rendering is now handled by WidgetRenderer via widgetContext prop
@@ -1332,6 +1354,7 @@ function App() {
             <HomeView
               onOpenArtifact={() => setIsPanelOpen(true)}
               onStartChat={handleStartChat}
+              userInterests={userInterestTexts}
             />
           </motion.div>
         ) : viewState === 'history' ? (
@@ -1642,6 +1665,27 @@ function App() {
                               fetchAIResponse(userMessage.content, messages.slice(0, userMessageIndex), currentConversationId, undefined, true);
                             }
                           }}
+                          // 12. Interest tracking — per-message inline Track button
+                          detectedInterest={hasResponse ? extractInterestContext(msg.response!.content, messages[index - 1]?.content || '') : undefined}
+                          isTracked={hasInterest(extractTopicFromResponse(hasResponse ? msg.response!.content : '', messages[index - 1]?.content || '') || '')}
+                          checkDuplicate={hasInterest}
+                          isSavingInterest={savingInterestForMessage === msg.id}
+                          onTrackInterest={async (interest) => {
+                            setSavingInterestForMessage(msg.id);
+                            try {
+                              await addUserInterest(interest.text, 'chat_inferred', {
+                                region: interest.region,
+                                grade: interest.grade,
+                                conversationId: currentConversationId || undefined,
+                              });
+                              showSuccess('Topic saved');
+                            } catch (err) {
+                              console.error('[App] Failed to save interest:', err);
+                            } finally {
+                              setSavingInterestForMessage(null);
+                            }
+                          }}
+                          onNavigateToInterests={() => setViewState('settings')}
                         >
                           {/* Response content - use canonical ResponseBody if available, fallback to legacy formatMarkdown */}
                           {msg.response?.canonical ? (

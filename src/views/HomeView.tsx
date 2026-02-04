@@ -8,9 +8,64 @@ interface HomeViewProps {
     onStartChat?: (question: string, builderMeta?: BuilderMetadata, webSearchEnabled?: boolean, deepResearchEnabled?: boolean) => void;
     isTransitioning?: boolean;
     selectedQuestion?: string;
+    userInterests?: string[];
 }
 
 type TabType = 'recommended' | 'portfolio' | 'alerts' | 'actions';
+
+/**
+ * Generate personalized suggestions based on user interests.
+ * Falls back to static TAB_SUGGESTIONS when no interests.
+ */
+function generatePersonalizedSuggestions(interests: string[]): Record<TabType, string[]> {
+    if (!interests.length) return TAB_SUGGESTIONS;
+
+    // Build personalized queries from interests
+    // Templates use vocabulary that matches intent patterns in intents.ts:
+    // trend/change/alert → trend_detection, inflation/price/cost → inflation_*,
+    // portfolio/risk/supplier → portfolio_overview, find/alternative → action_trigger
+    const templates: Record<TabType, ((interest: string) => string)[]> = {
+        recommended: [
+            (i) => `What is the price trend for ${i}?`,
+            (i) => `What has changed in ${i} this month?`,
+            (i) => `Are there any alerts for ${i}?`,
+        ],
+        portfolio: [
+            (i) => `How is ${i} price volatility affecting my portfolio?`,
+            (i) => `What is my risk exposure in ${i}?`,
+            (i) => `What is the inflation impact for ${i}?`,
+        ],
+        alerts: [
+            (i) => `Show recent risk changes for ${i}`,
+            (i) => `Which ${i} suppliers have worsening risk scores?`,
+            (i) => `What price movement has occurred in ${i}?`,
+        ],
+        actions: [
+            (i) => `Help me validate a price increase request for ${i}`,
+            (i) => `Find alternative suppliers for ${i}`,
+            (i) => `Create a scenario for ${i} price increase`,
+        ],
+    };
+
+    const result: Record<TabType, string[]> = {
+        recommended: [],
+        portfolio: [],
+        alerts: [],
+        actions: [],
+    };
+
+    for (const tab of Object.keys(templates) as TabType[]) {
+        const tabTemplates = templates[tab];
+        // Use up to 3 interests, cycling through templates
+        for (let i = 0; i < 3; i++) {
+            const interest = interests[i % interests.length];
+            const template = tabTemplates[i % tabTemplates.length];
+            result[tab].push(template(interest));
+        }
+    }
+
+    return result;
+}
 
 const TAB_SUGGESTIONS: Record<TabType, string[]> = {
     recommended: [
@@ -35,9 +90,14 @@ const TAB_SUGGESTIONS: Record<TabType, string[]> = {
     ],
 };
 
-export const HomeView = ({ onStartChat, isTransitioning = false, selectedQuestion = '' }: HomeViewProps) => {
+export const HomeView = ({ onStartChat, isTransitioning = false, selectedQuestion = '', userInterests }: HomeViewProps) => {
     const [inputMessage, setInputMessage] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('recommended');
+
+    // Use personalized suggestions when interests are available
+    const suggestions = userInterests?.length
+        ? generatePersonalizedSuggestions(userInterests)
+        : TAB_SUGGESTIONS;
 
     const isTyping = inputMessage.length > 0;
 
@@ -168,7 +228,7 @@ export const HomeView = ({ onStartChat, isTransitioning = false, selectedQuestio
                                 transition={{ duration: 0.15 }}
                                 className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full"
                             >
-                                {TAB_SUGGESTIONS[activeTab].map((text, i) => (
+                                {suggestions[activeTab].map((text, i) => (
                                     <SuggestionCard
                                         key={i}
                                         text={text}

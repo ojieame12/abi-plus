@@ -15,3 +15,6 @@ export * from './managedCategories';
 
 // Content Layers
 export * from './layers';
+
+// Interest System
+export * from './interests';

@@ -118,4 +118,7 @@ export interface FetchHybridDataOptions {
 
   /** User's managed categories for confidence calculation */
   managedCategories?: string[];
+
+  /** User interests for personalization (injected into system prompts) */
+  userInterests?: string[];
 }

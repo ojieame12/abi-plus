@@ -12,6 +12,7 @@ import {
   Users,
   Building2,
   Settings,
+  Sparkles,
   Mail,
   Calendar,
   Clock,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { MOCK_CURRENT_USER, MOCK_COMPANY, MOCK_TEAMS, getMockTeamMembers } from '../services/mockOrganization';
 import type { OrgRole } from '../types/organization';
+import { InterestsSection } from '../components/settings/InterestsSection';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -28,7 +30,7 @@ interface SettingsViewProps {
   onNavigateToApprovals?: () => void;
 }
 
-type SettingsSection = 'profile' | 'notifications' | 'team' | 'organization' | 'billing' | 'security';
+type SettingsSection = 'profile' | 'interests' | 'notifications' | 'team' | 'organization' | 'billing' | 'security';
 
 export function SettingsView({
   onBack,
@@ -44,6 +46,7 @@ export function SettingsView({
   // Navigation items based on role
   const navItems: { id: SettingsSection; label: string; icon: React.ComponentType<{ className?: string }>; adminOnly?: boolean }[] = [
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'interests', label: 'My Interests', icon: Sparkles },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'organization', label: 'Organization', icon: Building2, adminOnly: true },
@@ -65,8 +68,8 @@ export function SettingsView({
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-medium text-primary">Settings</h1>
-            <p className="text-sm text-secondary">
+            <h1 className="text-xl font-normal text-slate-900">Settings</h1>
+            <p className="text-sm text-slate-400">
               Manage your account and preferences
             </p>
           </div>
@@ -82,10 +85,10 @@ export function SettingsView({
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                   activeSection === item.id
-                    ? 'bg-violet-50 text-violet-700'
-                    : 'text-secondary hover:bg-slate-50 hover:text-primary'
+                    ? 'bg-slate-100 text-slate-900 font-medium'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -131,6 +134,7 @@ export function SettingsView({
             transition={{ duration: 0.2 }}
           >
             {activeSection === 'profile' && <ProfileSection />}
+            {activeSection === 'interests' && <InterestsSection />}
             {activeSection === 'notifications' && <NotificationsSection />}
             {activeSection === 'team' && <TeamSection />}
             {activeSection === 'organization' && isAdmin && <OrganizationSection />}
@@ -148,8 +152,11 @@ function ProfileSection() {
   const user = MOCK_CURRENT_USER;
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-medium text-primary mb-6">Profile Settings</h2>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-normal text-slate-900">Profile Settings</h2>
+        <p className="text-sm text-slate-400 mt-1">Manage your personal information</p>
+      </div>
 
       {/* Avatar & Name */}
       <div className="flex items-center gap-4 mb-8">
@@ -195,8 +202,11 @@ function NotificationsSection() {
   };
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-medium text-primary mb-6">Notification Preferences</h2>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-normal text-slate-900">Notification Preferences</h2>
+        <p className="text-sm text-slate-400 mt-1">Control how Abi keeps you informed</p>
+      </div>
 
       <div className="space-y-4">
         <ToggleItem
@@ -251,8 +261,11 @@ function TeamSection() {
   const teams = MOCK_TEAMS;
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-medium text-primary mb-6">Team Members</h2>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-normal text-slate-900">Team Members</h2>
+        <p className="text-sm text-slate-400 mt-1">People in your organization</p>
+      </div>
 
       {teams.map(team => {
         const members = getMockTeamMembers(team.id);
@@ -308,8 +321,11 @@ function OrganizationSection() {
   const company = MOCK_COMPANY;
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-medium text-primary mb-6">Organization Settings</h2>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-normal text-slate-900">Organization Settings</h2>
+        <p className="text-sm text-slate-400 mt-1">Manage your company details</p>
+      </div>
 
       <div className="p-6 rounded-xl bg-slate-50 border border-slate-100 mb-6">
         <div className="flex items-center gap-4">
@@ -341,8 +357,11 @@ function OrganizationSection() {
 // Billing Section (Admin only)
 function BillingSection() {
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-medium text-primary mb-6">Billing & Credits</h2>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-normal text-slate-900">Billing & Credits</h2>
+        <p className="text-sm text-slate-400 mt-1">Manage your plan and payment</p>
+      </div>
 
       {/* Current Plan */}
       <div className="p-6 rounded-xl bg-violet-50 border border-violet-100 mb-6">
@@ -413,8 +432,11 @@ function BillingSection() {
 // Security Section (Admin only)
 function SecuritySection() {
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-medium text-primary mb-6">Security Settings</h2>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-normal text-slate-900">Security Settings</h2>
+        <p className="text-sm text-slate-400 mt-1">Protect your account</p>
+      </div>
 
       <div className="space-y-4">
         <div className="p-4 rounded-xl border border-slate-200">
@@ -479,14 +501,15 @@ function FormField({ label, value, type = 'text', disabled }: FormFieldProps) {
 
   return (
     <div>
-      <label className="block text-sm font-medium text-primary mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-slate-500 mb-1.5">{label}</label>
       <input
         type={type}
         value={fieldValue}
         onChange={(e) => setFieldValue(e.target.value)}
         disabled={disabled}
-        className={`w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300 transition-all ${
-          disabled ? 'bg-slate-50 text-secondary cursor-not-allowed' : 'bg-white'
+        placeholder={label}
+        className={`w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300 transition-all ${
+          disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white'
         }`}
       />
     </div>
