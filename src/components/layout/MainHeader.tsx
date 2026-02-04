@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Compass, Coins } from 'lucide-react';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
 import type { CompanySubscription } from '../../types/subscription';
-import { getCreditStatus, formatCredits } from '../../types/subscription';
+import { formatCredits } from '../../types/subscription';
 
 // Shared icon-button base styles per variant
 const ICON_BTN = {
@@ -29,9 +29,6 @@ function CreditPill({
     onClick?: () => void;
     variant: 'home' | 'conversation';
 }) {
-    const status = getCreditStatus(subscription.remainingCredits, subscription.totalCredits);
-    const dotColor = status === 'healthy' ? 'bg-emerald-400' : status === 'warning' ? 'bg-amber-400' : 'bg-red-400';
-
     return (
         <button
             onClick={onClick}
@@ -47,7 +44,6 @@ function CreditPill({
             <span className="text-sm font-medium text-slate-600 tabular-nums">
                 {formatCredits(subscription.remainingCredits)}
             </span>
-            <span className={`w-2 h-2 rounded-full ${dotColor}`} />
         </button>
     );
 }
