@@ -1490,50 +1490,6 @@ function buildWidgetData(
   }
 }
 
-// Fallback: build a data_list widget from AI-generated content when data-specific widget can't render
-function buildFallbackWidget(
-  aiContent: AIContentSlots | null
-): (WidgetData & { title?: string }) | undefined {
-  // Priority 1: Use widgetContent.factors (structured key insights)
-  if (aiContent?.widgetContent?.factors?.length) {
-    return {
-      type: 'data_list' as WidgetType,
-      title: aiContent.widgetContent.headline || 'Key Findings',
-      data: {
-        title: aiContent.widgetContent.headline || 'Key Findings',
-        subtitle: aiContent.widgetContent.summary,
-        items: aiContent.widgetContent.factors.map((f, i) => ({
-          id: `factor-${i}`,
-          label: f.title,
-          sublabel: f.detail,
-          status: f.impact === 'positive' ? 'success'
-                : f.impact === 'negative' ? 'danger'
-                : 'default',
-        })),
-        variant: 'detailed',
-      },
-    };
-  }
-
-  // Priority 2: Use artifactContent.keyPoints (bullet points)
-  if (aiContent?.artifactContent?.keyPoints?.length) {
-    return {
-      type: 'data_list' as WidgetType,
-      title: aiContent.artifactContent.title || 'Key Points',
-      data: {
-        title: aiContent.artifactContent.title || 'Key Points',
-        items: aiContent.artifactContent.keyPoints.map((point, i) => ({
-          id: `kp-${i}`,
-          label: point,
-          status: 'default',
-        })),
-      },
-    };
-  }
-
-  return undefined;
-}
-
 // Helper to calculate match score between suppliers
 function calculateMatchScore(current: Supplier, alternative: Supplier): number {
   let score = 70; // Base score
@@ -1818,8 +1774,7 @@ export async function callGeminiV2(
   }
 
   // 6. Build widget data
-  const widget = buildWidgetData(route.widgetType, data, aiContent)
-    || buildFallbackWidget(aiContent);
+  const widget = buildWidgetData(route.widgetType, data, aiContent);
 
   // 7. Build insight from AI content
   const insight: RichInsight | undefined = aiContent?.widgetContent ? {
