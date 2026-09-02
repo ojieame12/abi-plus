@@ -75,6 +75,7 @@ describe('useUserInterests', () => {
       const newInterest: Interest = {
         id: 'test_3',
         text: 'Copper - Asia',
+        canonicalKey: 'asia|copper',
         source: 'manual',
         savedAt: '2025-01-25T00:00:00.000Z',
       };
@@ -107,7 +108,7 @@ describe('useUserInterests', () => {
       });
 
       // Call addInterest and catch the re-thrown error
-      let caughtError: Error | null = null;
+      let caughtError: unknown;
       await act(async () => {
         try {
           await result.current.addInterest('Too many', 'manual');
@@ -117,7 +118,7 @@ describe('useUserInterests', () => {
       });
 
       expect(caughtError).not.toBeNull();
-      expect(caughtError?.message).toBe('Maximum of 50 interests reached');
+      expect((caughtError as Error).message).toBe('Maximum of 50 interests reached');
       expect(result.current.error).toBe('Maximum of 50 interests reached');
     });
   });

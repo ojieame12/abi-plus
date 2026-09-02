@@ -13,6 +13,7 @@ export interface WidgetFooterProps {
   beroeSourceCount?: number;              // Legacy fallback - only shown if explicitly set
   hasBeroeSourceCount?: boolean;          // Whether beroeSourceCount was explicitly set (not default)
   onViewDetails?: () => void;
+  onExpandToWeb?: () => void;
   onSourceClick?: (source: InternalSource) => void; // Opens report viewer for Beroe sources
   className?: string;
 }
@@ -37,6 +38,7 @@ export const WidgetFooter = ({
   beroeSourceCount = 0,
   hasBeroeSourceCount = false,
   onViewDetails,
+  onExpandToWeb,
   onSourceClick,
   className = '',
 }: WidgetFooterProps) => {
@@ -127,15 +129,25 @@ export const WidgetFooter = ({
           )}
         </div>
 
-        {/* View Details */}
-        {onViewDetails && (
-          <button
-            onClick={onViewDetails}
-            className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors"
-          >
-            <span>View Details</span>
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {onExpandToWeb && confidence?.showExpandToWeb && (
+            <button
+              onClick={onExpandToWeb}
+              className="flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
+            >
+              <ExternalLink size={14} />
+              <span>Expand to Web</span>
+            </button>
+          )}
+          {onViewDetails && (
+            <button
+              onClick={onViewDetails}
+              className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors"
+            >
+              <span>View Details</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sources Modal */}

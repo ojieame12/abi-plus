@@ -1,73 +1,53 @@
-# React + TypeScript + Vite
+# ABI+
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ABI+ is an AI-assisted procurement intelligence prototype for turning complex supplier, market and risk data into decision-ready workflows.
 
-Currently, two official plugins are available:
+The product explores how procurement teams can move from a natural-language question to a traceable answer, inspect supporting sources, escalate research and route higher-cost work through an approval flow. The interface includes supplier intelligence, managed categories, deep research, expert collaboration, credit controls and source-confidence states.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Product principles
 
-## React Compiler
+- Make AI reasoning inspectable through citations, source metadata and confidence states.
+- Preserve a clear path from summary to evidence, deeper analysis and expert help.
+- Design approval, credit and recovery states as part of the core workflow.
+- Keep complex enterprise data usable through focused widgets and progressive disclosure.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Technical foundation
 
-## Expanding the ESLint configuration
+- React 19, TypeScript and Vite
+- Framer Motion for interaction and transition design
+- Vitest and Testing Library for component, service and API behavior
+- Drizzle ORM with PostgreSQL-compatible schemas
+- Vercel serverless API routes
+- Gemini, Perplexity and hybrid synthesis adapters
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Verification
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+The repository currently passes strict TypeScript compilation, 1,214 automated tests and a production build. GitHub Actions runs the same gates on every pull request and push to `main`.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run verify
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Run locally
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run dev
 ```
+
+The visual prototype and mocked product paths run without external credentials. Live provider and database paths require the corresponding local environment variables.
+
+## Selected flows
+
+- Conversational procurement and supplier-risk exploration
+- Hybrid internal and web research with inline citation handling
+- Deep-research intake, progress and report artifacts
+- Managed-category setup and coverage states
+- Analyst and expert escalation
+- Credit ledger, holds and approval workflows
+- Community questions, notifications and organization controls
+
+## Status
+
+ABI+ is a portfolio prototype, not a production procurement service. Its purpose is to demonstrate product thinking, interaction design and working front-end implementation for trustworthy AI workflows.

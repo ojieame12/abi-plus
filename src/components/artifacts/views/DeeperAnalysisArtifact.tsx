@@ -2,6 +2,7 @@
 // Shows three cards: Upgrade Report, Ask Analyst, Expert Deep-Dive
 
 import { motion } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 import type { ValueLadder } from '../../../types/aiResponse';
 
 interface DeeperAnalysisArtifactProps {
@@ -75,7 +76,7 @@ export const DeeperAnalysisArtifact = ({
   const analyst = valueLadder.analystConnect?.analyst || DEFAULT_ANALYST;
   const expert = valueLadder.expertDeepDive?.matchedExpert || DEFAULT_EXPERT;
 
-  const cardVariants = {
+  const cardVariants: Variants = {
     hidden: { opacity: 0, y: 16 },
     visible: (i: number) => ({
       opacity: 1,

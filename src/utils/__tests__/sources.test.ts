@@ -218,7 +218,7 @@ describe('buildResponseSources', () => {
         totalWebCount: 0,
         totalInternalCount: 1,
         citations: {
-          'B1': { id: 'B1', name: 'Market Intelligence Reports', type: 'beroe' },
+          'B1': { id: 'B1', name: 'Market Intelligence Reports', type: 'beroe' as const },
         },
       };
 

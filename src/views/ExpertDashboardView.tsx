@@ -757,7 +757,7 @@ function EarningsChart({
                 padding: '8px 12px',
               }}
               labelStyle={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}
-              formatter={(value: number) => [`$${value.toLocaleString()}`, 'Earnings']}
+              formatter={(value) => [`$${(value ?? 0).toLocaleString()}`, 'Earnings']}
             />
             <Area
               type="monotone"

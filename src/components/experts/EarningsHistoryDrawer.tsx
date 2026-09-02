@@ -273,7 +273,7 @@ export function EarningsHistoryDrawer({
                             padding: '8px 12px',
                             fontSize: '12px',
                           }}
-                          formatter={(value: number) => [formatCurrency(value), 'Earnings']}
+                          formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Earnings']}
                         />
                         <Area
                           type="monotone"

@@ -180,7 +180,7 @@ const generateThinkingSteps = (query: string, intent: DetectedIntent): ThinkingS
 // Main function to call Perplexity API
 export const callPerplexity = async (
   userMessage: string,
-  conversationHistory: ChatMessage[] = [],
+  conversationHistory: Array<Pick<ChatMessage, 'role' | 'content'>> = [],
   userInterests?: string[]
 ): Promise<PerplexityResponse> => {
   const intent = classifyIntent(userMessage);

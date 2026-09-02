@@ -2,6 +2,7 @@
 // Modern, Apple-like design with AI matching and inline expansion
 
 import { useState, useMemo, useRef } from 'react';
+import type { ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -35,7 +36,7 @@ const DomainIcon = ({
   domain: string;
   className?: string;
 }) => {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, ReactElement> = {
     metals: (
       <svg
         className={className}

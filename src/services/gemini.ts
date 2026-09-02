@@ -1111,12 +1111,18 @@ function getDefaultAIContent(intentCategory: string, dataContext: string): AICon
   return {
     acknowledgement: `Here's an overview of ${supplierCount} suppliers${contextStr}.`,
     narrative: `Based on the available data, this analysis covers ${supplierCount} suppliers${contextStr}. Review the details below for risk distribution and key metrics.`,
-    insight: {
+    widgetContent: {
       headline: 'Data Summary Available',
       summary: 'Review the supplier data and metrics shown below.',
       type: 'info' as const,
       sentiment: 'neutral' as const,
     },
+    artifactContent: {
+      title: 'Supplier Overview',
+      overview: `This overview covers ${supplierCount} suppliers${contextStr}.`,
+      keyPoints: ['Review the available supplier metrics and risk distribution.'],
+    },
+    followUps: ['Show the highest-risk suppliers', 'Break this down by category'],
   };
 }
 
@@ -1680,7 +1686,7 @@ function buildDataSources(
 // Step 5: Assemble final response
 export async function callGeminiV2(
   userMessage: string,
-  conversationHistory: ChatMessage[] = [], // Preserved for future context awareness
+  conversationHistory: Array<Pick<ChatMessage, 'role' | 'content'>> = [], // Preserved for future context awareness
   intentOverride?: DetectedIntent,
   builderOptions?: { promptTemplate?: string; routePath?: string },
   userInterests?: string[]

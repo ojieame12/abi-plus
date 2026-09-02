@@ -9,6 +9,7 @@ import { CitedParagraph } from '../chat/CitedContent';
 import type { CanonicalResponse } from '../../types/responseSchema';
 import type { ResponseSources } from '../../types/aiResponse';
 import type { WebSource, InternalSource } from '../../types/aiResponse';
+import type { Citation, CitationMap } from '../../types/hybridResponse';
 
 interface ResponseBodyProps {
   /** The canonical response to render */
@@ -20,7 +21,7 @@ interface ResponseBodyProps {
   /** Show debug panel */
   showDebug?: boolean;
   /** Callback when clicking a citation badge */
-  onSourceClick?: (source: WebSource | InternalSource) => void;
+  onSourceClick?: (source: Citation | WebSource | InternalSource) => void;
 }
 
 /**
@@ -42,7 +43,7 @@ export const ResponseBody: React.FC<ResponseBodyProps> = ({
   onSourceClick,
 }) => {
   // Check if narrative has citations and we have citation data
-  const citations = (canonical.sources as ResponseSources & { citations?: Record<string, WebSource | InternalSource> })?.citations;
+  const citations = canonical.sources?.citations as CitationMap | Record<string, WebSource | InternalSource> | undefined;
   const narrativeHasCitations = canonical.narrative && hasCitations(canonical.narrative);
   const shouldRenderCitations = narrativeHasCitations && citations && Object.keys(citations).length > 0;
 

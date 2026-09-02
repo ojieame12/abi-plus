@@ -365,7 +365,7 @@ export const LiveChatView = ({
 
     // Open in artifact panel via parent callback
     onArtifactChange?.({
-      type: 'deep_research_report' as AIResponseType['artifact']['type'],
+      type: 'deep_research_report' as NonNullable<AIResponseType['artifact']>['type'],
       title: deepResearch.report.title || 'Deep Research Report',
     });
   };

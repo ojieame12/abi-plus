@@ -11,7 +11,12 @@ import type { ValueLadder, SourceEnhancement, SourceConfidenceInfo } from './aiR
 
 export interface WebSource {
   title: string;
+  name?: string;
   url: string;
+  domain?: string;
+  snippet?: string;
+  date?: string;
+  citationId?: string;
   favicon?: string;
 }
 

@@ -1729,7 +1729,7 @@ function App() {
                                   window.open(source.url, '_blank', 'noopener,noreferrer');
                                 } else {
                                   // Internal/Beroe source - open report viewer artifact
-                                  const sourceName = 'name' in source ? source.name : ('title' in source ? source.title : 'Source');
+                                  const sourceName = source.name || 'Source';
                                   const sourceType = 'type' in source ? source.type : 'beroe';
                                   const reportId = 'reportId' in source ? source.reportId : `report-${Date.now()}`;
                                   const category = 'category' in source ? source.category : 'General';

@@ -59,7 +59,7 @@ function getEngagementIcon(type: ExpertEngagement['type']) {
       return { Icon: Video, color: 'text-emerald-500', bg: 'bg-emerald-50' };
     case 'deep_dive':
       return { Icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50' };
-    case 'quick_question':
+    case 'bespoke_project':
       return { Icon: MessageCircle, color: 'text-violet-500', bg: 'bg-violet-50' };
     default:
       return { Icon: Calendar, color: 'text-slate-500', bg: 'bg-slate-50' };

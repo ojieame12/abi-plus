@@ -1,5 +1,5 @@
 // Credit Service - Fetch live credit balance and transactions from API
-import type { CompanySubscription, CreditTransaction, SubscriptionTier } from '../types/subscription';
+import type { CompanySubscription, CreditTransaction, CreditTransactionType, SubscriptionTier } from '../types/subscription';
 import { SUBSCRIPTION_TIERS } from '../types/subscription';
 
 // API response type (matches api/_middleware/credits.ts AccountBalance)
@@ -118,7 +118,7 @@ export function mapBalanceToSubscription(balance: AccountBalance): CompanySubscr
  */
 export function mapApiTransaction(tx: ApiTransaction): CreditTransaction {
   // Map transaction type to a user-friendly format
-  const typeMap: Record<string, string> = {
+  const typeMap: Record<string, CreditTransactionType> = {
     allocation: 'allocation',
     spend: 'report_upgrade', // Default for spend
     hold_conversion: 'report_upgrade',
@@ -130,7 +130,7 @@ export function mapApiTransaction(tx: ApiTransaction): CreditTransaction {
 
   return {
     id: tx.id,
-    type: typeMap[tx.transactionType] || tx.transactionType,
+    type: typeMap[tx.transactionType] || 'adjustment',
     amount: tx.entryType === 'debit' ? -Math.abs(tx.amount) : Math.abs(tx.amount),
     balance: 0, // Not provided in list response
     description: tx.description || `${tx.transactionType} transaction`,

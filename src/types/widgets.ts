@@ -343,7 +343,7 @@ export interface MetricRowData {
     label: string;
     value: string | number;
     subLabel?: string;
-    change?: { value: number; direction: 'up' | 'down' };
+    change?: { value: number; direction: 'up' | 'down' | 'stable' };
     color?: 'default' | 'success' | 'warning' | 'danger';
   }>;
 }

@@ -1,6 +1,6 @@
 import { ArrowRight, MessageCircle, Search, FileText, BarChart3, AlertTriangle, GitCompare, Lightbulb, Brain, Coins } from 'lucide-react';
 
-interface FollowUpItem {
+export interface FollowUpItem {
     id: string;
     text: string;
     icon?: 'chat' | 'search' | 'document' | 'chart' | 'alert' | 'lightbulb' | 'message' | 'compare' | 'deep_research';
