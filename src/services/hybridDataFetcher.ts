@@ -14,6 +14,7 @@ import type {
 import type { InternalSource, WebSource, ResponseSources } from '../types/aiResponse';
 import type { DetectedIntent } from '../types/intents';
 import type { ChatMessage } from '../types/chat';
+import type { Source } from '../types/chat';
 import { buildResponseSources } from '../utils/sources';
 
 /**
@@ -55,7 +56,7 @@ export async function fetchHybridData(
 async function fetchBeroeData(
   query: string,
   intent: DetectedIntent,
-  history: ChatMessage[],
+  history: Array<Pick<ChatMessage, 'role' | 'content'>>,
   userInterests?: string[]
 ): Promise<BeroeDataResult> {
   try {
@@ -84,7 +85,7 @@ async function fetchBeroeData(
  */
 async function fetchWebData(
   query: string,
-  history: ChatMessage[],
+  history: Array<Pick<ChatMessage, 'role' | 'content'>>,
   userInterests?: string[]
 ): Promise<WebDataResult> {
   try {
@@ -277,8 +278,9 @@ export function buildHybridSources(
   }
 
   // Use buildResponseSources to get confidence calculation
+  const combinedSources: Source[] = [...internalSources, ...webSources];
   const baseSources = buildResponseSources(
-    [...internalSources, ...webSources] as Array<{ name: string; type?: string; url?: string }>,
+    combinedSources,
     { detectedCategory, managedCategories }
   );
 

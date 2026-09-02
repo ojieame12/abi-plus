@@ -41,9 +41,9 @@ export const MetricRowWidget = ({ data, variant = 'default' }: Props) => {
               {metric.value}
               {metric.change && (
                 <span className={`ml-1.5 text-xs font-normal align-middle ${
-                  metric.change.direction === 'up' ? 'text-green-500' : 'text-red-500'
+                  metric.change.direction === 'up' ? 'text-green-500' : metric.change.direction === 'down' ? 'text-red-500' : 'text-slate-400'
                 }`}>
-                  {metric.change.direction === 'up' ? '↑' : '↓'}
+                  {metric.change.direction === 'up' ? '↑' : metric.change.direction === 'down' ? '↓' : '→'}
                   {Math.abs(metric.change.value)}%
                 </span>
               )}

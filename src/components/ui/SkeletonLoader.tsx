@@ -4,7 +4,7 @@ interface SkeletonLoaderProps {
     width?: string | number;
     height?: string | number;
     className?: string;
-    rounded?: 'sm' | 'md' | 'lg' | 'full';
+    rounded?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 export const SkeletonLoader = ({
@@ -17,6 +17,7 @@ export const SkeletonLoader = ({
         sm: 'rounded-sm',
         md: 'rounded-md',
         lg: 'rounded-lg',
+        xl: 'rounded-xl',
         full: 'rounded-full',
     };
 

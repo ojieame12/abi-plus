@@ -81,7 +81,7 @@ export const MOCK_COMPLETED_REQUESTS: UpgradeRequest[] = [
   {
     id: 'req_004',
     type: 'report_upgrade',
-    status: 'completed',
+    status: 'fulfilled',
     requesterId: 'user_003',
     requesterName: 'Emily Watson',
     requesterEmail: 'emily.watson@acmecorp.com',
@@ -109,7 +109,7 @@ export const MOCK_COMPLETED_REQUESTS: UpgradeRequest[] = [
   {
     id: 'req_005',
     type: 'analyst_qa',
-    status: 'completed',
+    status: 'fulfilled',
     requesterId: 'user_004',
     requesterName: 'James Park',
     requesterEmail: 'james.park@acmecorp.com',

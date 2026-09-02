@@ -5,7 +5,7 @@ import { InsightBanner } from './InsightBanner';
 import { InsightBar } from './InsightBar';
 import { SourcesDisplay } from './SourcesDisplay';
 import { SourceAttribution } from './SourceAttribution';
-import { SuggestedFollowUps } from './SuggestedFollowUps';
+import { SuggestedFollowUps, type FollowUpItem } from './SuggestedFollowUps';
 import { ResponseFeedback } from './ResponseFeedback';
 import { ValueLadderTriggers } from './ValueLadderActions';
 import { TrackInterestButton } from './TrackInterestButton';
@@ -44,12 +44,6 @@ interface LegacySourcesData {
     webPages?: number;
     dataSources?: number;
     dataSourceName?: string;
-}
-
-interface FollowUpItem {
-    id: string;
-    text: string;
-    icon?: 'chat' | 'search' | 'document' | 'chart' | 'alert' | 'lightbulb' | 'message' | 'compare';
 }
 
 // ============================================

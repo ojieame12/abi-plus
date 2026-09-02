@@ -486,17 +486,16 @@ export const buildResponseSources = (
 export const createEnrichedSources = (
   sourceNames: string[]
 ): InternalSource[] => {
-  return sourceNames
-    .map(name => {
+  return sourceNames.flatMap<InternalSource>(name => {
       const registryData = SOURCE_DATA_REGISTRY[name];
       const providerId = registryData?.providerId || 'beroe';
       const provider = getProvider(providerId);
       const legacyType = providerIdToLegacyType(providerId);
 
       // Skip sources that should remain as web sources
-      if (legacyType === null) return null;
+      if (legacyType === null) return [];
 
-      return {
+      return [{
         name,
         type: legacyType,
         providerId: provider.id,
@@ -509,9 +508,8 @@ export const createEnrichedSources = (
           category: registryData.category,
           summary: registryData.summary,
         }),
-      };
-    })
-    .filter((s): s is InternalSource => s !== null);
+      }];
+    });
 };
 
 // Legacy alias for backward compatibility

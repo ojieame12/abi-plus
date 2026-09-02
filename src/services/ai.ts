@@ -279,7 +279,7 @@ export const sendMessage = async (
       },
       intent: {
         category: 'market_context',
-        subIntent: 'briefing',
+        subIntent: 'none',
         confidence: 1.0,
         responseType: 'widget',
         artifactType: 'deep_research_progress',
@@ -984,14 +984,9 @@ const transformHybridResponse = (
   const acknowledgement = generateAcknowledgement(intent);
 
   // Extract suggestions based on synthesis metadata
-  const suggestions: Suggestion[] = generateSuggestions(intent.category, {
+  const suggestions: Suggestion[] = generateSuggestions(intent, {
     portfolio: undefined,
     suppliers: [],
-    supplier: undefined,
-    context: {
-      hasBeroe: hybridResponse.synthesisMetadata.beroeClaimsCount > 0,
-      hasWeb: hybridResponse.synthesisMetadata.webClaimsCount > 0,
-    },
   });
 
   // Build insight from hybrid response

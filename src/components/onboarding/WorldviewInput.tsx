@@ -14,7 +14,7 @@ export function WorldviewInput({ onAdd, disabled }: WorldviewInputProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-focus on mount
   useEffect(() => {

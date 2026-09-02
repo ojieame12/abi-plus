@@ -97,6 +97,8 @@ export type ArtifactType =
   | 'justification_report'    // Price justification report
   | 'scenario_planner'        // What-if scenario planner
   | 'executive_presentation'  // Stakeholder communication
+  | 'deep_research_progress'  // Live deep-research command center
+  | 'deep_research_report'    // Completed deep-research report
   | 'none';               // No artifact needed
 
 export type WidgetType =

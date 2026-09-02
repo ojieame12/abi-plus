@@ -8,6 +8,8 @@
     "start": "dotenv -e .env.local -- env NODE_OPTIONS=\"--import tsx\" vercel dev",
     "build": "vite build",
     "build:typecheck": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "verify": "npm run typecheck && npm run test:run && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

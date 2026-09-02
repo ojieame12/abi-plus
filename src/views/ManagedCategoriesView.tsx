@@ -2,6 +2,7 @@
 // Redesigned with contained layout, grid cards, and inline expansion
 
 import { useState, useMemo, useRef } from 'react';
+import type { ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SampleReportArtifact } from '../components/artifacts/views/SampleReportArtifact';
 import { AlertSetupArtifact } from '../components/artifacts/views/AlertSetupArtifact';
@@ -36,7 +37,7 @@ import {
 
 // Clean SVG icons for domains (Iconly-style)
 const DomainIcon = ({ domain, className = '' }: { domain: string; className?: string }) => {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, ReactElement> = {
     metals: (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -853,4 +854,3 @@ export function ManagedCategoriesView({ onBack }: ManagedCategoriesViewProps) {
     </div>
   );
 }
-
